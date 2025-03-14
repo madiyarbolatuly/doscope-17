@@ -1,204 +1,273 @@
 
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, Download, Share, Star, Trash2, 
-  Clock, FileText, User, Tag, MoreVertical
-} from 'lucide-react';
-import { format } from 'date-fns';
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { ChevronLeft, Clock, Download, FileText, MoreHorizontal, Share, Star, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Document } from '@/types/document';
-import { ActivityItem } from '@/components/ActivityItem';
 import { MetadataCard } from '@/components/MetadataCard';
+import { PageHeader } from '@/components/PageHeader';
 import { VersionHistoryList } from '@/components/VersionHistoryList';
-
-// Mock document data - this would come from your API in production
-const getMockDocument = (id: string): Document => {
-  return {
-    id,
-    name: "Annual Report 2023.pdf",
-    type: "pdf",
-    size: "4.2 MB",
-    modified: new Date().toISOString(),
-    owner: "Alex Johnson",
-    category: "reports",
-    path: "/reports/financial",
-    favorited: true
-  };
-};
-
-// Mock activities
-const activities = [
-  { id: '1', user: 'Alex Johnson', action: 'modified', date: new Date(Date.now() - 3600000).toISOString() },
-  { id: '2', user: 'Sarah Miller', action: 'viewed', date: new Date(Date.now() - 7200000).toISOString() },
-  { id: '3', user: 'David Chen', action: 'commented', date: new Date(Date.now() - 86400000).toISOString() },
-  { id: '4', user: 'Alex Johnson', action: 'uploaded', date: new Date(Date.now() - 172800000).toISOString() }
-];
-
-// Mock versions
-const versions = [
-  { 
-    id: '1', 
-    version: 'v3.0', 
-    modified: new Date(Date.now() - 3600000).toISOString(),
-    modifiedBy: 'Alex Johnson',
-    size: '4.2 MB',
-    comment: 'Final revisions incorporated'
-  },
-  { 
-    id: '2', 
-    version: 'v2.0', 
-    modified: new Date(Date.now() - 604800000).toISOString(),
-    modifiedBy: 'Sarah Miller',
-    size: '4.1 MB',
-    comment: 'Updated financial data'
-  },
-  { 
-    id: '3', 
-    version: 'v1.0', 
-    modified: new Date(Date.now() - 2592000000).toISOString(),
-    modifiedBy: 'Alex Johnson',
-    size: '3.8 MB',
-    comment: 'Initial version'
-  }
-];
+import { Activity, ActivityItem } from '@/components/ActivityItem';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const DocumentDetails = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('info');
-  const document = getMockDocument(id || '');
-
-  const goBack = () => {
-    navigate(-1);
+  
+  // In a real app, this would fetch document data from an API
+  const document = {
+    id: id || '1',
+    title: 'Annual Financial Report 2023',
+    description: 'Complete financial analysis and projections for fiscal year 2023',
+    owner: 'Financial Department',
+    createdBy: 'John Smith',
+    createdAt: '2023-01-15T10:30:00Z',
+    modifiedAt: '2023-03-22T14:45:00Z',
+    size: '4.2 MB',
+    fileType: 'PDF',
+    tags: ['Financial', 'Annual Report', 'Confidential'],
+    thumbnailUrl: '/placeholder.svg?height=400&width=300&text=PDF',
+    downloadUrl: '#',
+    versions: 3,
+    status: 'Published',
+    permissions: 'Private'
   };
 
+  const versionHistory = [
+    {
+      id: 'v3',
+      version: 'Version 3 (Current)',
+      changedBy: 'John Smith',
+      changedAt: '2023-03-22T14:45:00Z',
+      changeDescription: 'Updated financial projections based on Q1 results',
+      fileSize: '4.2 MB'
+    },
+    {
+      id: 'v2',
+      version: 'Version 2',
+      changedBy: 'Emily Johnson',
+      changedAt: '2023-02-10T09:15:00Z',
+      changeDescription: 'Incorporated feedback from financial advisors',
+      fileSize: '3.9 MB'
+    },
+    {
+      id: 'v1',
+      version: 'Version 1',
+      changedBy: 'John Smith',
+      changedAt: '2023-01-15T10:30:00Z',
+      changeDescription: 'Initial document creation',
+      fileSize: '3.5 MB'
+    }
+  ];
+
+  const activityLog: Activity[] = [
+    {
+      id: 'act5',
+      user: 'Sarah Wilson',
+      action: 'viewed',
+      date: '2023-03-25T11:30:00Z'
+    },
+    {
+      id: 'act4',
+      user: 'John Smith',
+      action: 'modified',
+      date: '2023-03-22T14:45:00Z'
+    },
+    {
+      id: 'act3',
+      user: 'Michael Brown',
+      action: 'downloaded',
+      date: '2023-03-20T09:15:00Z'
+    },
+    {
+      id: 'act2',
+      user: 'Emily Johnson',
+      action: 'commented',
+      date: '2023-02-10T09:15:00Z'
+    },
+    {
+      id: 'act1',
+      user: 'John Smith',
+      action: 'uploaded',
+      date: '2023-01-15T10:30:00Z'
+    }
+  ];
+
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6">
-      <div className="mb-6">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Documents</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/reports">Reports</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{document.name}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+    <div className="container mx-auto p-4 space-y-6 max-w-7xl">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+        <Button variant="ghost" size="sm" className="gap-1" asChild>
+          <a href="/">
+            <ChevronLeft className="h-4 w-4" /> Back to Documents
+          </a>
+        </Button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="w-full lg:w-2/3 bg-card rounded-lg border p-6">
-          <div className="flex justify-between items-center mb-6">
-            <Button variant="outline" size="sm" onClick={goBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-              <Button variant="outline" size="sm">
-                <Share className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Star className="h-4 w-4 mr-2" />
-                    Favorite
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Tag className="h-4 w-4 mr-2" />
-                    Add Tags
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Move to Trash
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <PageHeader 
+            title={document.title}
+            description={document.description}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Download className="mr-2 h-4 w-4" />
+                  <span>Download</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Share className="mr-2 h-4 w-4" />
+                  <span>Share</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Star className="mr-2 h-4 w-4" />
+                  <span>Add to Favorites</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive">
+                  <Trash className="mr-2 h-4 w-4" />
+                  <span>Delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </PageHeader>
 
-          <div className="flex justify-center items-center bg-accent rounded-lg h-96 mb-6">
-            <FileText className="h-24 w-24 text-muted-foreground" />
-          </div>
+          <Card>
+            <CardContent className="p-0">
+              <div className="aspect-video bg-muted rounded-md flex items-center justify-center">
+                <img
+                  src={document.thumbnailUrl}
+                  alt={document.title}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-          <h1 className="text-2xl font-bold mb-2">{document.name}</h1>
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-6">
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              <span>Modified {format(new Date(document.modified), 'MMM d, yyyy')}</span>
-            </div>
-            <div className="flex items-center">
-              <User className="h-4 w-4 mr-1" />
-              <span>Owner: {document.owner}</span>
-            </div>
-            <div className="flex items-center">
-              <FileText className="h-4 w-4 mr-1" />
-              <span>Size: {document.size}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="w-full lg:w-1/3">
-          <div className="bg-card rounded-lg border overflow-hidden">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full">
-                <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
-                <TabsTrigger value="activity" className="flex-1">Activity</TabsTrigger>
-                <TabsTrigger value="versions" className="flex-1">Versions</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="info" className="p-4">
-                <MetadataCard document={document} />
-              </TabsContent>
-              
-              <TabsContent value="activity" className="p-4">
-                <h3 className="text-lg font-medium mb-4">Recent Activity</h3>
-                <div className="space-y-4">
-                  {activities.map(activity => (
-                    <ActivityItem key={activity.id} activity={activity} />
+          <Tabs defaultValue="metadata">
+            <TabsList>
+              <TabsTrigger value="metadata">Metadata</TabsTrigger>
+              <TabsTrigger value="versions">Versions</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+            <TabsContent value="metadata" className="space-y-4">
+              <MetadataCard 
+                title="Document Information"
+                items={[
+                  { label: 'Created By', value: document.createdBy },
+                  { label: 'Created Date', value: new Date(document.createdAt).toLocaleDateString() },
+                  { label: 'Last Modified', value: new Date(document.modifiedAt).toLocaleDateString() },
+                  { label: 'File Size', value: document.size },
+                  { label: 'File Type', value: document.fileType },
+                  { label: 'Status', value: document.status },
+                  { label: 'Permissions', value: document.permissions },
+                ]}
+              />
+              <div>
+                <h3 className="text-lg font-medium mb-2">Tags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {document.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary">
+                      {tag}
+                    </Badge>
                   ))}
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="versions" className="p-4">
-                <h3 className="text-lg font-medium mb-4">Version History</h3>
-                <VersionHistoryList versions={versions} />
-              </TabsContent>
-            </Tabs>
-          </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="versions">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Version History
+                  </CardTitle>
+                  <CardDescription>
+                    Track changes made to this document over time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <VersionHistoryList versions={versionHistory} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="activity">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Activity Log
+                  </CardTitle>
+                  <CardDescription>
+                    Recent activity related to this document
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-4">
+                      {activityLog.map((activity) => (
+                        <ActivityItem key={activity.id} activity={activity} />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button className="w-full justify-start">
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+              <Button className="w-full justify-start" variant="outline">
+                <Share className="mr-2 h-4 w-4" />
+                Share Document
+              </Button>
+              <Button className="w-full justify-start" variant="outline">
+                <Star className="mr-2 h-4 w-4" />
+                Add to Favorites
+              </Button>
+              <Button className="w-full justify-start" variant="destructive">
+                <Trash className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Related Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <a href="#" className="text-sm hover:underline">Q1 Financial Report 2023</a>
+                </div>
+                <div className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <a href="#" className="text-sm hover:underline">Annual Budget 2023</a>
+                </div>
+                <div className="flex items-center">
+                  <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <a href="#" className="text-sm hover:underline">Financial Projections 2023-2024</a>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { Eye, FileEdit, MessageSquare, Upload } from 'lucide-react';
+import { Eye, FileEdit, MessageSquare, Upload, Download, Trash, RefreshCw, Share } from 'lucide-react';
 import { format } from 'date-fns';
 
-interface Activity {
+export interface Activity {
   id: string;
   user: string;
   action: 'viewed' | 'modified' | 'commented' | 'uploaded' | 'deleted' | 'restored' | 'downloaded' | 'shared';
@@ -25,6 +25,14 @@ export function ActivityItem({ activity }: ActivityItemProps) {
         return <MessageSquare className="h-4 w-4" />;
       case 'uploaded':
         return <Upload className="h-4 w-4" />;
+      case 'downloaded':
+        return <Download className="h-4 w-4" />;
+      case 'deleted':
+        return <Trash className="h-4 w-4" />;
+      case 'restored':
+        return <RefreshCw className="h-4 w-4" />;
+      case 'shared':
+        return <Share className="h-4 w-4" />;
       default:
         return <FileEdit className="h-4 w-4" />;
     }
