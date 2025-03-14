@@ -7,6 +7,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import UserManagement from "./pages/UserManagement";
+import Dashboard from "./pages/Dashboard";
+import DocumentDetails from "./pages/DocumentDetails";
+import TrashBin from "./pages/TrashBin";
+import Auth from "./pages/Auth";
+import FileUpload from "./pages/FileUpload";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +22,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/document/:id" element={<DocumentDetails />} />
+          <Route path="/upload" element={<FileUpload />} />
+          <Route path="/trash" element={<TrashBin />} />
           <Route path="/users" element={<UserManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
