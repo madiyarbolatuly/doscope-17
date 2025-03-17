@@ -2,6 +2,8 @@
 import React from 'react';
 import { Document } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
+import { FolderPlus, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DocumentGridProps {
   documents: Document[];
@@ -9,6 +11,10 @@ interface DocumentGridProps {
 }
 
 export function DocumentGrid({ documents, onDocumentClick }: DocumentGridProps) {
+  // Separate folders and files
+  const folders = documents.filter(doc => doc.type === 'folder');
+  const files = documents.filter(doc => doc.type !== 'folder');
+
   if (!documents.length) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -32,15 +38,43 @@ export function DocumentGrid({ documents, onDocumentClick }: DocumentGridProps) 
         <p className="text-muted-foreground text-sm max-w-md">
           No documents match your current search or filter criteria. Try changing your search terms or adding new documents.
         </p>
+        <div className="flex gap-3 mt-6">
+          <Button variant="outline" size="sm">
+            <FolderPlus className="h-4 w-4 mr-2" />
+            Create Folder
+          </Button>
+          <Button size="sm">
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Files
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {documents.map((doc) => (
-        <DocumentCard key={doc.id} document={doc} onClick={onDocumentClick} />
-      ))}
+    <div className="space-y-6">
+      {folders.length > 0 && (
+        <div>
+          <h2 className="text-lg font-medium mb-3">Folders</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {folders.map((folder) => (
+              <DocumentCard key={folder.id} document={folder} onClick={onDocumentClick} />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {files.length > 0 && (
+        <div>
+          <h2 className="text-lg font-medium mb-3">Files</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {files.map((file) => (
+              <DocumentCard key={file.id} document={file} onClick={onDocumentClick} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

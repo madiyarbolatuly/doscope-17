@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 import { 
   FileText, File, FileSpreadsheet, 
   FileImage, FolderOpen, MoreVertical, 
-  Star, Calendar, User
+  Star, Calendar, User,
+  Folder
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
       case 'image':
         return <FileImage className="h-8 w-8 text-purple-500" />;
       case 'folder':
-        return <FolderOpen className="h-8 w-8 text-yellow-500" />;
+        return <Folder className="h-8 w-8 text-yellow-500" />;
       default:
         return <File className="h-8 w-8 text-gray-500" />;
     }
@@ -43,9 +44,14 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
   const modifiedDate = new Date(document.modified);
   const formattedDate = format(modifiedDate, 'MMM d, yyyy');
 
+  const isFolder = document.type === 'folder';
+
   return (
     <div 
-      className="document-card bg-card rounded-lg border p-4 cursor-pointer relative"
+      className={cn(
+        "document-card bg-card rounded-lg border p-4 cursor-pointer relative",
+        isFolder && "border-yellow-200 hover:border-yellow-300"
+      )}
       onClick={() => onClick(document)}
     >
       <div className="absolute right-2 top-2 z-10">
@@ -57,7 +63,14 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem>Open</DropdownMenuItem>
-            <DropdownMenuItem>Download</DropdownMenuItem>
+            {isFolder ? (
+              <>
+                <DropdownMenuItem>New File</DropdownMenuItem>
+                <DropdownMenuItem>New Folder</DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem>Download</DropdownMenuItem>
+            )}
             <DropdownMenuItem>Share</DropdownMenuItem>
             <DropdownMenuItem>Rename</DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -67,7 +80,10 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
       </div>
 
       <div className="flex flex-col h-full">
-        <div className="flex justify-center items-center mb-4 h-24 bg-accent rounded-md p-4">
+        <div className={cn(
+          "flex justify-center items-center mb-4 h-24 rounded-md p-4",
+          isFolder ? "bg-yellow-50" : "bg-accent"
+        )}>
           {document.thumbnail ? (
             <img 
               src={document.thumbnail} 

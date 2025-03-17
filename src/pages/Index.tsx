@@ -119,6 +119,41 @@ const mockDocuments: Document[] = [
     modified: '2023-05-28T13:15:00',
     owner: 'HR Department',
     category: 'hr'
+  },
+  // Add more folders for testing
+  {
+    id: '13',
+    name: 'HR Documents',
+    type: 'folder',
+    modified: '2023-07-15T10:00:00',
+    owner: 'HR Department',
+    category: 'hr'
+  },
+  {
+    id: '14',
+    name: 'Financial Reports',
+    type: 'folder',
+    modified: '2023-07-12T14:30:00',
+    owner: 'Finance Department',
+    category: 'reports',
+    favorited: true
+  },
+  {
+    id: '15',
+    name: 'Marketing Materials',
+    type: 'folder',
+    modified: '2023-07-05T09:45:00',
+    owner: 'Marketing Team',
+    category: 'marketing'
+  },
+  {
+    id: '16',
+    name: 'Client Contracts',
+    type: 'folder',
+    modified: '2023-06-28T16:20:00',
+    owner: 'Legal Team',
+    category: 'contracts',
+    shared: true
   }
 ];
 
