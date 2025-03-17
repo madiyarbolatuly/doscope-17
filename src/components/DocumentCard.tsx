@@ -4,11 +4,10 @@ import { Document } from '@/types/document';
 import { cn } from '@/lib/utils';
 import { 
   FileText, File, FileSpreadsheet, 
-  FileImage, FolderOpen, MoreVertical, 
+  FileImage, MoreVertical, 
   Star, Calendar, User,
-  Folder
+  Folder, CheckCircle2
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -21,38 +20,42 @@ import {
 interface DocumentCardProps {
   document: Document;
   onClick: (document: Document) => void;
+  isSelected?: boolean;
+  onSelect: () => void;
 }
 
-export function DocumentCard({ document, onClick }: DocumentCardProps) {
+export function DocumentCard({ document, onClick, isSelected, onSelect }: DocumentCardProps) {
   const renderIcon = () => {
     switch (document.type) {
       case 'pdf':
-        return <FileText className="h-8 w-8 text-red-500" />;
+        return <FileText className="h-10 w-10 text-red-500" />;
       case 'doc':
-        return <FileText className="h-8 w-8 text-blue-500" />;
+        return <FileText className="h-10 w-10 text-blue-500" />;
       case 'xlsx':
-        return <FileSpreadsheet className="h-8 w-8 text-green-500" />;
+        return <FileSpreadsheet className="h-10 w-10 text-green-500" />;
       case 'image':
-        return <FileImage className="h-8 w-8 text-purple-500" />;
+        return <FileImage className="h-10 w-10 text-purple-500" />;
       case 'folder':
-        return <Folder className="h-8 w-8 text-yellow-500" />;
+        return <Folder className="h-10 w-10 text-yellow-500" />;
       default:
-        return <File className="h-8 w-8 text-gray-500" />;
+        return <File className="h-10 w-10 text-gray-500" />;
     }
   };
-
-  const modifiedDate = new Date(document.modified);
-  const formattedDate = format(modifiedDate, 'MMM d, yyyy');
 
   const isFolder = document.type === 'folder';
 
   return (
     <div 
       className={cn(
-        "document-card bg-card rounded-lg border p-4 cursor-pointer relative",
+        "document-card relative border p-3 rounded-lg cursor-pointer transition-all",
+        isSelected ? "bg-primary/5 border-primary" : "bg-card hover:bg-accent/50",
         isFolder && "border-yellow-200 hover:border-yellow-300"
       )}
-      onClick={() => onClick(document)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      onDoubleClick={() => onClick(document)}
     >
       <div className="absolute right-2 top-2 z-10">
         <DropdownMenu>
@@ -62,7 +65,7 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>Open</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onClick(document)}>Open</DropdownMenuItem>
             {isFolder ? (
               <>
                 <DropdownMenuItem>New File</DropdownMenuItem>
@@ -78,6 +81,12 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {isSelected && (
+        <div className="absolute left-2 top-2">
+          <CheckCircle2 className="h-5 w-5 text-primary" />
+        </div>
+      )}
 
       <div className="flex flex-col h-full">
         <div className={cn(
@@ -101,12 +110,7 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
           <div className="mt-2 space-y-1">
             <div className="flex items-center text-xs text-muted-foreground">
               <Calendar className="h-3 w-3 mr-1" />
-              <span>{formattedDate}</span>
-            </div>
-            
-            <div className="flex items-center text-xs text-muted-foreground">
-              <User className="h-3 w-3 mr-1" />
-              <span>{document.owner}</span>
+              <span>{new Date(document.modified).toLocaleDateString()}</span>
             </div>
           </div>
         </div>
