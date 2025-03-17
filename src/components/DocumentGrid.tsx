@@ -57,7 +57,7 @@ export function DocumentGrid({ documents, onDocumentClick }: DocumentGridProps) 
       {folders.length > 0 && (
         <div>
           <h2 className="text-lg font-medium mb-3">Folders</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
             {folders.map((folder) => (
               <DocumentCard key={folder.id} document={folder} onClick={onDocumentClick} />
             ))}
@@ -68,9 +68,12 @@ export function DocumentGrid({ documents, onDocumentClick }: DocumentGridProps) 
       {files.length > 0 && (
         <div>
           <h2 className="text-lg font-medium mb-3">Files</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {files.map((file) => (
-              <DocumentCard key={file.id} document={file} onClick={onDocumentClick} />
+          <div className="border bg-card rounded-md">
+            {files.map((file, index) => (
+              <React.Fragment key={file.id}>
+                {index > 0 && <div className="h-px bg-border mx-4" />}
+                <DocumentCard document={file} onClick={onDocumentClick} />
+              </React.Fragment>
             ))}
           </div>
         </div>
