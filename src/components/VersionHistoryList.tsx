@@ -3,8 +3,9 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Download, RotateCcw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
-interface Version {
+export interface Version {
   id: string;
   version: string;
   modified: string;
@@ -65,5 +66,3 @@ export function VersionHistoryList({ versions }: VersionHistoryListProps) {
     </div>
   );
 }
-
-import { Badge } from '@/components/ui/badge';

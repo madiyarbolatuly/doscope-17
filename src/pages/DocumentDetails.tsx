@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MetadataCard } from '@/components/MetadataCard';
 import { PageHeader } from '@/components/PageHeader';
-import { VersionHistoryList } from '@/components/VersionHistoryList';
+import { VersionHistoryList, Version } from '@/components/VersionHistoryList';
 import { Activity, ActivityItem } from '@/components/ActivityItem';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 const DocumentDetails = () => {
   const { id } = useParams();
   
-  // In a real app, this would fetch document data from an API
+  // В реальном приложении здесь был бы запрос к API для получения данных документа
   const document = {
     id: id || '1',
     title: 'Annual Financial Report 2023',
@@ -35,30 +35,31 @@ const DocumentDetails = () => {
     permissions: 'Private'
   };
 
-  const versionHistory = [
+  // История версий в формате, соответствующем типу Version
+  const versionHistory: Version[] = [
     {
       id: 'v3',
       version: 'Version 3 (Current)',
-      changedBy: 'John Smith',
-      changedAt: '2023-03-22T14:45:00Z',
-      changeDescription: 'Updated financial projections based on Q1 results',
-      fileSize: '4.2 MB'
+      modified: '2023-03-22T14:45:00Z',
+      modifiedBy: 'John Smith',
+      size: '4.2 MB',
+      comment: 'Updated financial projections based on Q1 results'
     },
     {
       id: 'v2',
       version: 'Version 2',
-      changedBy: 'Emily Johnson',
-      changedAt: '2023-02-10T09:15:00Z',
-      changeDescription: 'Incorporated feedback from financial advisors',
-      fileSize: '3.9 MB'
+      modified: '2023-02-10T09:15:00Z',
+      modifiedBy: 'Emily Johnson',
+      size: '3.9 MB',
+      comment: 'Incorporated feedback from financial advisors'
     },
     {
       id: 'v1',
       version: 'Version 1',
-      changedBy: 'John Smith',
-      changedAt: '2023-01-15T10:30:00Z',
-      changeDescription: 'Initial document creation',
-      fileSize: '3.5 MB'
+      modified: '2023-01-15T10:30:00Z',
+      modifiedBy: 'John Smith',
+      size: '3.5 MB',
+      comment: 'Initial document creation'
     }
   ];
 
