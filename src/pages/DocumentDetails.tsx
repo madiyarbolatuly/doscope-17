@@ -1,7 +1,10 @@
-
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import { ChevronLeft, Clock, Download, FileText, MoreHorizontal, Share, Star, Trash } from 'lucide-react';
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  ChevronLeft, Clock, Download, FileText, MoreHorizontal, 
+  Share, Star, Trash, Eye, Pencil, Move, Copy, Type, 
+  ExternalLink
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,12 +14,21 @@ import { VersionHistoryList, Version } from '@/components/VersionHistoryList';
 import { Activity, ActivityItem } from '@/components/ActivityItem';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 const DocumentDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   
-  // В реальном приложении здесь был бы запрос к API для получения данных документа
   const document = {
     id: id || '1',
     title: 'Annual Financial Report 2023',
@@ -32,10 +44,10 @@ const DocumentDetails = () => {
     downloadUrl: '#',
     versions: 3,
     status: 'Published',
-    permissions: 'Private'
+    permissions: 'Private',
+    previewUrl: '/placeholder.svg?height=800&width=600&text=PDF Preview'
   };
 
-  // История версий в формате, соответствующем типу Version
   const versionHistory: Version[] = [
     {
       id: 'v3',
@@ -96,6 +108,31 @@ const DocumentDetails = () => {
     }
   ];
 
+  const handleDownload = () => {
+    toast.success('Скачивание документа начато');
+  };
+
+  const handleShare = () => {
+    toast.success('Ссылка для общего доступа скопирована в буфер обмена');
+  };
+
+  const handleRename = () => {
+    toast.success('Документ переименован');
+  };
+
+  const handleMove = () => {
+    toast.success('Документ перемещен');
+  };
+
+  const handleCopy = () => {
+    toast.success('Документ скопирован');
+  };
+
+  const handleDelete = () => {
+    toast.success('Документ удален');
+    navigate('/');
+  };
+
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-7xl">
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -119,22 +156,38 @@ const DocumentDetails = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsPreviewOpen(true)}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>Просмотреть</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownload}>
                   <Download className="mr-2 h-4 w-4" />
-                  <span>Download</span>
+                  <span>Скачать</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleShare}>
                   <Share className="mr-2 h-4 w-4" />
-                  <span>Share</span>
+                  <span>Поделиться</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Star className="mr-2 h-4 w-4" />
-                  <span>Add to Favorites</span>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  <span>Редактировать</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleRename}>
+                  <Type className="mr-2 h-4 w-4" />
+                  <span>Переименовать</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleMove}>
+                  <Move className="mr-2 h-4 w-4" />
+                  <span>Переместить</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopy}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  <span>Копировать</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem onClick={handleDelete} className="text-destructive">
                   <Trash className="mr-2 h-4 w-4" />
-                  <span>Delete</span>
+                  <span>Удалить</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -142,12 +195,19 @@ const DocumentDetails = () => {
 
           <Card>
             <CardContent className="p-0">
-              <div className="aspect-video bg-muted rounded-md flex items-center justify-center">
+              <div className="aspect-video bg-muted rounded-md flex items-center justify-center relative">
                 <img
                   src={document.thumbnailUrl}
                   alt={document.title}
                   className="h-full w-full object-contain"
                 />
+                <Button 
+                  className="absolute bottom-4 right-4" 
+                  onClick={() => setIsPreviewOpen(true)}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Предпросмотр
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -226,24 +286,40 @@ const DocumentDetails = () => {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
+              <CardTitle>Действия с файлом</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full justify-start">
+              <Button className="w-full justify-start" onClick={() => setIsPreviewOpen(true)}>
+                <Eye className="mr-2 h-4 w-4" />
+                Просмотреть
+              </Button>
+              <Button className="w-full justify-start" onClick={handleDownload}>
                 <Download className="mr-2 h-4 w-4" />
-                Download
+                Скачать
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start" variant="outline" onClick={handleShare}>
                 <Share className="mr-2 h-4 w-4" />
-                Share Document
+                Поделиться
               </Button>
               <Button className="w-full justify-start" variant="outline">
-                <Star className="mr-2 h-4 w-4" />
-                Add to Favorites
+                <Pencil className="mr-2 h-4 w-4" />
+                Редактировать
               </Button>
-              <Button className="w-full justify-start" variant="destructive">
+              <Button className="w-full justify-start" variant="outline" onClick={handleRename}>
+                <Type className="mr-2 h-4 w-4" />
+                Переименовать
+              </Button>
+              <Button className="w-full justify-start" variant="outline" onClick={handleMove}>
+                <Move className="mr-2 h-4 w-4" />
+                Переместить
+              </Button>
+              <Button className="w-full justify-start" variant="outline" onClick={handleCopy}>
+                <Copy className="mr-2 h-4 w-4" />
+                Копировать
+              </Button>
+              <Button className="w-full justify-start" variant="destructive" onClick={handleDelete}>
                 <Trash className="mr-2 h-4 w-4" />
-                Delete
+                Удалить
               </Button>
             </CardContent>
           </Card>
@@ -271,6 +347,34 @@ const DocumentDetails = () => {
           </Card>
         </div>
       </div>
+
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-5xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{document.title}</span>
+              <Button variant="outline" size="sm" onClick={handleDownload} className="ml-auto">
+                <Download className="mr-2 h-4 w-4" />
+                Скачать
+              </Button>
+            </DialogTitle>
+            <DialogDescription>
+              {document.fileType} • {document.size}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto mt-4 h-full">
+            <div className="bg-muted rounded-md p-4 h-full flex items-center justify-center">
+              <div className="relative w-full h-full">
+                <img 
+                  src={document.previewUrl} 
+                  alt={document.title} 
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
