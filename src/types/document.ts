@@ -15,4 +15,17 @@ export interface Document {
   favorited?: boolean;
 }
 
-export type CategoryType = 'all' | 'recent' | 'shared' | 'favorites' | 'trash' | string;
+export type CategoryType = 
+  | 'all' 
+  | 'recent' 
+  | 'shared' 
+  | 'favorites' 
+  | 'trash' 
+  | 'managers' 
+  | 'development' 
+  | 'procurement' 
+  | 'electrical' 
+  | 'weakening' 
+  | 'interface' 
+  | 'pse'
+  | string;

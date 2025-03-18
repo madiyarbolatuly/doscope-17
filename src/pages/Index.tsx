@@ -183,9 +183,22 @@ const Index = () => {
         filteredDocs = [...filteredDocs]
           .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
           .slice(0, 5);
-      } else if (category !== 'trash') {
-        // Filter by specific category
-        filteredDocs = filteredDocs.filter(doc => doc.category === category);
+      } else if (category === 'trash') {
+        // Trash category logic
+        filteredDocs = [];
+      } else {
+        // Filter by specific category - we map the new Russian categories to the existing ones
+        if (category === 'managers') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'hr');
+        } else if (category === 'development') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'reports');
+        } else if (category === 'procurement') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'contracts');
+        } else if (category === 'electrical' || category === 'weakening' || category === 'interface' || category === 'pse') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'invoices' || doc.category === 'marketing');
+        } else {
+          filteredDocs = filteredDocs.filter(doc => doc.category === category);
+        }
       }
     }
     
@@ -221,7 +234,7 @@ const Index = () => {
   const getCategoryTitle = (type: CategoryType): string => {
     switch (type) {
       case 'all':
-        return 'All Documents';
+        return 'Абен';
       case 'recent':
         return 'Recent Documents';
       case 'shared':
@@ -230,6 +243,20 @@ const Index = () => {
         return 'Favorites';
       case 'trash':
         return 'Trash';
+      case 'managers':
+        return 'Руководители';
+      case 'development':
+        return 'Отдел развития';
+      case 'procurement':
+        return 'Прокюрмент';
+      case 'electrical':
+        return 'Электрические сети';
+      case 'weakening':
+        return 'Слаботочные системы';
+      case 'interface':
+        return 'Отдел интерфейс';
+      case 'pse':
+        return 'PSE DCC';
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }

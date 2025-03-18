@@ -21,7 +21,7 @@ interface SidebarItem {
 
 export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
   const mainNavItems: SidebarItem[] = [
-    { id: 'all', label: 'All Documents', icon: <FileText size={18} /> },
+    { id: 'all', label: 'Абен', icon: <FileText size={18} /> },
     { id: 'recent', label: 'Recent', icon: <Clock size={18} /> },
     { id: 'shared', label: 'Shared with me', icon: <Users size={18} /> },
     { id: 'favorites', label: 'Favorites', icon: <Star size={18} /> },
@@ -29,10 +29,13 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
   ];
 
   const categoryItems: SidebarItem[] = [
-    { id: 'contracts', label: 'Contracts', icon: <FileText size={18} /> },
-    { id: 'invoices', label: 'Invoices', icon: <FileArchive size={18} /> },
-    { id: 'reports', label: 'Reports', icon: <FolderOpen size={18} /> },
-    { id: 'hr', label: 'HR Documents', icon: <FileText size={18} /> },
+    { id: 'managers', label: 'Руководители', icon: <FileText size={18} /> },
+    { id: 'development', label: 'Отдел развития', icon: <FileArchive size={18} /> },
+    { id: 'procurement', label: 'Прокюрмент', icon: <FolderOpen size={18} /> },
+    { id: 'electrical', label: 'Электрические сети', icon: <FileText size={18} /> },
+    { id: 'weakening', label: 'Слаботочные системы', icon: <FileText size={18} /> },
+    { id: 'interface', label: 'Отдел интерфейс', icon: <FileText size={18} /> },
+    { id: 'pse', label: 'PSE DCC', icon: <FileText size={18} /> },
   ];
 
   return (
@@ -66,7 +69,7 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
 
         <div className="mt-8 mb-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
-            Categories
+            Категории
           </h2>
           <nav className="space-y-1">
             {categoryItems.map((item) => (
@@ -75,7 +78,7 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
                 onClick={() => onCategoryChange(item.id)}
                 className={cn(
                   "sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm",
-                  activeCategory === item.id ? "active" : ""
+                  activeCategory === item.id ? "active bg-gray-100 dark:bg-gray-800" : ""
                 )}
               >
                 {item.icon}
