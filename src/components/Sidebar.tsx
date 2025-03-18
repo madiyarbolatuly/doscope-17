@@ -21,11 +21,11 @@ interface SidebarItem {
 
 export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
   const mainNavItems: SidebarItem[] = [
-    { id: 'all', label: 'Абен', icon: <FileText size={18} /> },
-    { id: 'recent', label: 'Recent', icon: <Clock size={18} /> },
-    { id: 'shared', label: 'Shared with me', icon: <Users size={18} /> },
-    { id: 'favorites', label: 'Favorites', icon: <Star size={18} /> },
-    { id: 'trash', label: 'Trash', icon: <Trash2 size={18} /> },
+    { id: 'all', label: 'Все документы', icon: <FileText size={18} /> },
+    { id: 'recent', label: 'Недавние', icon: <Clock size={18} /> },
+    { id: 'shared', label: 'Общий доступ', icon: <Users size={18} /> },
+    { id: 'favorites', label: 'Избранное', icon: <Star size={18} /> },
+    { id: 'trash', label: 'Корзина', icon: <Trash2 size={18} /> },
   ];
 
   const categoryItems: SidebarItem[] = [
@@ -43,12 +43,12 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
       <div className="p-5">
         <div className="flex items-center gap-2 mb-8">
           <HardDrive className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">DocManager</h1>
+          <h1 className="text-xl font-bold">ДокМенеджер</h1>
         </div>
 
         <button className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors">
           <PlusCircle size={18} />
-          <span>New Document</span>
+          <span>Новый документ</span>
         </button>
 
         <nav className="space-y-1">
@@ -92,7 +92,7 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
       <div className="absolute bottom-0 w-64 p-4 border-t border-sidebar-border">
         <button className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-sidebar-accent rounded-md transition-colors">
           <Settings size={18} />
-          <span>Settings</span>
+          <span>Настройки</span>
         </button>
       </div>
     </div>
