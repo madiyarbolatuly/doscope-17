@@ -14,7 +14,7 @@ interface SearchBarProps {
 export function SearchBar({ 
   query, 
   setQuery, 
-  placeholder = "Search documents...",
+  placeholder = "Искать документы...",
   showFilterButton = true 
 }: SearchBarProps) {
   return (

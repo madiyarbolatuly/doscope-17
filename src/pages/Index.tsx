@@ -216,8 +216,8 @@ const Index = () => {
 
   const handleDocumentClick = (document: Document) => {
     toast({
-      title: "Document Selected",
-      description: `You selected: ${document.name}`,
+      title: "Документ выбран",
+      description: `Вы выбрали: ${document.name}`,
     });
   };
 
@@ -234,15 +234,15 @@ const Index = () => {
   const getCategoryTitle = (type: CategoryType): string => {
     switch (type) {
       case 'all':
-        return 'Абен';
+        return 'Все документы';
       case 'recent':
-        return 'Recent Documents';
+        return 'Недавние документы';
       case 'shared':
-        return 'Shared with Me';
+        return 'Общий доступ';
       case 'favorites':
-        return 'Favorites';
+        return 'Избранное';
       case 'trash':
-        return 'Trash';
+        return 'Корзина';
       case 'managers':
         return 'Руководители';
       case 'development':

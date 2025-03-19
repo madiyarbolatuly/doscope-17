@@ -32,17 +32,17 @@ export function PageHeader({
     
     switch (type) {
       case 'all':
-        return 'All documents in your workspace';
+        return 'Все документы в вашем рабочем пространстве';
       case 'recent':
-        return 'Recently accessed documents';
+        return 'Недавно открытые документы';
       case 'shared':
-        return 'Documents shared with you';
+        return 'Документы, которыми поделились с вами';
       case 'favorites':
-        return 'Your favorite documents';
+        return 'Ваши избранные документы';
       case 'trash':
-        return 'Deleted documents';
+        return 'Удаленные документы';
       default:
-        return `Documents in the ${type} category`;
+        return `Документы в категории ${type}`;
     }
   };
 
@@ -56,11 +56,11 @@ export function PageHeader({
       <div className="flex gap-2">
         <Button className="flex items-center gap-1">
           <Plus size={16} />
-          <span>New</span>
+          <span>Новый</span>
         </Button>
         <Button variant="outline" className="flex items-center gap-1">
           <Upload size={16} />
-          <span>Upload</span>
+          <span>Загрузить</span>
         </Button>
       </div>
     );
@@ -88,7 +88,7 @@ export function PageHeader({
                   className="flex items-center gap-1"
                 >
                   <Grid size={16} />
-                  <span>Grid</span>
+                  <span>Сетка</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="list" 
@@ -96,7 +96,7 @@ export function PageHeader({
                   className="flex items-center gap-1"
                 >
                   <List size={16} />
-                  <span>List</span>
+                  <span>Список</span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>

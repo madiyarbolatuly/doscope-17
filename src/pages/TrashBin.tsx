@@ -88,20 +88,20 @@ const TrashBin = () => {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Documents</BreadcrumbLink>
+              <BreadcrumbLink href="/">Документы</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Trash Bin</BreadcrumbPage>
+              <BreadcrumbPage>Корзина</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Trash Bin</h1>
+        <h1 className="text-2xl font-bold mb-2">Корзина</h1>
         <p className="text-muted-foreground">
-          Documents in the trash will be permanently deleted after 30 days.
+          Документы в корзине будут удалены навсегда через 30 дней.
         </p>
       </div>
 
@@ -109,7 +109,7 @@ const TrashBin = () => {
         <SearchBar 
           query={searchQuery} 
           setQuery={setSearchQuery} 
-          placeholder="Search in trash..." 
+          placeholder="Поиск в корзине..." 
         />
         
         <div className="flex gap-2">
@@ -121,7 +121,7 @@ const TrashBin = () => {
                 className="flex items-center gap-1"
               >
                 <RotateCcw size={16} />
-                <span>Restore Selected ({selectedDocuments.length})</span>
+                <span>Восстановить выбранные ({selectedDocuments.length})</span>
               </Button>
               <Button 
                 variant="destructive" 
@@ -129,7 +129,7 @@ const TrashBin = () => {
                 className="flex items-center gap-1"
               >
                 <Trash2 size={16} />
-                <span>Delete Forever</span>
+                <span>Удалить навсегда</span>
               </Button>
             </>
           )}
@@ -141,9 +141,9 @@ const TrashBin = () => {
           <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
             <Trash2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-1">Trash is Empty</h3>
+          <h3 className="text-lg font-medium mb-1">Корзина пуста</h3>
           <p className="text-muted-foreground text-sm max-w-md">
-            No documents have been deleted or your search didn't match any deleted documents.
+            Документы не были удалены или ваш поиск не соответствует удаленным документам.
           </p>
         </div>
       ) : (

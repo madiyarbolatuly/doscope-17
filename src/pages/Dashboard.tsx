@@ -71,13 +71,13 @@ const MOCK_DOCUMENTS: Document[] = [
 
 // Mock analytics data
 const activityData = [
-  { name: 'Mon', uploads: 4, downloads: 2, views: 8 },
-  { name: 'Tue', uploads: 3, downloads: 5, views: 10 },
-  { name: 'Wed', uploads: 5, downloads: 3, views: 12 },
-  { name: 'Thu', uploads: 2, downloads: 6, views: 9 },
-  { name: 'Fri', uploads: 6, downloads: 4, views: 15 },
-  { name: 'Sat', uploads: 1, downloads: 2, views: 5 },
-  { name: 'Sun', uploads: 0, downloads: 1, views: 3 }
+  { name: 'Пн', uploads: 4, downloads: 2, views: 8 },
+  { name: 'Вт', uploads: 3, downloads: 5, views: 10 },
+  { name: 'Ср', uploads: 5, downloads: 3, views: 12 },
+  { name: 'Чт', uploads: 2, downloads: 6, views: 9 },
+  { name: 'Пт', uploads: 6, downloads: 4, views: 15 },
+  { name: 'Сб', uploads: 1, downloads: 2, views: 5 },
+  { name: 'Вс', uploads: 0, downloads: 1, views: 3 }
 ];
 
 const Dashboard = () => {
@@ -113,7 +113,7 @@ const Dashboard = () => {
       <div className="flex-1 overflow-auto">
         <div className="p-6">
           <PageHeader 
-            title={activeCategory === 'all' ? 'Dashboard' : activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)}
+            title={activeCategory === 'all' ? 'Панель управления' : activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)}
             categoryType={activeCategory}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -123,58 +123,58 @@ const Dashboard = () => {
           
           {activeCategory === 'all' && (
             <div className="mb-8">
-              <h2 className="text-xl font-bold mb-4">Analytics Overview</h2>
+              <h2 className="text-xl font-bold mb-4">Обзор аналитики</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+                    <CardTitle className="text-sm font-medium">Всего документов</CardTitle>
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">127</div>
-                    <p className="text-xs text-muted-foreground">+5 from last week</p>
+                    <p className="text-xs text-muted-foreground">+5 за последнюю неделю</p>
                   </CardContent>
                 </Card>
                 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Uploads</CardTitle>
+                    <CardTitle className="text-sm font-medium">Всего загрузок</CardTitle>
                     <Upload className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">24</div>
-                    <p className="text-xs text-muted-foreground">+12 from last week</p>
+                    <p className="text-xs text-muted-foreground">+12 за последнюю неделю</p>
                   </CardContent>
                 </Card>
                 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Storage Used</CardTitle>
+                    <CardTitle className="text-sm font-medium">Использовано места</CardTitle>
                     <HardDrive className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">4.2 GB</div>
-                    <p className="text-xs text-muted-foreground">of 10 GB (42%)</p>
+                    <div className="text-2xl font-bold">4.2 ГБ</div>
+                    <p className="text-xs text-muted-foreground">из 10 ГБ (42%)</p>
                   </CardContent>
                 </Card>
                 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+                    <CardTitle className="text-sm font-medium">Активных пользователей</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">15</div>
-                    <p className="text-xs text-muted-foreground">+3 from last week</p>
+                    <p className="text-xs text-muted-foreground">+3 за последнюю неделю</p>
                   </CardContent>
                 </Card>
               </div>
               
               <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle>Weekly Activity</CardTitle>
-                  <CardDescription>Document interactions over the past week</CardDescription>
+                  <CardTitle>Недельная активность</CardTitle>
+                  <CardDescription>Взаимодействия с документами за последнюю неделю</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
@@ -186,16 +186,16 @@ const Dashboard = () => {
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="views" fill="#8884d8" name="Views" />
-                        <Bar dataKey="uploads" fill="#82ca9d" name="Uploads" />
-                        <Bar dataKey="downloads" fill="#ffc658" name="Downloads" />
+                        <Bar dataKey="views" fill="#8884d8" name="Просмотры" />
+                        <Bar dataKey="uploads" fill="#82ca9d" name="Загрузки" />
+                        <Bar dataKey="downloads" fill="#ffc658" name="Скачивания" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
               
-              <h2 className="text-xl font-bold mb-4">Recent Documents</h2>
+              <h2 className="text-xl font-bold mb-4">Недавние документы</h2>
             </div>
           )}
           
