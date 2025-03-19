@@ -3,8 +3,8 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { 
   FileText, Clock, Users, Star, Trash2, 
-  FolderOpen, Settings, PlusCircle, 
-  HardDrive, FileArchive
+  Settings, PlusCircle, 
+  HardDrive, Folder, FolderOpen
 } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 
@@ -29,13 +29,13 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
   ];
 
   const categoryItems: SidebarItem[] = [
-    { id: 'managers', label: 'Руководители', icon: <FileText size={18} /> },
-    { id: 'development', label: 'Отдел развития', icon: <FileArchive size={18} /> },
+    { id: 'managers', label: 'Руководители', icon: <FolderOpen size={18} /> },
+    { id: 'development', label: 'Отдел развития', icon: <FolderOpen size={18} /> },
     { id: 'procurement', label: 'Прокюрмент', icon: <FolderOpen size={18} /> },
-    { id: 'electrical', label: 'Электрические сети', icon: <FileText size={18} /> },
-    { id: 'weakening', label: 'Слаботочные системы', icon: <FileText size={18} /> },
-    { id: 'interface', label: 'Отдел интерфейс', icon: <FileText size={18} /> },
-    { id: 'pse', label: 'PSE DCC', icon: <FileText size={18} /> },
+    { id: 'electrical', label: 'Электрические сети', icon: <FolderOpen size={18} /> },
+    { id: 'weakening', label: 'Слаботочные системы', icon: <FolderOpen size={18} /> },
+    { id: 'interface', label: 'Отдел интерфейс', icon: <FolderOpen size={18} /> },
+    { id: 'pse', label: 'PSE DCC', icon: <FolderOpen size={18} /> },
   ];
 
   return (
