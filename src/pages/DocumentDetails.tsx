@@ -34,79 +34,79 @@ const DocumentDetails = () => {
   
   const document = {
     id: id || '1',
-    title: 'Annual Financial Report 2023',
-    description: 'Complete financial analysis and projections for fiscal year 2023',
-    owner: 'Financial Department',
-    createdBy: 'John Smith',
+    title: 'Годовой финансовый отчет 2023',
+    description: 'Полный финансовый анализ и прогнозы на 2023 финансовый год',
+    owner: 'Финансовый отдел',
+    createdBy: 'Иван Смирнов',
     createdAt: '2023-01-15T10:30:00Z',
     modifiedAt: '2023-03-22T14:45:00Z',
-    size: '4.2 MB',
+    size: '4.2 МБ',
     fileType: 'PDF',
-    tags: ['Financial', 'Annual Report', 'Confidential'],
+    tags: ['Финансы', 'Годовой отчет', 'Конфиденциально'],
     thumbnailUrl: '/placeholder.svg?height=400&width=300&text=PDF',
     downloadUrl: '#',
     versions: 3,
-    status: 'Published',
-    permissions: 'Private',
+    status: 'Опубликовано',
+    permissions: 'Приватный',
     previewUrl: '/placeholder.svg?height=800&width=600&text=PDF Preview'
   };
 
   const versionHistory: Version[] = [
     {
       id: 'v3',
-      version: 'Version 3 (Current)',
+      version: 'Версия 3 (Текущая)',
       modified: '2023-03-22T14:45:00Z',
-      modifiedBy: 'John Smith',
-      size: '4.2 MB',
-      comment: 'Updated financial projections based on Q1 results'
+      modifiedBy: 'Иван Смирнов',
+      size: '4.2 МБ',
+      comment: 'Обновлены финансовые прогнозы на основе результатов Q1'
     },
     {
       id: 'v2',
-      version: 'Version 2',
+      version: 'Версия 2',
       modified: '2023-02-10T09:15:00Z',
-      modifiedBy: 'Emily Johnson',
-      size: '3.9 MB',
-      comment: 'Incorporated feedback from financial advisors'
+      modifiedBy: 'Елена Иванова',
+      size: '3.9 МБ',
+      comment: 'Включены отзывы финансовых консультантов'
     },
     {
       id: 'v1',
-      version: 'Version 1',
+      version: 'Версия 1',
       modified: '2023-01-15T10:30:00Z',
-      modifiedBy: 'John Smith',
-      size: '3.5 MB',
-      comment: 'Initial document creation'
+      modifiedBy: 'Иван Смирнов',
+      size: '3.5 МБ',
+      comment: 'Первоначальное создание документа'
     }
   ];
 
   const activityLog: Activity[] = [
     {
       id: 'act5',
-      user: 'Sarah Wilson',
-      action: 'viewed',
+      user: 'Сара Вильсон',
+      action: 'просмотрела',
       date: '2023-03-25T11:30:00Z'
     },
     {
       id: 'act4',
-      user: 'John Smith',
-      action: 'modified',
+      user: 'Иван Смирнов',
+      action: 'изменил',
       date: '2023-03-22T14:45:00Z'
     },
     {
       id: 'act3',
-      user: 'Michael Brown',
-      action: 'downloaded',
+      user: 'Михаил Браун',
+      action: 'скачал',
       date: '2023-03-20T09:15:00Z'
     },
     {
       id: 'act2',
-      user: 'Emily Johnson',
-      action: 'commented',
+      user: 'Елена Иванова',
+      action: 'комментировала',
       date: '2023-02-10T09:15:00Z'
     },
     {
       id: 'act1',
-      user: 'John Smith',
-      action: 'uploaded',
+      user: 'Иван Смирнов',
+      action: 'загрузил',
       date: '2023-01-15T10:30:00Z'
     }
   ];
@@ -154,7 +154,7 @@ const DocumentDetails = () => {
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
         <Button variant="ghost" size="sm" className="gap-1" asChild>
           <a href="/">
-            <ChevronLeft className="h-4 w-4" /> Back to Documents
+            <ChevronLeft className="h-4 w-4" /> Назад к документам
           </a>
         </Button>
       </div>
@@ -248,25 +248,25 @@ const DocumentDetails = () => {
 
           <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
-              <TabsTrigger value="metadata">Metadata</TabsTrigger>
-              <TabsTrigger value="versions">Versions</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
+              <TabsTrigger value="metadata">Метаданные</TabsTrigger>
+              <TabsTrigger value="versions">Версии</TabsTrigger>
+              <TabsTrigger value="activity">Активность</TabsTrigger>
             </TabsList>
             <TabsContent value="metadata" className="space-y-4">
               <MetadataCard 
-                title="Document Information"
+                title="Информация о документе"
                 items={[
-                  { label: 'Created By', value: document.createdBy },
-                  { label: 'Created Date', value: new Date(document.createdAt).toLocaleDateString() },
-                  { label: 'Last Modified', value: new Date(document.modifiedAt).toLocaleDateString() },
-                  { label: 'File Size', value: document.size },
-                  { label: 'File Type', value: document.fileType },
-                  { label: 'Status', value: document.status },
-                  { label: 'Permissions', value: document.permissions },
+                  { label: 'Создал', value: document.createdBy },
+                  { label: 'Дата создания', value: new Date(document.createdAt).toLocaleDateString() },
+                  { label: 'Последнее изменение', value: new Date(document.modifiedAt).toLocaleDateString() },
+                  { label: 'Размер файла', value: document.size },
+                  { label: 'Тип файла', value: document.fileType },
+                  { label: 'Статус', value: document.status },
+                  { label: 'Разрешения', value: document.permissions },
                 ]}
               />
               <div>
-                <h3 className="text-lg font-medium mb-2">Tags</h3>
+                <h3 className="text-lg font-medium mb-2">Теги</h3>
                 <div className="flex flex-wrap gap-2">
                   {document.tags.map((tag, index) => (
                     <Badge key={index} variant="secondary">
@@ -281,10 +281,10 @@ const DocumentDetails = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Clock className="h-5 w-5" />
-                    Version History
+                    История версий
                   </CardTitle>
                   <CardDescription>
-                    Track changes made to this document over time
+                    Отслеживайте изменения, внесенные в этот документ
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -297,10 +297,10 @@ const DocumentDetails = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5" />
-                    Activity Log
+                    Журнал активности
                   </CardTitle>
                   <CardDescription>
-                    Recent activity related to this document
+                    Недавняя активность, связанная с этим документом
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -364,21 +364,21 @@ const DocumentDetails = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Related Documents</CardTitle>
+              <CardTitle>Связанные документы</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center">
                   <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <a href="#" className="text-sm hover:underline">Q1 Financial Report 2023</a>
+                  <a href="#" className="text-sm hover:underline">Финансовый отчет Q1 2023</a>
                 </div>
                 <div className="flex items-center">
                   <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <a href="#" className="text-sm hover:underline">Annual Budget 2023</a>
+                  <a href="#" className="text-sm hover:underline">Годовой бюджет 2023</a>
                 </div>
                 <div className="flex items-center">
                   <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <a href="#" className="text-sm hover:underline">Financial Projections 2023-2024</a>
+                  <a href="#" className="text-sm hover:underline">Финансовые прогнозы 2023-2024</a>
                 </div>
               </div>
             </CardContent>
