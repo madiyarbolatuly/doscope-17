@@ -17,7 +17,6 @@ const Auth = () => {
   // Register form state
   const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
-  const [registerPassword, setRegisterPassword] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,7 @@ const Auth = () => {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Register attempt with:', { registerName, registerEmail, registerPassword });
+    console.log('Register request with:', { registerName, registerEmail });
     // In a real app, you'd call your registration API here
   };
 
@@ -140,40 +139,12 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Пароль</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
-                      className="pl-10"
-                      value={registerPassword}
-                      onChange={(e) => setRegisterPassword(e.target.value)}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-2 h-6 w-6"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Пароль должен содержать не менее 8 символов
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground mt-2 mb-4">
+                  После отправки запроса администратор создаст учетную запись и отправит вам данные для входа.
+                </p>
 
                 <Button type="submit" className="w-full">
-                  Создать аккаунт
+                  Отправить запрос
                 </Button>
               </form>
             </TabsContent>

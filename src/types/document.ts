@@ -1,4 +1,3 @@
-
 export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder';
 
 export interface Document {
@@ -29,3 +28,18 @@ export type CategoryType =
   | 'interface' 
   | 'pse'
   | string;
+
+export type ActivityAction = 
+  | "viewed" 
+  | "modified" 
+  | "commented" 
+  | "uploaded" 
+  | "deleted" 
+  | "restored" 
+  | "downloaded" 
+  | "shared"
+  | "просмотрела"
+  | "изменил"
+  | "скачал"
+  | "комментировала"
+  | "загрузил";
