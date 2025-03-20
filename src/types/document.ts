@@ -1,3 +1,4 @@
+
 export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder';
 
 export interface Document {
@@ -37,9 +38,4 @@ export type ActivityAction =
   | "deleted" 
   | "restored" 
   | "downloaded" 
-  | "shared"
-  | "просмотрела"
-  | "изменил"
-  | "скачал"
-  | "комментировала"
-  | "загрузил";
+  | "shared";

@@ -4,6 +4,8 @@ import { SearchBar } from '@/components/SearchBar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { DocumentCard } from '@/components/DocumentCard';
+import { DocumentGrid } from '@/components/DocumentGrid';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +15,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Document } from '@/types/document';
-import { Trash2, RotateCcw } from 'lucide-react';
+import { Trash2, RotateCcw, Grid2X2, List } from 'lucide-react';
 
 // Mock deleted documents
 const mockDeletedDocuments: Document[] = [
@@ -49,6 +51,7 @@ const mockDeletedDocuments: Document[] = [
 const TrashBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const filteredDocuments = mockDeletedDocuments.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -62,7 +65,7 @@ const TrashBin = () => {
     }
   };
 
-  const handleSelectDocument = (document: Document) => {
+  const handleDocumentSelect = (document: Document) => {
     if (selectedDocuments.includes(document.id)) {
       setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
     } else {
@@ -112,9 +115,18 @@ const TrashBin = () => {
           placeholder="Поиск в корзине..." 
         />
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
+            <ToggleGroupItem value="grid" aria-label="Сетка">
+              <Grid2X2 className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="Список">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          
           {selectedDocuments.length > 0 && (
-            <>
+            <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 onClick={handleRestoreSelected}
@@ -131,7 +143,7 @@ const TrashBin = () => {
                 <Trash2 size={16} />
                 <span>Удалить навсегда</span>
               </Button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -147,22 +159,13 @@ const TrashBin = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredDocuments.map(doc => (
-            <div 
-              key={doc.id} 
-              className={`cursor-pointer ${selectedDocuments.includes(doc.id) ? 'ring-2 ring-primary' : ''}`}
-              onClick={() => handleDocumentClick(doc)}
-            >
-              <DocumentCard 
-                document={doc} 
-                onClick={() => {}}
-                isSelected={selectedDocuments.includes(doc.id)}
-                onSelect={() => handleSelectDocument(doc)}
-              />
-            </div>
-          ))}
-        </div>
+        <DocumentGrid
+          documents={filteredDocuments}
+          onDocumentClick={handleDocumentClick}
+          viewMode={viewMode}
+          selectedDocument={null}
+          onDocumentSelect={handleDocumentSelect}
+        />
       )}
     </div>
   );
