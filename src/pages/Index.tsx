@@ -166,6 +166,7 @@ const Index = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Filter documents based on category and search query
@@ -222,8 +223,76 @@ const Index = () => {
   };
 
   const handleDocumentSelect = (document: Document) => {
-    setSelectedDocument(document);
-    setShowSidebar(true);
+    if (selectedDocumentIds.includes(document.id)) {
+      // If already selected, remove from selection
+      setSelectedDocumentIds(selectedDocumentIds.filter(id => id !== document.id));
+      
+      // Only clear sidebar if it's showing the deselected document
+      if (selectedDocument?.id === document.id) {
+        setSelectedDocument(null);
+        setShowSidebar(false);
+      }
+    } else {
+      // Add to selection
+      setSelectedDocumentIds([...selectedDocumentIds, document.id]);
+      
+      // If this is the first selection or only selection, show in sidebar
+      if (selectedDocumentIds.length === 0) {
+        setSelectedDocument(document);
+        setShowSidebar(true);
+      }
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedDocumentIds.length === documents.length) {
+      // If all are already selected, clear selection
+      setSelectedDocumentIds([]);
+      setSelectedDocument(null);
+      setShowSidebar(false);
+    } else {
+      // Select all documents
+      setSelectedDocumentIds(documents.map(doc => doc.id));
+      
+      // If no document was previously selected for sidebar, select the first one
+      if (!selectedDocument && documents.length > 0) {
+        setSelectedDocument(documents[0]);
+        setShowSidebar(true);
+      }
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedDocumentIds([]);
+    setSelectedDocument(null);
+    setShowSidebar(false);
+  };
+
+  const handleDeleteSelected = () => {
+    toast({
+      title: "Удаление документов",
+      description: `Выбрано ${selectedDocumentIds.length} документов для удаления`,
+    });
+    // In a real app, you would call an API to delete these documents
+    setSelectedDocumentIds([]);
+    setSelectedDocument(null);
+    setShowSidebar(false);
+  };
+
+  const handleDownloadSelected = () => {
+    toast({
+      title: "Скачивание документов",
+      description: `Выбрано ${selectedDocumentIds.length} документов для скачивания`,
+    });
+    // In a real app, you would trigger download of these documents
+  };
+
+  const handleShareSelected = () => {
+    toast({
+      title: "Общий доступ",
+      description: `Выбрано ${selectedDocumentIds.length} документов для общего доступа`,
+    });
+    // In a real app, you would open a sharing dialog
   };
 
   const handleCloseSidebar = () => {
@@ -286,6 +355,15 @@ const Index = () => {
                   viewMode={viewMode}
                   selectedDocument={selectedDocument}
                   onDocumentSelect={handleDocumentSelect}
+                  multipleSelection={true}
+                  selectionActions={{
+                    selectedIds: selectedDocumentIds,
+                    onSelectAll: handleSelectAll,
+                    onClearSelection: handleClearSelection,
+                    onDeleteSelected: handleDeleteSelected,
+                    onDownloadSelected: handleDownloadSelected,
+                    onShareSelected: handleShareSelected
+                  }}
                 />
               </div>
             </div>

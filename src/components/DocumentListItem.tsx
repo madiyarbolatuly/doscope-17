@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +24,16 @@ interface DocumentListItemProps {
   onClick: (document: Document) => void;
   isSelected?: boolean;
   onSelect: () => void;
+  multipleSelection?: boolean;
 }
 
-export function DocumentListItem({ document, onClick, isSelected, onSelect }: DocumentListItemProps) {
+export function DocumentListItem({ 
+  document, 
+  onClick, 
+  isSelected, 
+  onSelect,
+  multipleSelection = false
+}: DocumentListItemProps) {
   const renderIcon = () => {
     switch (document.type) {
       case 'pdf':
@@ -61,7 +69,11 @@ export function DocumentListItem({ document, onClick, isSelected, onSelect }: Do
       <div className="flex items-center gap-3 flex-1">
         <div className="flex-shrink-0">
           {isSelected ? (
-            <CheckCircle2 className="h-5 w-5 text-primary" />
+            multipleSelection ? (
+              <Checkbox checked className="h-5 w-5" />
+            ) : (
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+            )
           ) : renderIcon()}
         </div>
         
