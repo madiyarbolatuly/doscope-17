@@ -22,7 +22,7 @@ export function RoleSelector({ roles, selectedRole, onRoleChange, isLoading = fa
           <SelectValue placeholder="Выберите роль" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Все документы</SelectItem>
+          <SelectItem value="all">Все документы</SelectItem>
           {roles.map((role) => (
             <SelectItem key={role.id} value={role.name}>
               {role.name}
