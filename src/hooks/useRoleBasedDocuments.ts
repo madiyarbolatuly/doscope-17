@@ -12,7 +12,7 @@ export function useRoleBasedDocuments() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Provide empty implementations that maintain the API
+  // Just provide empty placeholders since we're removing role functionality
   const roles: any[] = [];
   const selectedRole = '';
   
