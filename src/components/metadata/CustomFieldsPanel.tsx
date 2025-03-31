@@ -66,6 +66,7 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
   const [dependencies, setDependencies] = React.useState<string[]>(document?.dependencies || []);
   const [open, setOpen] = React.useState(false);
   const [openAssets, setOpenAssets] = React.useState(false);
+  const [searchValue, setSearchValue] = React.useState(""); // Added for filtering assets
 
   const handleDateChange = (date: Date | undefined) => {
     setDueDate(date);
@@ -118,6 +119,13 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
       onUpdate("dependencies", newDependencies);
     }
   };
+
+  // Filter assets based on search input
+  const filteredAssets = searchValue 
+    ? ASSETS.filter(asset => 
+        asset.toLowerCase().includes(searchValue.toLowerCase())
+      )
+    : ASSETS;
 
   return (
     <Card>
@@ -180,10 +188,14 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
               <Command>
-                <CommandInput placeholder="Поиск объектов..." />
+                <CommandInput 
+                  placeholder="Поиск объектов..." 
+                  value={searchValue}
+                  onValueChange={setSearchValue}
+                />
                 <CommandEmpty>Объекты не найдены.</CommandEmpty>
                 <CommandGroup>
-                  {ASSETS.map((asset) => (
+                  {filteredAssets.map((asset) => (
                     <CommandItem
                       key={asset}
                       value={asset}
