@@ -11,6 +11,8 @@ import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
 import { Button } from '@/components/ui/button';
 import { Upload, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { FileUploadDialog } from '@/components/FileUploadDialog';
+import { useNavigate } from 'react-router-dom';
 
 const mockDocuments: Document[] = [
   {
@@ -169,7 +171,9 @@ const Index = () => {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const {
     roles,
@@ -392,6 +396,29 @@ const Index = () => {
     }
   };
 
+  const handleSelectDestination = (destination: 'downloads' | 'new') => {
+    toast({
+      title: "Папка выбрана",
+      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
+    });
+  };
+
+  const handleCreateFolder = () => {
+    toast({
+      title: "Создание новой папки",
+      description: "Функция создания новой папки будет реализована в будущем.",
+    });
+  };
+
+  const handleUploadToDestination = () => {
+    toast({
+      title: "Переход к загрузке",
+      description: "Переход на страницу загрузки файлов.",
+    });
+    setShowUploadDialog(false);
+    navigate('/upload');
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
@@ -409,7 +436,27 @@ const Index = () => {
                 setViewMode={setViewMode}
               />
               
-              <div className="mt-6 animate-fade-in">
+              <div className="mt-4 flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Обновить
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => setShowUploadDialog(true)}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Загрузить
+                </Button>
+              </div>
+              
+              <div className="mt-4 animate-fade-in">
                 <DocumentGrid 
                   documents={documents} 
                   onDocumentClick={handleDocumentClick}
@@ -443,6 +490,14 @@ const Index = () => {
           </>
         )}
       </ResizablePanelGroup>
+      
+      <FileUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onSelectDestination={handleSelectDestination}
+        onCreateFolder={handleCreateFolder}
+        onUpload={handleUploadToDestination}
+      />
     </div>
   );
 };

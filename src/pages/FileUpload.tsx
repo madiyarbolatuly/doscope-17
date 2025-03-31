@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { FileUploader } from "@/components/FileUploader";
+import { FileUploadDialog } from "@/components/FileUploadDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,11 +37,16 @@ const FileUpload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [category, setCategory] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [selectedDestination, setSelectedDestination] = useState<'downloads' | 'new'>('downloads');
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleFilesChange = (files: File[]) => {
-    setUploadedFiles(files);
+  const handleUploadComplete = (fileNames: string[]) => {
+    toast({
+      title: "Файлы загружены",
+      description: `${fileNames.length} файлов успешно загружено.`,
+    });
   };
 
   const handleFileUpload = async () => {
@@ -63,6 +70,29 @@ const FileUpload = () => {
     const newFiles = [...uploadedFiles];
     newFiles.splice(index, 1);
     setUploadedFiles(newFiles);
+  };
+
+  const handleSelectDestination = (destination: 'downloads' | 'new') => {
+    setSelectedDestination(destination);
+    toast({
+      title: "Папка выбрана",
+      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
+    });
+  };
+
+  const handleCreateFolder = () => {
+    toast({
+      title: "Создание новой папки",
+      description: "Функция создания новой папки будет реализована в будущем.",
+    });
+  };
+
+  const handleUploadToDestination = () => {
+    toast({
+      title: "Загрузка файлов",
+      description: `Файлы будут загружены в ${selectedDestination === 'downloads' ? 'Загрузки' : 'Новую папку'}.`,
+    });
+    setShowUploadDialog(false);
   };
 
   // Mock documents that represent uploaded files
@@ -110,8 +140,9 @@ const FileUpload = () => {
             </CardHeader>
             <CardContent>
               <FileUploader 
-                onFilesChange={handleFilesChange} 
-                multiple={true}
+                onUploadComplete={handleUploadComplete}
+                maxFiles={5}
+                acceptedFileTypes=".pdf,.doc,.docx,.xlsx,.ppt,.jpg,.png"
               />
 
               {uploadedFiles.length > 0 && (
@@ -155,7 +186,7 @@ const FileUpload = () => {
                 Отмена
               </Button>
               <Button 
-                onClick={handleFileUpload}
+                onClick={() => setShowUploadDialog(true)}
                 disabled={uploadedFiles.length === 0 || isUploading}
               >
                 {isUploading ? (
@@ -215,6 +246,15 @@ const FileUpload = () => {
           </Card>
         </div>
       </div>
+
+      {/* Upload Dialog */}
+      <FileUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onSelectDestination={handleSelectDestination}
+        onCreateFolder={handleCreateFolder}
+        onUpload={handleUploadToDestination}
+      />
     </div>
   );
 };
