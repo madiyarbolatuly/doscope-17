@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DiffText, FileSearch } from 'lucide-react';
+import { FileDiff, FileSearch } from 'lucide-react';
 
 interface DocumentComparisonProps {
   documentId?: string;
@@ -52,7 +52,7 @@ export function DocumentComparison({ documentId }: DocumentComparisonProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center">
-          <DiffText className="h-5 w-5 mr-2" />
+          <FileDiff className="h-5 w-5 mr-2" />
           Сравнение версий
         </CardTitle>
       </CardHeader>

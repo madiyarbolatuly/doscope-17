@@ -24,6 +24,15 @@ export interface Document {
   status?: 'draft' | 'review' | 'approved' | 'rejected';
 }
 
+export interface Version {
+  id: string;
+  version: string;
+  modified: string;
+  modifiedBy: string;
+  size: string;
+  comment?: string;
+}
+
 export type CategoryType = 
   | 'all' 
   | 'recent' 

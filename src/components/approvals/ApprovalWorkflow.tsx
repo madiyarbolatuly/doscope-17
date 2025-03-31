@@ -1,258 +1,237 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, Clock, XCircle, ClipboardList } from 'lucide-react';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-
-interface ApprovalTask {
-  id: string;
-  documentName: string;
-  requestedBy: string;
-  requestedDate: string;
-  dueDate: string;
-  status: 'pending' | 'inProgress' | 'approved' | 'rejected';
-  priority: 'normal' | 'high' | 'urgent';
-  approver?: {
-    name: string;
-    avatar?: string;
-  };
-  department: string;
-}
-
-// Mock approval tasks
-const MOCK_APPROVALS: ApprovalTask[] = [
-  {
-    id: 'task1',
-    documentName: 'Технический отчет по турбине Т-1000',
-    requestedBy: 'Алексей Петров',
-    requestedDate: '2023-10-15',
-    dueDate: '2023-10-20',
-    status: 'pending',
-    priority: 'urgent',
-    approver: {
-      name: 'Мария Иванова',
-      avatar: '/assets/avatars/avatar2.jpg'
-    },
-    department: 'Технический отдел'
-  },
-  {
-    id: 'task2',
-    documentName: 'Отчет о безопасности',
-    requestedBy: 'Николай Смирнов',
-    requestedDate: '2023-10-12',
-    dueDate: '2023-10-22',
-    status: 'inProgress',
-    priority: 'high',
-    approver: {
-      name: 'Дмитрий Соколов'
-    },
-    department: 'Отдел безопасности'
-  },
-  {
-    id: 'task3',
-    documentName: 'Спецификация оборудования',
-    requestedBy: 'Елена Козлова',
-    requestedDate: '2023-10-08',
-    dueDate: '2023-10-18',
-    status: 'approved',
-    priority: 'normal',
-    approver: {
-      name: 'Алексей Петров',
-      avatar: '/assets/avatars/avatar1.jpg'
-    },
-    department: 'Закупки'
-  },
-  {
-    id: 'task4',
-    documentName: 'План технического обслуживания',
-    requestedBy: 'Дмитрий Соколов',
-    requestedDate: '2023-10-05',
-    dueDate: '2023-10-15',
-    status: 'rejected',
-    priority: 'normal',
-    approver: {
-      name: 'Николай Смирнов',
-      avatar: '/assets/avatars/avatar3.jpg'
-    },
-    department: 'Операционный отдел'
-  }
-];
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CheckCircle, Clock, FileClock, PlusCircle } from 'lucide-react';
 
 interface ApprovalWorkflowProps {
   documentId?: string;
 }
 
+// Mock approval statuses
+type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'awaiting';
+
+interface Approver {
+  id: string;
+  name: string;
+  position: string;
+  avatar?: string;
+  status: ApprovalStatus;
+  date?: string;
+  comment?: string;
+}
+
+const MOCK_APPROVERS: Approver[] = [
+  {
+    id: '1',
+    name: 'Иван Петров',
+    position: 'Главный инженер',
+    avatar: '',
+    status: 'approved',
+    date: '2023-05-15',
+    comment: 'Документ соответствует техническим требованиям.',
+  },
+  {
+    id: '2',
+    name: 'Мария Сидорова',
+    position: 'Руководитель департамента',
+    avatar: '',
+    status: 'pending',
+  },
+  {
+    id: '3',
+    name: 'Алексей Иванов',
+    position: 'Специалист по безопасности',
+    avatar: '',
+    status: 'awaiting',
+  },
+];
+
+interface ApprovalTemplate {
+  id: string;
+  name: string;
+  positions: string[];
+}
+
+const MOCK_TEMPLATES: ApprovalTemplate[] = [
+  {
+    id: '1',
+    name: 'Стандартное согласование',
+    positions: ['Главный инженер', 'Руководитель департамента', 'Начальник отдела'],
+  },
+  {
+    id: '2',
+    name: 'Техническое согласование',
+    positions: ['Главный инженер', 'Технический специалист', 'Специалист по безопасности'],
+  },
+  {
+    id: '3',
+    name: 'Согласование с заказчиком',
+    positions: ['Главный инженер', 'Представитель заказчика', 'Руководитель проекта'],
+  },
+];
+
 export function ApprovalWorkflow({ documentId }: ApprovalWorkflowProps) {
-  const getPriorityBadge = (priority: 'normal' | 'high' | 'urgent') => {
-    switch (priority) {
-      case 'urgent':
-        return <Badge variant="outline" className="bg-red-100 text-red-800">Срочно</Badge>;
-      case 'high':
-        return <Badge variant="outline" className="bg-orange-100 text-orange-800">Высокий</Badge>;
-      case 'normal':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800">Обычный</Badge>;
-      default:
-        return null;
-    }
+  const [selectedTemplate, setSelectedTemplate] = React.useState<string>('');
+  const [approvers, setApprovers] = React.useState<Approver[]>(MOCK_APPROVERS);
+  const [currentTab, setCurrentTab] = React.useState<string>('current');
+
+  const handleAddApprover = () => {
+    console.log('Adding approver...');
+    // Implementation would go here
   };
 
-  const getStatusBadge = (status: 'pending' | 'inProgress' | 'approved' | 'rejected') => {
+  const getStatusBadge = (status: ApprovalStatus) => {
     switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Ожидает</Badge>;
-      case 'inProgress':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800">В работе</Badge>;
       case 'approved':
-        return <Badge variant="outline" className="bg-green-100 text-green-800">Одобрено</Badge>;
+        return <Badge className="bg-green-500">Одобрено</Badge>;
       case 'rejected':
-        return <Badge variant="outline" className="bg-red-100 text-red-800">Отклонено</Badge>;
+        return <Badge className="bg-red-500">Отклонено</Badge>;
+      case 'pending':
+        return <Badge className="bg-amber-500">На рассмотрении</Badge>;
+      case 'awaiting':
+        return <Badge className="bg-gray-400">Ожидает очереди</Badge>;
       default:
         return null;
     }
   };
-  
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase();
+
+  const getApprovalProgress = () => {
+    const totalApprovers = approvers.length;
+    const approvedCount = approvers.filter(approver => approver.status === 'approved').length;
+    
+    return {
+      progress: totalApprovers > 0 ? (approvedCount / totalApprovers) * 100 : 0,
+      approvedCount,
+      totalApprovers,
+    };
   };
 
-  const renderTask = (task: ApprovalTask) => {
-    return (
-      <div key={task.id} className="border rounded-md p-4 mb-3 bg-card">
-        <div className="flex justify-between items-start">
-          <div>
-            <h4 className="font-medium">{task.documentName}</h4>
-            <div className="text-sm text-muted-foreground mt-1">
-              Отдел: {task.department}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {getPriorityBadge(task.priority)}
-            {getStatusBadge(task.status)}
-          </div>
-        </div>
-
-        <div className="flex justify-between items-center mt-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">До {new Date(task.dueDate).toLocaleDateString('ru-RU')}</span>
-            </div>
-            
-            {task.approver && (
-              <div className="flex items-center">
-                <Avatar className="h-6 w-6 mr-1">
-                  {task.approver.avatar && <AvatarImage src={task.approver.avatar} alt={task.approver.name} />}
-                  <AvatarFallback>{getInitials(task.approver.name)}</AvatarFallback>
-                </Avatar>
-                <span className="text-xs text-muted-foreground">{task.approver.name}</span>
-              </div>
-            )}
-          </div>
-
-          {(task.status === 'pending' || task.status === 'inProgress') && (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="h-8">
-                <XCircle className="h-4 w-4 mr-1 text-destructive" />
-                Отклонить
-              </Button>
-              <Button size="sm" className="h-8">
-                <CheckCircle className="h-4 w-4 mr-1" />
-                Одобрить
-              </Button>
-            </div>
-          )}
-
-          {task.status === 'approved' && (
-            <div>
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-          )}
-
-          {task.status === 'rejected' && (
-            <div>
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const pendingTasks = MOCK_APPROVALS.filter(task => task.status === 'pending');
-  const inProgressTasks = MOCK_APPROVALS.filter(task => task.status === 'inProgress');
-  const completedTasks = MOCK_APPROVALS.filter(task => task.status === 'approved' || task.status === 'rejected');
+  const { progress, approvedCount, totalApprovers } = getApprovalProgress();
 
   return (
     <Card>
-      <CardHeader className="flex flex-row justify-between items-center">
+      <CardHeader>
         <CardTitle className="flex items-center">
-          <ClipboardList className="h-5 w-5 mr-2" />
+          <FileClock className="h-5 w-5 mr-2" />
           Процесс согласования
         </CardTitle>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Новое согласование
-        </Button>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="pending">
-          <TabsList className="mb-4 w-full">
-            <TabsTrigger value="pending" className="flex-1">
-              Ожидают ({pendingTasks.length})
-            </TabsTrigger>
-            <TabsTrigger value="inProgress" className="flex-1">
-              В работе ({inProgressTasks.length})
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="flex-1">
-              Завершенные ({completedTasks.length})
-            </TabsTrigger>
+        <Tabs defaultValue="current" onValueChange={setCurrentTab} value={currentTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="current">Текущее согласование</TabsTrigger>
+            <TabsTrigger value="history">История согласований</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="pending">
-            <div className="space-y-3">
-              {pendingTasks.length > 0 ? (
-                pendingTasks.map(renderTask)
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Нет задач, ожидающих согласования
+          
+          <TabsContent value="current">
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-sm font-medium">Прогресс согласования</div>
+                <div className="text-sm text-muted-foreground">{approvedCount} из {totalApprovers}</div>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-green-500 h-2 rounded-full" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              {approvers.map((approver) => (
+                <div key={approver.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Avatar>
+                      <AvatarFallback>{approver.name.charAt(0)}</AvatarFallback>
+                      {approver.avatar && <AvatarImage src={approver.avatar} />}
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{approver.name}</div>
+                      <div className="text-sm text-muted-foreground">{approver.position}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    {approver.status === 'approved' && (
+                      <div className="text-sm text-muted-foreground">
+                        {approver.date && new Date(approver.date).toLocaleDateString()}
+                      </div>
+                    )}
+                    {getStatusBadge(approver.status)}
+                  </div>
                 </div>
-              )}
+              ))}
+            </div>
+            
+            <div className="mt-4 flex justify-between">
+              <div className="flex-1 mr-2">
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Шаблон согласования" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MOCK_TEMPLATES.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleAddApprover} variant="outline">
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Добавить согласующего
+              </Button>
             </div>
           </TabsContent>
-
-          <TabsContent value="inProgress">
-            <div className="space-y-3">
-              {inProgressTasks.length > 0 ? (
-                inProgressTasks.map(renderTask)
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Нет задач в процессе согласования
+          
+          <TabsContent value="history">
+            <div className="flex flex-col space-y-4">
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Версия 1.2</div>
+                  <Badge className="bg-green-500">Одобрено</Badge>
                 </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="completed">
-            <div className="space-y-3">
-              {completedTasks.length > 0 ? (
-                completedTasks.map(renderTask)
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Нет завершенных задач
+                <div className="text-sm text-muted-foreground mb-2">Согласовано: 15.05.2023</div>
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  <span className="text-sm">Одобрено всеми участниками процесса</span>
                 </div>
-              )}
+              </div>
+              
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Версия 1.1</div>
+                  <Badge className="bg-red-500">Отклонено</Badge>
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">Рассмотрено: 05.05.2023</div>
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 text-amber-500 mr-2" />
+                  <span className="text-sm">Требуются доработки по безопасности</span>
+                </div>
+              </div>
+              
+              <div className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Версия 1.0</div>
+                  <Badge className="bg-green-500">Одобрено</Badge>
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">Согласовано: 20.04.2023</div>
+                <div className="flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                  <span className="text-sm">Одобрено с комментариями</span>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
