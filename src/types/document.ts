@@ -13,6 +13,15 @@ export interface Document {
   thumbnail?: string;
   shared?: boolean;
   favorited?: boolean;
+  
+  // New metadata fields
+  engineer?: string;
+  dueDate?: string;
+  linkedAssets?: string[];
+  dependencies?: string[];
+  complianceBadges?: string[];
+  version?: string;
+  status?: 'draft' | 'review' | 'approved' | 'rejected';
 }
 
 export type CategoryType = 

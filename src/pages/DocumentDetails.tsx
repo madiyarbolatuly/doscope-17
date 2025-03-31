@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -25,12 +24,19 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ActivityItem } from '@/components/ActivityItem';
 import { MetadataCard } from '@/components/MetadataCard';
-import { VersionHistoryList, Version } from '@/components/VersionHistoryList';
 import { Document, ActivityAction } from '@/types/document';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Define Activity interface
+import { CustomFieldsPanel } from '@/components/metadata/CustomFieldsPanel';
+import { DocumentRelationshipMap } from '@/components/relationships/DocumentRelationshipMap';
+import { VisualVersionTree } from '@/components/versions/VisualVersionTree';
+import { DocumentComparison } from '@/components/versions/DocumentComparison';
+import { PermissionManager } from '@/components/permissions/PermissionManager';
+import { ApprovalWorkflow } from '@/components/approvals/ApprovalWorkflow';
+import { DocumentAnnotations } from '@/components/annotations/DocumentAnnotations';
+
 interface Activity {
   id: string;
   action: ActivityAction;
@@ -77,7 +83,6 @@ const MOCK_ACTIVITIES: Activity[] = [
   }
 ];
 
-// Create MOCK_VERSIONS matching the Version interface from VersionHistoryList
 const MOCK_VERSIONS: Version[] = [
   { 
     id: '1', 
@@ -149,21 +154,24 @@ const DocumentDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [document, setDocument] = useState<Document | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [versions, setVersions] = useState<Version[]>(MOCK_VERSIONS);
   const [relatedDocuments, setRelatedDocuments] = useState<Document[]>(MOCK_RELATED_DOCUMENTS);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
-    // Mock fetch document details
     setTimeout(() => {
       setDocument(MOCK_DOCUMENT);
       setActivities(MOCK_ACTIVITIES);
     }, 500);
   }, [id]);
 
+  const handleMetadataUpdate = (field: string, value: any) => {
+    console.log('Updating metadata field:', field, value);
+    // In a real application, you would save this to your backend
+  };
+
   return (
     <div className="flex flex-col h-screen">
-      {/* Removed Header component reference */}
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto py-6 px-4 md:px-6">
           <div className="mb-6">
@@ -234,30 +242,73 @@ const DocumentDetails = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Похожие документы</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
-                      <ToggleGroupItem value="grid" aria-label="Сетка">
-                        <Grid2X2 className="h-4 w-4" />
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="list" aria-label="Список">
-                        <List className="h-4 w-4" />
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <DocumentGrid 
-                    documents={relatedDocuments} 
-                    onDocumentClick={() => {}} 
-                    viewMode={viewMode}
-                    selectedDocument={null}
-                    onDocumentSelect={() => {}}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid grid-cols-4 mb-6">
+                  <TabsTrigger value="details">Детали</TabsTrigger>
+                  <TabsTrigger value="versions">Версии</TabsTrigger>
+                  <TabsTrigger value="permissions">Доступ</TabsTrigger>
+                  <TabsTrigger value="annotations">Комментарии</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details" className="space-y-6">
+                  <CustomFieldsPanel 
+                    document={document || undefined} 
+                    onUpdate={handleMetadataUpdate}
                   />
-                </CardContent>
-              </Card>
+                  
+                  <DocumentRelationshipMap 
+                    document={document || undefined} 
+                    relatedDocuments={relatedDocuments} 
+                  />
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Похожие документы</CardTitle>
+                      <div className="flex items-center space-x-2">
+                        <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
+                          <ToggleGroupItem value="grid" aria-label="Сетка">
+                            <Grid2X2 className="h-4 w-4" />
+                          </ToggleGroupItem>
+                          <ToggleGroupItem value="list" aria-label="Список">
+                            <List className="h-4 w-4" />
+                          </ToggleGroupItem>
+                        </ToggleGroup>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <DocumentGrid 
+                        documents={relatedDocuments} 
+                        onDocumentClick={() => {}} 
+                        viewMode={viewMode}
+                        selectedDocument={null}
+                        onDocumentSelect={() => {}}
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="versions" className="space-y-6">
+                  <VisualVersionTree 
+                    currentVersion="v1.2"
+                    onVersionSelect={(versionId) => console.log('Selected version:', versionId)}
+                  />
+                  
+                  <DocumentComparison documentId={id} />
+                </TabsContent>
+                
+                <TabsContent value="permissions" className="space-y-6">
+                  <PermissionManager 
+                    documentId={id}
+                    onUpdatePermission={(userId, role) => console.log('Updated permission:', userId, role)}
+                  />
+                  
+                  <ApprovalWorkflow documentId={id} />
+                </TabsContent>
+                
+                <TabsContent value="annotations" className="space-y-6">
+                  <DocumentAnnotations documentId={id} />
+                </TabsContent>
+              </Tabs>
             </div>
 
             <div className="space-y-6">
@@ -282,16 +333,6 @@ const DocumentDetails = () => {
                       <ActivityItem key={activity.id} activity={activity} />
                     ))}
                   </ScrollArea>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>История версий</CardTitle>
-                  <CardDescription>Предыдущие версии документа</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <VersionHistoryList versions={versions} />
                 </CardContent>
               </Card>
             </div>

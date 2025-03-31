@@ -3,6 +3,7 @@ import React from 'react';
 import { Document } from '@/types/document';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { ComplianceBadges, ComplianceType } from '@/components/metadata/ComplianceBadges';
 
 interface MetadataItem {
   label: string;
@@ -33,6 +34,9 @@ export function MetadataCard({ document, title, items }: MetadataCardProps) {
     ];
   };
 
+  // Mock compliance badges for demo
+  const mockComplianceBadges: ComplianceType[] = ['ISO9001', 'GOST', 'SAFETY'];
+
   // Определяем, какие поля будем отображать
   const metadataFields = items || getMetadataFields();
   const cardTitle = title || 'Метаданные документа';
@@ -59,20 +63,27 @@ export function MetadataCard({ document, title, items }: MetadataCardProps) {
       </div>
       
       {document && (
-        <div className="pt-4">
-          <h4 className="text-sm font-medium mb-2">Теги</h4>
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-              Финансы
-            </Badge>
-            <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-              Отчет
-            </Badge>
-            <Badge variant="outline" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
-              2023
-            </Badge>
+        <>
+          <div className="pt-4">
+            <h4 className="text-sm font-medium mb-2">Стандарты и нормативы</h4>
+            <ComplianceBadges badges={mockComplianceBadges} />
           </div>
-        </div>
+          
+          <div className="pt-4">
+            <h4 className="text-sm font-medium mb-2">Теги</h4>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                Финансы
+              </Badge>
+              <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+                Отчет
+              </Badge>
+              <Badge variant="outline" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                2023
+              </Badge>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
