@@ -172,8 +172,6 @@ const Index = () => {
   const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  const [selectedDestination, setSelectedDestination] = useState<'downloads' | 'new'>('downloads');
 
   const {
     roles,
@@ -385,29 +383,6 @@ const Index = () => {
     if (e.target.files && e.target.files.length > 0) {
       setFileToUpload(e.target.files[0]);
     }
-  };
-
-  const handleSelectDestination = (destination: 'downloads' | 'new') => {
-    setSelectedDestination(destination);
-    toast({
-      title: "Папка выбрана",
-      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
-    });
-  };
-
-  const handleCreateFolder = () => {
-    toast({
-      title: "Обновление",
-      description: "Список папок обновлен",
-    });
-  };
-
-  const handleUploadToDestination = () => {
-    toast({
-      title: "Загрузка файлов",
-      description: `Файлы будут загружены в ${selectedDestination === 'downloads' ? 'Загрузки' : 'Новую папку'}`,
-    });
-    setShowUploadDialog(false);
   };
 
   const handleUpload = () => {
