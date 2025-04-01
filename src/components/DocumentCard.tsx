@@ -9,6 +9,7 @@ import {
   Folder, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +23,16 @@ interface DocumentCardProps {
   onClick: (document: Document) => void;
   isSelected?: boolean;
   onSelect: () => void;
+  multipleSelection?: boolean;
 }
 
-export function DocumentCard({ document, onClick, isSelected, onSelect }: DocumentCardProps) {
+export function DocumentCard({ 
+  document, 
+  onClick, 
+  isSelected, 
+  onSelect,
+  multipleSelection = false
+}: DocumentCardProps) {
   const renderIcon = () => {
     switch (document.type) {
       case 'pdf':
@@ -84,7 +92,11 @@ export function DocumentCard({ document, onClick, isSelected, onSelect }: Docume
 
       {isSelected && (
         <div className="absolute left-2 top-2">
-          <CheckCircle2 className="h-5 w-5 text-primary" />
+          {multipleSelection ? (
+            <Checkbox checked className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 text-primary" />
+          )}
         </div>
       )}
 

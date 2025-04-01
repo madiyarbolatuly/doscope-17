@@ -17,7 +17,6 @@ const Auth = () => {
   // Register form state
   const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
-  const [registerPassword, setRegisterPassword] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +26,7 @@ const Auth = () => {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Register attempt with:', { registerName, registerEmail, registerPassword });
+    console.log('Register request with:', { registerName, registerEmail });
     // In a real app, you'd call your registration API here
   };
 
@@ -35,17 +34,17 @@ const Auth = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">DocManager</h1>
+          <h1 className="text-3xl font-bold">ДокМенеджер</h1>
           <p className="text-muted-foreground mt-2">
-            Secure document management system
+            Безопасная система управления документами
           </p>
         </div>
 
         <div className="bg-card rounded-lg border shadow-sm p-6">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="login">Вход</TabsTrigger>
+              <TabsTrigger value="register">Регистрация</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
@@ -68,9 +67,9 @@ const Auth = () => {
 
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Пароль</Label>
                     <a href="#" className="text-sm text-primary hover:underline">
-                      Forgot password?
+                      Забыли пароль?
                     </a>
                   </div>
                   <div className="relative">
@@ -101,7 +100,7 @@ const Auth = () => {
                 </div>
 
                 <Button type="submit" className="w-full">
-                  Sign In
+                  Войти
                 </Button>
               </form>
             </TabsContent>
@@ -109,13 +108,13 @@ const Auth = () => {
             <TabsContent value="register">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">Полное имя</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="name"
                       type="text"
-                      placeholder="John Doe"
+                      placeholder="Иван Иванов"
                       className="pl-10"
                       value={registerName}
                       onChange={(e) => setRegisterName(e.target.value)}
@@ -140,40 +139,12 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="register-password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="••••••••"
-                      className="pl-10"
-                      value={registerPassword}
-                      onChange={(e) => setRegisterPassword(e.target.value)}
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-2 h-6 w-6"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Password must be at least 8 characters long
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground mt-2 mb-4">
+                  После отправки запроса администратор создаст учетную запись и отправит вам данные для входа.
+                </p>
 
                 <Button type="submit" className="w-full">
-                  Create Account
+                  Отправить запрос
                 </Button>
               </form>
             </TabsContent>

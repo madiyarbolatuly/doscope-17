@@ -24,18 +24,18 @@ export function MetadataCard({ document, title, items }: MetadataCardProps) {
     const fileExtension = document.name.split('.').pop()?.toUpperCase() || '';
     
     return [
-      { label: 'File Type', value: fileExtension },
-      { label: 'Size', value: document.size || 'Unknown' },
-      { label: 'Created By', value: document.owner },
-      { label: 'Modified', value: format(new Date(document.modified), 'MMM d, yyyy h:mm a') },
-      { label: 'Location', value: document.path || '/' },
-      { label: 'Status', value: 'Active', type: 'badge' }
+      { label: 'Тип файла', value: fileExtension },
+      { label: 'Размер', value: document.size || 'Неизвестно' },
+      { label: 'Создан', value: document.owner },
+      { label: 'Изменен', value: format(new Date(document.modified), 'dd.MM.yyyy HH:mm') },
+      { label: 'Расположение', value: document.path || '/' },
+      { label: 'Статус', value: 'Активен', type: 'badge' }
     ];
   };
 
   // Определяем, какие поля будем отображать
   const metadataFields = items || getMetadataFields();
-  const cardTitle = title || 'Document Metadata';
+  const cardTitle = title || 'Метаданные документа';
 
   return (
     <div className="space-y-4">
@@ -60,13 +60,13 @@ export function MetadataCard({ document, title, items }: MetadataCardProps) {
       
       {document && (
         <div className="pt-4">
-          <h4 className="text-sm font-medium mb-2">Tags</h4>
+          <h4 className="text-sm font-medium mb-2">Теги</h4>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-              Financial
+              Финансы
             </Badge>
             <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-              Report
+              Отчет
             </Badge>
             <Badge variant="outline" className="bg-orange-100 text-orange-800 hover:bg-orange-100">
               2023

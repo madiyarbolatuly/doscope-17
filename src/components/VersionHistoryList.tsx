@@ -32,15 +32,15 @@ export function VersionHistoryList({ versions }: VersionHistoryListProps) {
                 <span className="font-medium">{version.version}</span>
                 {index === 0 && (
                   <Badge variant="outline" className="bg-blue-100 text-blue-800 text-xs">
-                    Current
+                    Текущая
                   </Badge>
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {format(new Date(version.modified), 'MMM d, yyyy h:mm a')}
+                {format(new Date(version.modified), 'dd.MM.yyyy HH:mm')}
               </p>
               <p className="text-sm mt-1">
-                <span className="text-muted-foreground">By:</span> {version.modifiedBy}
+                <span className="text-muted-foreground">Автор:</span> {version.modifiedBy}
               </p>
               {version.comment && (
                 <p className="text-sm mt-2 text-muted-foreground">
@@ -51,12 +51,12 @@ export function VersionHistoryList({ versions }: VersionHistoryListProps) {
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
                 <Download className="h-3 w-3 mr-1" />
-                <span className="text-xs">Download</span>
+                <span className="text-xs">Скачать</span>
               </Button>
               {index !== 0 && (
                 <Button variant="outline" size="sm">
                   <RotateCcw className="h-3 w-3 mr-1" />
-                  <span className="text-xs">Restore</span>
+                  <span className="text-xs">Восстановить</span>
                 </Button>
               )}
             </div>

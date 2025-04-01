@@ -102,9 +102,9 @@ export function FileUploader({
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return '0 Байт';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ['Байт', 'КБ', 'МБ', 'ГБ'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
@@ -130,19 +130,19 @@ export function FileUploader({
         
         <div className="flex flex-col items-center">
           <Upload className="h-12 w-12 text-muted-foreground mb-2" />
-          <h3 className="text-lg font-medium mb-1">Drop files to upload</h3>
+          <h3 className="text-lg font-medium mb-1">Перетащите файлы для загрузки</h3>
           <p className="text-sm text-muted-foreground mb-2">
-            or click to browse
+            или нажмите для выбора
           </p>
           <p className="text-xs text-muted-foreground">
-            Accepts {acceptedFileTypes.split(',').join(', ')}
+            Принимаются {acceptedFileTypes.split(',').join(', ')}
           </p>
         </div>
       </div>
       
       {files.length > 0 && (
         <div className="mt-4 space-y-3">
-          <h4 className="font-medium">Selected Files ({files.length}/{maxFiles})</h4>
+          <h4 className="font-medium">Выбранные файлы ({files.length}/{maxFiles})</h4>
           
           <div className="space-y-2">
             {files.map((file, index) => {
@@ -195,7 +195,7 @@ export function FileUploader({
             disabled={files.length === 0}
             className="mt-2"
           >
-            Upload {files.length} {files.length === 1 ? 'file' : 'files'}
+            Загрузить {files.length} {files.length === 1 ? 'файл' : files.length >= 2 && files.length <= 4 ? 'файла' : 'файлов'}
           </Button>
         </div>
       )}

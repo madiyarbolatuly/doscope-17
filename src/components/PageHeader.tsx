@@ -2,8 +2,8 @@
 import React from 'react';
 import { SearchBar } from './SearchBar';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Grid, List, Plus, Upload } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Grid2X2, List, Plus, Upload } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 
 interface PageHeaderProps {
@@ -32,17 +32,17 @@ export function PageHeader({
     
     switch (type) {
       case 'all':
-        return 'All documents in your workspace';
+        return 'Все документы в вашем рабочем пространстве';
       case 'recent':
-        return 'Recently accessed documents';
+        return 'Недавно открытые документы';
       case 'shared':
-        return 'Documents shared with you';
+        return 'Документы, которыми поделились с вами';
       case 'favorites':
-        return 'Your favorite documents';
+        return 'Ваши избранные документы';
       case 'trash':
-        return 'Deleted documents';
+        return 'Удаленные документы';
       default:
-        return `Documents in the ${type} category`;
+        return `Документы в категории ${type}`;
     }
   };
 
@@ -56,11 +56,11 @@ export function PageHeader({
       <div className="flex gap-2">
         <Button className="flex items-center gap-1">
           <Plus size={16} />
-          <span>New</span>
+          <span>Новый</span>
         </Button>
         <Button variant="outline" className="flex items-center gap-1">
           <Upload size={16} />
-          <span>Upload</span>
+          <span>Загрузить</span>
         </Button>
       </div>
     );
@@ -80,26 +80,16 @@ export function PageHeader({
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
           <SearchBar query={searchQuery} setQuery={setSearchQuery} />
           <div className="flex items-center gap-4">
-            <Tabs defaultValue={viewMode} className="w-[160px]">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger 
-                  value="grid" 
-                  onClick={() => setViewMode('grid')}
-                  className="flex items-center gap-1"
-                >
-                  <Grid size={16} />
-                  <span>Grid</span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="list" 
-                  onClick={() => setViewMode('list')}
-                  className="flex items-center gap-1"
-                >
-                  <List size={16} />
-                  <span>List</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
+              <ToggleGroupItem value="grid" aria-label="Сетка">
+                <Grid2X2 className="h-4 w-4 mr-1" />
+                <span>Сетка</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="list" aria-label="Список">
+                <List className="h-4 w-4 mr-1" />
+                <span>Список</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </div>
       )}

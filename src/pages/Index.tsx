@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { DocumentGrid } from '@/components/DocumentGrid';
@@ -7,8 +6,12 @@ import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
+import { RoleSelector } from '@/components/RoleSelector';
+import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
+import { Button } from '@/components/ui/button';
+import { Upload, RefreshCw } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
-// Mock data
 const mockDocuments: Document[] = [
   {
     id: '1',
@@ -122,7 +125,6 @@ const mockDocuments: Document[] = [
     owner: 'HR Department',
     category: 'hr'
   },
-  // Add more folders for testing
   {
     id: '13',
     name: 'HR Documents',
@@ -166,30 +168,56 @@ const Index = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Filter documents based on category and search query
+  const {
+    roles,
+    selectedRole,
+    documents: roleDocuments,
+    isLoading,
+    handleRoleChange,
+    uploadFile,
+    downloadFile,
+    deleteFile,
+    fetchDocumentsByRole
+  } = useRoleBasedDocuments();
+
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+
   useEffect(() => {
     let filteredDocs = [...mockDocuments];
     
-    // Apply category filter
-    if (category !== 'all') {
-      if (category === 'favorites') {
-        filteredDocs = filteredDocs.filter(doc => doc.favorited);
-      } else if (category === 'shared') {
-        filteredDocs = filteredDocs.filter(doc => doc.shared);
-      } else if (category === 'recent') {
-        // For demo purposes, we'll just show the 5 most recently modified
-        filteredDocs = [...filteredDocs]
-          .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
-          .slice(0, 5);
-      } else if (category !== 'trash') {
-        // Filter by specific category
-        filteredDocs = filteredDocs.filter(doc => doc.category === category);
+    if (selectedRole) {
+      filteredDocs = roleDocuments;
+    } else {
+      if (category !== 'all') {
+        if (category === 'favorites') {
+          filteredDocs = filteredDocs.filter(doc => doc.favorited);
+        } else if (category === 'shared') {
+          filteredDocs = filteredDocs.filter(doc => doc.shared);
+        } else if (category === 'recent') {
+          filteredDocs = [...filteredDocs]
+            .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
+            .slice(0, 5);
+        } else if (category === 'trash') {
+          filteredDocs = [];
+        } else {
+          if (category === 'managers') {
+            filteredDocs = filteredDocs.filter(doc => doc.category === 'hr');
+          } else if (category === 'development') {
+            filteredDocs = filteredDocs.filter(doc => doc.category === 'reports');
+          } else if (category === 'procurement') {
+            filteredDocs = filteredDocs.filter(doc => doc.category === 'contracts');
+          } else if (category === 'electrical' || category === 'weakening' || category === 'interface' || category === 'pse') {
+            filteredDocs = filteredDocs.filter(doc => doc.category === 'invoices' || doc.category === 'marketing');
+          } else {
+            filteredDocs = filteredDocs.filter(doc => doc.category === category);
+          }
+        }
       }
     }
     
-    // Apply search filter
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       filteredDocs = filteredDocs.filter(doc => 
@@ -199,18 +227,100 @@ const Index = () => {
     }
     
     setDocuments(filteredDocs);
-  }, [category, searchQuery]);
+  }, [category, searchQuery, selectedRole, roleDocuments]);
 
   const handleDocumentClick = (document: Document) => {
-    toast({
-      title: "Document Selected",
-      description: `You selected: ${document.name}`,
-    });
+    if (selectedRole && document.type !== 'folder') {
+      downloadFile(document.name);
+    } else {
+      toast({
+        title: "Документ выбран",
+        description: `Вы выбрали: ${document.name}`,
+      });
+    }
   };
 
   const handleDocumentSelect = (document: Document) => {
-    setSelectedDocument(document);
-    setShowSidebar(true);
+    if (selectedDocumentIds.includes(document.id)) {
+      setSelectedDocumentIds(selectedDocumentIds.filter(id => id !== document.id));
+      
+      if (selectedDocument?.id === document.id) {
+        setSelectedDocument(null);
+        setShowSidebar(false);
+      }
+    } else {
+      setSelectedDocumentIds([...selectedDocumentIds, document.id]);
+      
+      if (selectedDocumentIds.length === 0) {
+        setSelectedDocument(document);
+        setShowSidebar(true);
+      }
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedDocumentIds.length === documents.length) {
+      setSelectedDocumentIds([]);
+      setSelectedDocument(null);
+      setShowSidebar(false);
+    } else {
+      setSelectedDocumentIds(documents.map(doc => doc.id));
+      
+      if (!selectedDocument && documents.length > 0) {
+        setSelectedDocument(documents[0]);
+        setShowSidebar(true);
+      }
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedDocumentIds([]);
+    setSelectedDocument(null);
+    setShowSidebar(false);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedRole && selectedDocumentIds.length > 0) {
+      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
+      
+      selectedDocuments.forEach(doc => {
+        deleteFile(doc.name);
+      });
+      
+      setSelectedDocumentIds([]);
+      setSelectedDocument(null);
+      setShowSidebar(false);
+    } else {
+      toast({
+        title: "Удаление документов",
+        description: `Выбрано ${selectedDocumentIds.length} документов для удаления`,
+      });
+      setSelectedDocumentIds([]);
+      setSelectedDocument(null);
+      setShowSidebar(false);
+    }
+  };
+
+  const handleDownloadSelected = () => {
+    if (selectedRole && selectedDocumentIds.length > 0) {
+      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
+      
+      selectedDocuments.forEach(doc => {
+        downloadFile(doc.name);
+      });
+    } else {
+      toast({
+        title: "Скачивание документов",
+        description: `Выбрано ${selectedDocumentIds.length} документов для скачивания`,
+      });
+    }
+  };
+
+  const handleShareSelected = () => {
+    toast({
+      title: "Общий доступ",
+      description: `Выбрано ${selectedDocumentIds.length} документов для общего доступа`,
+    });
   };
 
   const handleCloseSidebar = () => {
@@ -219,19 +329,66 @@ const Index = () => {
   };
 
   const getCategoryTitle = (type: CategoryType): string => {
+    if (selectedRole) {
+      return `Папка: ${selectedRole}`;
+    }
+    
     switch (type) {
       case 'all':
-        return 'All Documents';
+        return 'Все документы';
       case 'recent':
-        return 'Recent Documents';
+        return 'Недавние документы';
       case 'shared':
-        return 'Shared with Me';
+        return 'Общий доступ';
       case 'favorites':
-        return 'Favorites';
+        return 'Избранное';
       case 'trash':
-        return 'Trash';
+        return 'Корзина';
+      case 'managers':
+        return 'Руководители';
+      case 'development':
+        return 'Отдел развития';
+      case 'procurement':
+        return 'Прокюрмент';
+      case 'electrical':
+        return 'Электрические сети';
+      case 'weakening':
+        return 'Слаботочные системы';
+      case 'interface':
+        return 'Отдел интерфейс';
+      case 'pse':
+        return 'PSE DCC';
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFileToUpload(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = () => {
+    if (fileToUpload) {
+      uploadFile(fileToUpload);
+      setFileToUpload(null);
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    } else {
+      toast({
+        title: "Ошибка загрузки",
+        description: "Пожалуйста, выберите файл для загрузки",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRefresh = () => {
+    if (selectedRole) {
+      fetchDocumentsByRole(selectedRole);
     }
   };
 
@@ -252,6 +409,42 @@ const Index = () => {
                 setViewMode={setViewMode}
               />
               
+              <RoleSelector 
+                roles={roles} 
+                selectedRole={selectedRole}
+                onRoleChange={handleRoleChange}
+                isLoading={isLoading}
+              />
+              
+              {selectedRole && (
+                <div className="mb-6 p-4 border rounded-md bg-muted/30">
+                  <h3 className="text-md font-medium mb-3">Загрузить файл в папку {selectedRole}</h3>
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      onChange={handleFileChange}
+                      className="w-auto flex-1"
+                    />
+                    <Button 
+                      onClick={handleUpload} 
+                      disabled={!fileToUpload || isLoading}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Загрузить
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={handleRefresh}
+                      disabled={isLoading}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Обновить
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               <div className="mt-6 animate-fade-in">
                 <DocumentGrid 
                   documents={documents} 
@@ -259,6 +452,15 @@ const Index = () => {
                   viewMode={viewMode}
                   selectedDocument={selectedDocument}
                   onDocumentSelect={handleDocumentSelect}
+                  multipleSelection={true}
+                  selectionActions={{
+                    selectedIds: selectedDocumentIds,
+                    onSelectAll: handleSelectAll,
+                    onClearSelection: handleClearSelection,
+                    onDeleteSelected: handleDeleteSelected,
+                    onDownloadSelected: handleDownloadSelected,
+                    onShareSelected: handleShareSelected
+                  }}
                 />
               </div>
             </div>

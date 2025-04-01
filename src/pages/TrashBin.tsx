@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { SearchBar } from '@/components/SearchBar';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { DocumentCard } from '@/components/DocumentCard';
+import { DocumentGrid } from '@/components/DocumentGrid';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +13,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Document } from '@/types/document';
-import { Trash2, RotateCcw } from 'lucide-react';
+import { Trash2, RotateCcw, Grid2X2, List } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock deleted documents
 const mockDeletedDocuments: Document[] = [
@@ -49,37 +50,80 @@ const mockDeletedDocuments: Document[] = [
 const TrashBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const { toast } = useToast();
   
   const filteredDocuments = mockDeletedDocuments.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleDocumentClick = (document: Document) => {
+    toast({
+      title: "Документ выбран",
+      description: `Вы выбрали: ${document.name}`,
+    });
+  };
+
+  const handleDocumentSelect = (document: Document) => {
     if (selectedDocuments.includes(document.id)) {
+      // If already selected, remove from selection
       setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
+      
+      // Clear selected document if it's the one being deselected
+      if (selectedDocument?.id === document.id) {
+        setSelectedDocument(null);
+      }
     } else {
+      // Add to selection
       setSelectedDocuments([...selectedDocuments, document.id]);
+      
+      // If this is the first selection, set as selected document
+      if (selectedDocuments.length === 0) {
+        setSelectedDocument(document);
+      }
     }
   };
 
-  const handleSelectDocument = (document: Document) => {
-    if (selectedDocuments.includes(document.id)) {
-      setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
+  const handleSelectAll = () => {
+    if (selectedDocuments.length === filteredDocuments.length) {
+      // If all are already selected, clear selection
+      setSelectedDocuments([]);
+      setSelectedDocument(null);
     } else {
-      setSelectedDocuments([...selectedDocuments, document.id]);
+      // Select all documents
+      setSelectedDocuments(filteredDocuments.map(doc => doc.id));
+      
+      // If no document was previously selected, select the first one
+      if (!selectedDocument && filteredDocuments.length > 0) {
+        setSelectedDocument(filteredDocuments[0]);
+      }
     }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedDocuments([]);
+    setSelectedDocument(null);
   };
 
   const handleRestoreSelected = () => {
-    console.log('Restoring documents:', selectedDocuments);
+    toast({
+      title: "Восстановление документов",
+      description: `Восстановлено ${selectedDocuments.length} документов`,
+    });
     // In a real app, you'd call an API to restore these documents
     setSelectedDocuments([]);
+    setSelectedDocument(null);
   };
 
   const handleDeleteSelected = () => {
-    console.log('Permanently deleting documents:', selectedDocuments);
+    toast({
+      title: "Удаление документов",
+      description: `Окончательно удалено ${selectedDocuments.length} документов`,
+    });
     // In a real app, you'd call an API to permanently delete these documents
     setSelectedDocuments([]);
+    setSelectedDocument(null);
   };
 
   return (
@@ -88,20 +132,20 @@ const TrashBin = () => {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Documents</BreadcrumbLink>
+              <BreadcrumbLink href="/">Документы</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Trash Bin</BreadcrumbPage>
+              <BreadcrumbPage>Корзина</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Trash Bin</h1>
+        <h1 className="text-2xl font-bold mb-2">Корзина</h1>
         <p className="text-muted-foreground">
-          Documents in the trash will be permanently deleted after 30 days.
+          Документы в корзине будут удалены навсегда через 30 дней.
         </p>
       </div>
 
@@ -109,30 +153,18 @@ const TrashBin = () => {
         <SearchBar 
           query={searchQuery} 
           setQuery={setSearchQuery} 
-          placeholder="Search in trash..." 
+          placeholder="Поиск в корзине..." 
         />
         
-        <div className="flex gap-2">
-          {selectedDocuments.length > 0 && (
-            <>
-              <Button 
-                variant="outline" 
-                onClick={handleRestoreSelected}
-                className="flex items-center gap-1"
-              >
-                <RotateCcw size={16} />
-                <span>Restore Selected ({selectedDocuments.length})</span>
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={handleDeleteSelected}
-                className="flex items-center gap-1"
-              >
-                <Trash2 size={16} />
-                <span>Delete Forever</span>
-              </Button>
-            </>
-          )}
+        <div className="flex items-center gap-4">
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
+            <ToggleGroupItem value="grid" aria-label="Сетка">
+              <Grid2X2 className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="Список">
+              <List className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
       </div>
 
@@ -141,28 +173,27 @@ const TrashBin = () => {
           <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
             <Trash2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-1">Trash is Empty</h3>
+          <h3 className="text-lg font-medium mb-1">Корзина пуста</h3>
           <p className="text-muted-foreground text-sm max-w-md">
-            No documents have been deleted or your search didn't match any deleted documents.
+            Документы не были удалены или ваш поиск не соответствует удаленным документам.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredDocuments.map(doc => (
-            <div 
-              key={doc.id} 
-              className={`cursor-pointer ${selectedDocuments.includes(doc.id) ? 'ring-2 ring-primary' : ''}`}
-              onClick={() => handleDocumentClick(doc)}
-            >
-              <DocumentCard 
-                document={doc} 
-                onClick={() => {}}
-                isSelected={selectedDocuments.includes(doc.id)}
-                onSelect={() => handleSelectDocument(doc)}
-              />
-            </div>
-          ))}
-        </div>
+        <DocumentGrid
+          documents={filteredDocuments}
+          onDocumentClick={handleDocumentClick}
+          viewMode={viewMode}
+          selectedDocument={selectedDocument}
+          onDocumentSelect={handleDocumentSelect}
+          multipleSelection={true}
+          selectionActions={{
+            selectedIds: selectedDocuments,
+            onSelectAll: handleSelectAll,
+            onClearSelection: handleClearSelection,
+            onDeleteSelected: handleDeleteSelected,
+            onRestoreSelected: handleRestoreSelected
+          }}
+        />
       )}
     </div>
   );

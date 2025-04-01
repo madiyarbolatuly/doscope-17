@@ -13,6 +13,47 @@ export interface Document {
   thumbnail?: string;
   shared?: boolean;
   favorited?: boolean;
+  role?: string; // Add role property to documents
 }
 
-export type CategoryType = 'all' | 'recent' | 'shared' | 'favorites' | 'trash' | string;
+export type CategoryType = 
+  | 'all' 
+  | 'recent' 
+  | 'shared' 
+  | 'favorites' 
+  | 'trash' 
+  | 'managers' 
+  | 'development' 
+  | 'procurement' 
+  | 'electrical' 
+  | 'weakening' 
+  | 'interface' 
+  | 'pse'
+  | string;
+
+export type ActivityAction = 
+  | "viewed" 
+  | "modified" 
+  | "commented" 
+  | "uploaded" 
+  | "deleted" 
+  | "restored" 
+  | "downloaded" 
+  | "shared";
+
+export interface MultipleSelectionActions {
+  selectedIds: string[];
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
+  onDeleteSelected?: () => void;
+  onRestoreSelected?: () => void;
+  onDownloadSelected?: () => void;
+  onMoveSelected?: () => void;
+  onShareSelected?: () => void;
+}
+
+// Add Role type
+export interface Role {
+  id: string;
+  name: string;
+}
