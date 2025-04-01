@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Document, Role } from '@/types/document';
+import { Document, Role, DocumentType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
 
 // For demo purposes - replace with your actual API URL
@@ -64,7 +64,7 @@ export function useRoleBasedDocuments() {
       // Convert backend files to our Document interface
       const formattedDocuments: Document[] = data.files.map((filename: string) => {
         const fileExtension = filename.split('.').pop()?.toLowerCase() || '';
-        let type: DocumentType = 'file';
+        let type: DocumentType = 'folder';
         
         if (fileExtension === 'pdf') type = 'pdf';
         else if (['doc', 'docx'].includes(fileExtension)) type = 'doc';
