@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CalendarIcon, Check } from "lucide-react";
 import { format } from "date-fns";
@@ -168,12 +169,7 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
-              <Command 
-                groups={[]} 
-                items={[]} 
-                rootIds={[]} 
-                commands={[]}
-              >
+              <Command>
                 <CommandInput 
                   placeholder="Поиск объектов..." 
                   value={searchValue}
