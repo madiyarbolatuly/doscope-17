@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import UserManagement from "./pages/UserManagement";
 import Dashboard from "./pages/Dashboard";
+import DocumentDetails from "./pages/DocumentDetails";
 import TrashBin from "./pages/TrashBin";
 import Auth from "./pages/Auth";
 import FileUpload from "./pages/FileUpload";
@@ -23,6 +24,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Auth />} />
+          <Route path="/document/:id" element={<DocumentDetails />} />
           <Route path="/upload" element={<FileUpload />} />
           <Route path="/trash" element={<TrashBin />} />
           <Route path="/users" element={<UserManagement />} />

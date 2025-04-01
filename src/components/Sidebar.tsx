@@ -43,7 +43,7 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
       <div className="p-5">
         <div className="flex items-center gap-2 mb-8">
           <HardDrive className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">EDMS</h1>
+          <h1 className="text-xl font-bold">ДокМенеджер</h1>
         </div>
 
         <button className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors">

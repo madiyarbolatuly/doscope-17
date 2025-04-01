@@ -6,7 +6,7 @@ import {
   FileText, File, FileSpreadsheet, 
   FileImage, Folder, MoreVertical, 
   Star, Download, Trash,
-  Share2, CheckCircle2, Eye, Edit
+  Share2, CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -25,8 +25,6 @@ interface DocumentListItemProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
-  onPreview?: (document: Document) => void;
-  onEdit?: (document: Document) => void;
 }
 
 export function DocumentListItem({ 
@@ -34,9 +32,7 @@ export function DocumentListItem({
   onClick, 
   isSelected, 
   onSelect,
-  multipleSelection = false,
-  onPreview,
-  onEdit
+  multipleSelection = false
 }: DocumentListItemProps) {
   const renderIcon = () => {
     switch (document.type) {
@@ -56,8 +52,7 @@ export function DocumentListItem({
   };
 
   const modifiedDate = new Date(document.modified);
-  const formattedDate = format(modifiedDate, 'dd.MM.yyyy');
-  const isFolder = document.type === 'folder';
+  const formattedDate = format(modifiedDate, 'MMM d, yyyy');
   
   return (
     <div 
@@ -106,40 +101,7 @@ export function DocumentListItem({
         {document.size || '-'}
       </div>
       
-      {!isFolder && (
-        <div className="flex-shrink-0 flex gap-1 mx-2">
-          {onPreview && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPreview(document);
-              }}
-              className="h-8 px-2"
-            >
-              <Eye className="h-4 w-4" />
-              <span className="sr-only">Просмотр</span>
-            </Button>
-          )}
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(document);
-              }}
-              className="h-8 px-2"
-            >
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Редактировать</span>
-            </Button>
-          )}
-        </div>
-      )}
-      
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 hidden group-hover:flex opacity-0 group-hover:opacity-100 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
@@ -147,40 +109,26 @@ export function DocumentListItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onClick(document)}>
-              {isFolder ? 'Открыть' : 'Выбрать'}
-            </DropdownMenuItem>
-            {!isFolder && onPreview && (
-              <DropdownMenuItem onClick={() => onPreview(document)}>
-                <Eye className="h-4 w-4 mr-2" />
-                Просмотр
-              </DropdownMenuItem>
-            )}
-            {!isFolder && onEdit && (
-              <DropdownMenuItem onClick={() => onEdit(document)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Редактировать
-              </DropdownMenuItem>
-            )}
-            {isFolder ? (
+            <DropdownMenuItem onClick={() => onClick(document)}>Open</DropdownMenuItem>
+            {document.type === 'folder' ? (
               <>
-                <DropdownMenuItem>Новый файл</DropdownMenuItem>
-                <DropdownMenuItem>Новая папка</DropdownMenuItem>
+                <DropdownMenuItem>New File</DropdownMenuItem>
+                <DropdownMenuItem>New Folder</DropdownMenuItem>
               </>
             ) : (
               <DropdownMenuItem>
                 <Download className="h-4 w-4 mr-2" />
-                Скачать
+                Download
               </DropdownMenuItem>
             )}
             <DropdownMenuItem>
               <Share2 className="h-4 w-4 mr-2" />
-              Поделиться
+              Share
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive">
               <Trash className="h-4 w-4 mr-2" />
-              Удалить
+              Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
