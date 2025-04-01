@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Eye, FileEdit, MessageSquare, Upload, Download, Trash, RefreshCw, Share } from 'lucide-react';
 import { format } from 'date-fns';
@@ -8,6 +7,7 @@ export interface Activity {
   user: string;
   action: 'viewed' | 'modified' | 'commented' | 'uploaded' | 'deleted' | 'restored' | 'downloaded' | 'shared';
   date: string;
+  timestamp?: string; // Added to support both date and timestamp fields
 }
 
 interface ActivityItemProps {
@@ -71,7 +71,7 @@ export function ActivityItem({ activity }: ActivityItemProps) {
           <span className="font-medium">{activity.user}</span> {getActionText()}
         </p>
         <p className="text-xs text-muted-foreground">
-          {format(new Date(activity.date), 'MMM d, yyyy h:mm a')}
+          {format(new Date(activity.date || activity.timestamp || ''), 'MMM d, yyyy h:mm a')}
         </p>
       </div>
     </div>
