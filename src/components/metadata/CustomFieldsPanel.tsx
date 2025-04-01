@@ -58,7 +58,7 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
   const [assets, setAssets] = React.useState<string[]>(document?.linkedAssets || []);
   const [open, setOpen] = React.useState(false);
   const [openAssets, setOpenAssets] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState(""); // Added for filtering assets
+  const [searchValue, setSearchValue] = React.useState(""); // For filtering assets
 
   const handleDateChange = (date: Date | undefined) => {
     setDueDate(date);
