@@ -5,7 +5,7 @@ export interface Document {
   id: string;
   name: string;
   type: DocumentType;
-  size: string;
+  size?: string; // Make size optional since folders don't always have a size
   modified: string;
   owner: string;
   category: string;

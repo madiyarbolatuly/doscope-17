@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -24,7 +25,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ActivityItem } from '@/components/ActivityItem';
 import { MetadataCard } from '@/components/MetadataCard';
-import { Document, ActivityAction } from '@/types/document';
+import { Document, ActivityAction, Version } from '@/types/document';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -90,14 +91,22 @@ const MOCK_VERSIONS: Version[] = [
     modified: '2023-01-01', 
     modifiedBy: 'John Doe',
     size: '1.2 MB',
-    comment: 'Initial version'
+    comment: 'Initial version',
+    versionNumber: 1,
+    createdAt: '2023-01-01',
+    createdBy: 'John Doe',
+    comments: 'Initial version'
   },
   { 
     id: '2', 
     version: '1.1', 
     modified: '2023-02-15', 
     modifiedBy: 'Jane Smith',
-    size: '1.3 MB'
+    size: '1.3 MB',
+    versionNumber: 2,
+    createdAt: '2023-02-15',
+    createdBy: 'Jane Smith',
+    comments: ''
   },
   { 
     id: '3', 
@@ -105,7 +114,11 @@ const MOCK_VERSIONS: Version[] = [
     modified: '2023-03-20', 
     modifiedBy: 'John Doe',
     size: '1.4 MB',
-    comment: 'Added executive summary'
+    comment: 'Added executive summary',
+    versionNumber: 3,
+    createdAt: '2023-03-20',
+    createdBy: 'John Doe',
+    comments: 'Added executive summary'
   },
 ];
 
