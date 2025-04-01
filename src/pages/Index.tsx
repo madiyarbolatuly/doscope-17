@@ -231,7 +231,7 @@ const Index = () => {
 
   const handleDocumentClick = (document: Document) => {
     if (selectedRole && document.type !== 'folder') {
-      downloadFile(document.name);
+      downloadFile();
     } else {
       toast({
         title: "Документ выбран",
@@ -283,8 +283,8 @@ const Index = () => {
     if (selectedRole && selectedDocumentIds.length > 0) {
       const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
       
-      selectedDocuments.forEach(doc => {
-        deleteFile(doc.name);
+      selectedDocuments.forEach(() => {
+        deleteFile();
       });
       
       setSelectedDocumentIds([]);
@@ -305,8 +305,8 @@ const Index = () => {
     if (selectedRole && selectedDocumentIds.length > 0) {
       const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
       
-      selectedDocuments.forEach(doc => {
-        downloadFile(doc.name);
+      selectedDocuments.forEach(() => {
+        downloadFile();
       });
     } else {
       toast({
@@ -371,7 +371,7 @@ const Index = () => {
 
   const handleUpload = () => {
     if (fileToUpload) {
-      uploadFile(fileToUpload);
+      uploadFile();
       setFileToUpload(null);
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
       if (fileInput) {
@@ -388,7 +388,7 @@ const Index = () => {
 
   const handleRefresh = () => {
     if (selectedRole) {
-      fetchDocumentsByRole(selectedRole);
+      fetchDocumentsByRole();
     }
   };
 
@@ -408,42 +408,6 @@ const Index = () => {
                 viewMode={viewMode}
                 setViewMode={setViewMode}
               />
-              
-              <RoleSelector 
-                roles={roles} 
-                selectedRole={selectedRole}
-                onRoleChange={handleRoleChange}
-                isLoading={isLoading}
-              />
-              
-              {selectedRole && (
-                <div className="mb-6 p-4 border rounded-md bg-muted/30">
-                  <h3 className="text-md font-medium mb-3">Загрузить файл в папку {selectedRole}</h3>
-                  <div className="flex flex-wrap gap-3 items-center">
-                    <Input
-                      id="file-upload"
-                      type="file"
-                      onChange={handleFileChange}
-                      className="w-auto flex-1"
-                    />
-                    <Button 
-                      onClick={handleUpload} 
-                      disabled={!fileToUpload || isLoading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Загрузить
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleRefresh}
-                      disabled={isLoading}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Обновить
-                    </Button>
-                  </div>
-                </div>
-              )}
               
               <div className="mt-6 animate-fade-in">
                 <DocumentGrid 
