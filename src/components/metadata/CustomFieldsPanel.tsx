@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { CalendarIcon, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Document } from '@/types/document';
+import { useToast } from "@/components/ui/use-toast";
 
 // Mock data
 const TEAM_MEMBERS = [
@@ -45,13 +45,6 @@ const ASSETS = [
   "Система охлаждения C4",
 ];
 
-const DEPENDENCIES = [
-  "Требуется электрическая схема",
-  "Зависит от отчета по безопасности",
-  "Требуется одобрение отдела качества",
-  "Зависит от экологического аудита",
-];
-
 interface CustomFieldsPanelProps {
   document?: Document;
   onUpdate?: (field: string, value: any) => void;
@@ -63,10 +56,10 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
   );
   const [engineer, setEngineer] = React.useState<string>(document?.engineer || "");
   const [assets, setAssets] = React.useState<string[]>(document?.linkedAssets || []);
-  const [dependencies, setDependencies] = React.useState<string[]>(document?.dependencies || []);
   const [open, setOpen] = React.useState(false);
   const [openAssets, setOpenAssets] = React.useState(false);
-  const [searchValue, setSearchValue] = React.useState(""); // Added for filtering assets
+  const [searchValue, setSearchValue] = React.useState(""); // For filtering assets
+  const { toast } = useToast();
 
   const handleDateChange = (date: Date | undefined) => {
     setDueDate(date);
@@ -93,17 +86,6 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
     }
   };
 
-  const toggleDependency = (dependency: string) => {
-    const newDependencies = dependencies.includes(dependency)
-      ? dependencies.filter(d => d !== dependency)
-      : [...dependencies, dependency];
-      
-    setDependencies(newDependencies);
-    if (onUpdate) {
-      onUpdate("dependencies", newDependencies);
-    }
-  };
-
   const removeAsset = (asset: string) => {
     const newAssets = assets.filter(a => a !== asset);
     setAssets(newAssets);
@@ -112,12 +94,11 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
     }
   };
 
-  const removeDependency = (dependency: string) => {
-    const newDependencies = dependencies.filter(d => d !== dependency);
-    setDependencies(newDependencies);
-    if (onUpdate) {
-      onUpdate("dependencies", newDependencies);
-    }
+  const handleSubmit = () => {
+    toast({
+      title: "Метаданные обновлены",
+      description: `Уведомления отправлены ответственному инженеру: ${engineer || "не выбрано"}`,
+    });
   };
 
   // Filter assets based on search input
@@ -187,7 +168,12 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
-              <Command>
+              <Command 
+                groups={[]} 
+                items={[]} 
+                rootIds={[]} 
+                commands={[]}
+              >
                 <CommandInput 
                   placeholder="Поиск объектов..." 
                   value={searchValue}
@@ -230,45 +216,12 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
             </div>
           )}
         </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Зависимости</label>
-          <div className="space-y-1">
-            {DEPENDENCIES.map(dependency => (
-              <div 
-                key={dependency}
-                className="flex items-center space-x-2"
-              >
-                <input 
-                  type="checkbox" 
-                  id={dependency}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                  checked={dependencies.includes(dependency)}
-                  onChange={() => toggleDependency(dependency)}
-                />
-                <label htmlFor={dependency} className="text-sm">
-                  {dependency}
-                </label>
-              </div>
-            ))}
-          </div>
-          {dependencies.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {dependencies.map(dep => (
-                <Badge key={dep} variant="outline" className="bg-yellow-50 text-yellow-700">
-                  {dep}
-                  <button 
-                    className="ml-1 hover:text-red-500"
-                    onClick={() => removeDependency(dep)}
-                  >
-                    ×
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
       </CardContent>
+      <CardFooter>
+        <Button onClick={handleSubmit} className="ml-auto">
+          Подтвердить
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

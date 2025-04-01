@@ -1,38 +1,38 @@
 
-export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder';
+export type DocumentType = 'pdf' | 'doc' | 'docx' | 'xlsx' | 'xls' | 'ppt' | 'pptx' | 'jpg' | 'jpeg' | 'png' | 'txt' | 'folder' | 'image';
 
 export interface Document {
   id: string;
   name: string;
   type: DocumentType;
-  size?: string;
+  size?: string; // Make size optional since folders don't always have a size
   modified: string;
   owner: string;
-  category?: string;
-  path?: string;
+  category: string;
   thumbnail?: string;
-  shared?: boolean;
   favorited?: boolean;
-  
-  // New metadata fields
-  engineer?: string;
+  path?: string;
   dueDate?: string;
+  engineer?: string;
   linkedAssets?: string[];
-  dependencies?: string[];
-  complianceBadges?: string[];
-  version?: string;
-  status?: 'draft' | 'review' | 'approved' | 'rejected';
+  shared?: boolean;  // Added back the shared property
 }
 
+// Add the missing Version interface
 export interface Version {
   id: string;
-  version: string;
-  modified: string;
-  modifiedBy: string;
-  size: string;
-  comment?: string;
+  versionNumber: number;
+  createdAt: string;
+  createdBy: string;
+  comments: string;
+  version?: string;      // For backward compatibility
+  modified?: string;     // For backward compatibility
+  modifiedBy?: string;   // For backward compatibility
+  size?: string;         // For backward compatibility
+  comment?: string;      // For backward compatibility
 }
 
+// Add back CategoryType which is used in several components
 export type CategoryType = 
   | 'all' 
   | 'recent' 
@@ -48,6 +48,7 @@ export type CategoryType =
   | 'pse'
   | string;
 
+// Add back ActivityAction which is used in DocumentDetails.tsx
 export type ActivityAction = 
   | "viewed" 
   | "modified" 
@@ -58,6 +59,7 @@ export type ActivityAction =
   | "downloaded" 
   | "shared";
 
+// Add back MultipleSelectionActions which is used in DocumentGrid.tsx
 export interface MultipleSelectionActions {
   selectedIds: string[];
   onSelectAll?: () => void;
