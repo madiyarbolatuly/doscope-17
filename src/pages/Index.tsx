@@ -5,6 +5,8 @@ import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { MetadataSidebar } from '@/components/MetadataSidebar';
 
 // Mock data
 const mockDocuments: Document[] = [
@@ -119,6 +121,41 @@ const mockDocuments: Document[] = [
     modified: '2023-05-28T13:15:00',
     owner: 'HR Department',
     category: 'hr'
+  },
+  // Add more folders for testing
+  {
+    id: '13',
+    name: 'HR Documents',
+    type: 'folder',
+    modified: '2023-07-15T10:00:00',
+    owner: 'HR Department',
+    category: 'hr'
+  },
+  {
+    id: '14',
+    name: 'Financial Reports',
+    type: 'folder',
+    modified: '2023-07-12T14:30:00',
+    owner: 'Finance Department',
+    category: 'reports',
+    favorited: true
+  },
+  {
+    id: '15',
+    name: 'Marketing Materials',
+    type: 'folder',
+    modified: '2023-07-05T09:45:00',
+    owner: 'Marketing Team',
+    category: 'marketing'
+  },
+  {
+    id: '16',
+    name: 'Client Contracts',
+    type: 'folder',
+    modified: '2023-06-28T16:20:00',
+    owner: 'Legal Team',
+    category: 'contracts',
+    shared: true
   }
 ];
 
@@ -127,6 +164,8 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [showSidebar, setShowSidebar] = useState(false);
   const { toast } = useToast();
 
   // Filter documents based on category and search query
@@ -169,6 +208,16 @@ const Index = () => {
     });
   };
 
+  const handleDocumentSelect = (document: Document) => {
+    setSelectedDocument(document);
+    setShowSidebar(true);
+  };
+
+  const handleCloseSidebar = () => {
+    setSelectedDocument(null);
+    setShowSidebar(false);
+  };
+
   const getCategoryTitle = (type: CategoryType): string => {
     switch (type) {
       case 'all':
@@ -190,23 +239,44 @@ const Index = () => {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
       
-      <main className="flex-1 overflow-auto p-6">
-        <PageHeader 
-          title={getCategoryTitle(category)}
-          categoryType={category}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-        />
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
+          <main className="h-full overflow-auto">
+            <div className="p-6">
+              <PageHeader 
+                title={getCategoryTitle(category)}
+                categoryType={category}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+              />
+              
+              <div className="mt-6 animate-fade-in">
+                <DocumentGrid 
+                  documents={documents} 
+                  onDocumentClick={handleDocumentClick}
+                  viewMode={viewMode}
+                  selectedDocument={selectedDocument}
+                  onDocumentSelect={handleDocumentSelect}
+                />
+              </div>
+            </div>
+          </main>
+        </ResizablePanel>
         
-        <div className="mt-6 animate-fade-in">
-          <DocumentGrid 
-            documents={documents} 
-            onDocumentClick={handleDocumentClick} 
-          />
-        </div>
-      </main>
+        {showSidebar && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={25} minSize={20}>
+              <MetadataSidebar 
+                document={selectedDocument || undefined} 
+                onClose={handleCloseSidebar} 
+              />
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
     </div>
   );
 };
