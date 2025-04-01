@@ -13,6 +13,7 @@ export interface Document {
   thumbnail?: string;
   shared?: boolean;
   favorited?: boolean;
+  role?: string; // Add role property to documents
 }
 
 export type CategoryType = 
@@ -49,4 +50,10 @@ export interface MultipleSelectionActions {
   onDownloadSelected?: () => void;
   onMoveSelected?: () => void;
   onShareSelected?: () => void;
+}
+
+// Add Role type
+export interface Role {
+  id: string;
+  name: string;
 }
