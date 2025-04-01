@@ -84,6 +84,7 @@ const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const navigate = useNavigate();
 
   const filteredDocuments = MOCK_DOCUMENTS.filter(doc => {
@@ -99,6 +100,10 @@ const Dashboard = () => {
 
   const handleDocumentClick = (document: Document) => {
     navigate(`/document/${document.id}`);
+  };
+
+  const handleDocumentSelect = (document: Document) => {
+    setSelectedDocument(document);
   };
 
   return (
@@ -196,7 +201,10 @@ const Dashboard = () => {
           
           <DocumentGrid 
             documents={filteredDocuments} 
-            onDocumentClick={handleDocumentClick} 
+            onDocumentClick={handleDocumentClick}
+            viewMode={viewMode}
+            selectedDocument={selectedDocument}
+            onDocumentSelect={handleDocumentSelect}
           />
         </div>
       </div>

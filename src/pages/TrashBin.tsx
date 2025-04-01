@@ -62,6 +62,14 @@ const TrashBin = () => {
     }
   };
 
+  const handleSelectDocument = (document: Document) => {
+    if (selectedDocuments.includes(document.id)) {
+      setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
+    } else {
+      setSelectedDocuments([...selectedDocuments, document.id]);
+    }
+  };
+
   const handleRestoreSelected = () => {
     console.log('Restoring documents:', selectedDocuments);
     // In a real app, you'd call an API to restore these documents
@@ -148,7 +156,9 @@ const TrashBin = () => {
             >
               <DocumentCard 
                 document={doc} 
-                onClick={() => {}} // Prevent default behavior
+                onClick={() => {}}
+                isSelected={selectedDocuments.includes(doc.id)}
+                onSelect={() => handleSelectDocument(doc)}
               />
             </div>
           ))}

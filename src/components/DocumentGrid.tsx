@@ -4,13 +4,24 @@ import { Document } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
 import { FolderPlus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DocumentListItem } from './DocumentListItem';
+import { cn } from '@/lib/utils';
 
 interface DocumentGridProps {
   documents: Document[];
   onDocumentClick: (document: Document) => void;
+  viewMode?: 'grid' | 'list';
+  selectedDocument?: Document | null;
+  onDocumentSelect: (document: Document) => void;
 }
 
-export function DocumentGrid({ documents, onDocumentClick }: DocumentGridProps) {
+export function DocumentGrid({ 
+  documents, 
+  onDocumentClick, 
+  viewMode = 'grid',
+  selectedDocument,
+  onDocumentSelect 
+}: DocumentGridProps) {
   // Separate folders and files
   const folders = documents.filter(doc => doc.type === 'folder');
   const files = documents.filter(doc => doc.type !== 'folder');
@@ -54,28 +65,77 @@ export function DocumentGrid({ documents, onDocumentClick }: DocumentGridProps) 
 
   return (
     <div className="space-y-6">
-      {folders.length > 0 && (
-        <div>
-          <h2 className="text-lg font-medium mb-3">Folders</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-            {folders.map((folder) => (
-              <DocumentCard key={folder.id} document={folder} onClick={onDocumentClick} />
-            ))}
-          </div>
+      {viewMode === 'grid' ? (
+        <div className="space-y-6">
+          {folders.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-3">Folders</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {folders.map((folder) => (
+                  <DocumentCard 
+                    key={folder.id} 
+                    document={folder} 
+                    onClick={onDocumentClick}
+                    isSelected={selectedDocument?.id === folder.id}
+                    onSelect={() => onDocumentSelect(folder)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {files.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-3">Files</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {files.map((file) => (
+                  <DocumentCard 
+                    key={file.id} 
+                    document={file} 
+                    onClick={onDocumentClick}
+                    isSelected={selectedDocument?.id === file.id}
+                    onSelect={() => onDocumentSelect(file)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-      
-      {files.length > 0 && (
-        <div>
-          <h2 className="text-lg font-medium mb-3">Files</h2>
-          <div className="border bg-card rounded-md">
-            {files.map((file, index) => (
-              <React.Fragment key={file.id}>
-                {index > 0 && <div className="h-px bg-border mx-4" />}
-                <DocumentCard document={file} onClick={onDocumentClick} />
-              </React.Fragment>
-            ))}
-          </div>
+      ) : (
+        <div className="space-y-4">
+          {folders.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-2">Folders</h2>
+              <div className={cn("rounded-md border")}>
+                {folders.map((folder) => (
+                  <DocumentListItem 
+                    key={folder.id} 
+                    document={folder} 
+                    onClick={onDocumentClick}
+                    isSelected={selectedDocument?.id === folder.id}
+                    onSelect={() => onDocumentSelect(folder)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {files.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-2">Files</h2>
+              <div className={cn("rounded-md border")}>
+                {files.map((file) => (
+                  <DocumentListItem 
+                    key={file.id} 
+                    document={file} 
+                    onClick={onDocumentClick}
+                    isSelected={selectedDocument?.id === file.id}
+                    onSelect={() => onDocumentSelect(file)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
