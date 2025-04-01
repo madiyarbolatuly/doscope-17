@@ -1,70 +1,26 @@
-
-export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder';
+export type DocumentType = 'pdf' | 'doc' | 'docx' | 'xlsx' | 'xls' | 'ppt' | 'pptx' | 'jpg' | 'jpeg' | 'png' | 'txt' | 'folder' | 'image';
 
 export interface Document {
   id: string;
   name: string;
   type: DocumentType;
-  size?: string;
+  size: string;
   modified: string;
   owner: string;
-  category?: string;
-  path?: string;
+  category: string;
   thumbnail?: string;
-  shared?: boolean;
   favorited?: boolean;
-  
-  // New metadata fields
-  engineer?: string;
+  path?: string;
   dueDate?: string;
+  engineer?: string;
   linkedAssets?: string[];
-  dependencies?: string[];
-  complianceBadges?: string[];
-  version?: string;
-  status?: 'draft' | 'review' | 'approved' | 'rejected';
 }
 
+// Add the missing Version interface
 export interface Version {
   id: string;
-  version: string;
-  modified: string;
-  modifiedBy: string;
-  size: string;
-  comment?: string;
-}
-
-export type CategoryType = 
-  | 'all' 
-  | 'recent' 
-  | 'shared' 
-  | 'favorites' 
-  | 'trash' 
-  | 'managers' 
-  | 'development' 
-  | 'procurement' 
-  | 'electrical' 
-  | 'weakening' 
-  | 'interface' 
-  | 'pse'
-  | string;
-
-export type ActivityAction = 
-  | "viewed" 
-  | "modified" 
-  | "commented" 
-  | "uploaded" 
-  | "deleted" 
-  | "restored" 
-  | "downloaded" 
-  | "shared";
-
-export interface MultipleSelectionActions {
-  selectedIds: string[];
-  onSelectAll?: () => void;
-  onClearSelection?: () => void;
-  onDeleteSelected?: () => void;
-  onRestoreSelected?: () => void;
-  onDownloadSelected?: () => void;
-  onMoveSelected?: () => void;
-  onShareSelected?: () => void;
+  versionNumber: number;
+  createdAt: string;
+  createdBy: string;
+  comments: string;
 }
