@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import { type DialogProps } from "@radix-ui/react-dialog"
 import { Command as CommandPrimitive } from "cmdk"
@@ -18,6 +17,12 @@ const Command = React.forwardRef<
       className
     )}
     // Ensure we're initializing with empty collections rather than undefined
+    groups={props.groups || []}
+    items={props.items || []}
+    rootIds={props.rootIds || []}
+    commands={props.commands || []}
+    value={props.value || ""}
+    filter={props.filter || (() => true)}
     {...props}
   />
 ))
