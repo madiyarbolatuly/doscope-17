@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Eye, FileEdit, MessageSquare, Upload, Download, Trash, RefreshCw, Share } from 'lucide-react';
 import { format } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export interface Activity {
   id: string;
@@ -18,60 +20,76 @@ export function ActivityItem({ activity }: ActivityItemProps) {
   const getIcon = () => {
     switch (activity.action) {
       case 'viewed':
-        return <Eye className="h-4 w-4" />;
+        return <Eye className="h-4 w-4 text-blue-500" />;
       case 'modified':
-        return <FileEdit className="h-4 w-4" />;
+        return <FileEdit className="h-4 w-4 text-amber-500" />;
       case 'commented':
-        return <MessageSquare className="h-4 w-4" />;
+        return <MessageSquare className="h-4 w-4 text-purple-500" />;
       case 'uploaded':
-        return <Upload className="h-4 w-4" />;
+        return <Upload className="h-4 w-4 text-green-500" />;
       case 'downloaded':
-        return <Download className="h-4 w-4" />;
+        return <Download className="h-4 w-4 text-blue-500" />;
       case 'deleted':
-        return <Trash className="h-4 w-4" />;
+        return <Trash className="h-4 w-4 text-red-500" />;
       case 'restored':
-        return <RefreshCw className="h-4 w-4" />;
+        return <RefreshCw className="h-4 w-4 text-green-500" />;
       case 'shared':
-        return <Share className="h-4 w-4" />;
+        return <Share className="h-4 w-4 text-indigo-500" />;
       default:
-        return <FileEdit className="h-4 w-4" />;
+        return <FileEdit className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const getActionText = () => {
     switch (activity.action) {
       case 'viewed':
-        return 'viewed this document';
+        return 'просмотрел(а) документ';
       case 'modified':
-        return 'modified this document';
+        return 'изменил(а) документ';
       case 'commented':
-        return 'commented on this document';
+        return 'добавил(а) комментарий';
       case 'uploaded':
-        return 'uploaded this document';
+        return 'загрузил(а) документ';
       case 'deleted':
-        return 'deleted this document';
+        return 'удалил(а) документ';
       case 'restored':
-        return 'restored this document';
+        return 'восстановил(а) документ';
       case 'downloaded':
-        return 'downloaded this document';
+        return 'скачал(а) документ';
       case 'shared':
-        return 'shared this document';
+        return 'поделился(лась) документом';
       default:
-        return 'interacted with this document';
+        return 'взаимодействовал(а) с документом';
     }
+  };
+  
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase();
   };
 
   return (
-    <div className="flex items-start gap-3 pb-3 border-b last:border-b-0">
-      <div className="bg-primary/10 rounded-full p-2">
-        {getIcon()}
-      </div>
+    <div className="flex items-start gap-3 p-3 border-b last:border-b-0 hover:bg-accent/30 transition-colors rounded-md">
+      <Avatar className="h-8 w-8 border">
+        <AvatarFallback className="bg-primary/10 text-primary">
+          {getInitials(activity.user)}
+        </AvatarFallback>
+      </Avatar>
       <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{activity.user}</span>
+          <div className="bg-primary/10 rounded-full p-1.5">
+            {getIcon()}
+          </div>
+        </div>
         <p className="text-sm">
-          <span className="font-medium">{activity.user}</span> {getActionText()}
+          {getActionText()}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {format(new Date(activity.date || activity.timestamp || ''), 'MMM d, yyyy h:mm a')}
+        <p className="text-xs text-muted-foreground mt-1">
+          {format(new Date(activity.date || activity.timestamp || ''), 'dd.MM.yyyy HH:mm')}
         </p>
       </div>
     </div>

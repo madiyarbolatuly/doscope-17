@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MessageSquare, Send, Edit2 } from 'lucide-react';
+import { MessageSquare, Send } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Comment {
@@ -162,10 +162,6 @@ export function DocumentAnnotations({ documentId }: DocumentAnnotationsProps) {
           <MessageSquare className="h-5 w-5 mr-2" />
           Комментарии и аннотации
         </CardTitle>
-        <Button variant="outline" size="sm" className="gap-1">
-          <Edit2 className="h-4 w-4" />
-          Режим разметки
-        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="comments-container">

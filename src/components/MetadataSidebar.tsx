@@ -20,7 +20,7 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
     return (
       <div className="h-full flex items-center justify-center border-l p-6">
         <p className="text-muted-foreground text-center">
-          Select a file or folder to view its details
+          Выберите файл или папку для просмотра деталей
         </p>
       </div>
     );
@@ -50,7 +50,7 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
   return (
     <div className="h-full border-l bg-background overflow-y-auto">
       <div className="flex justify-between items-center p-4 border-b">
-        <h2 className="text-lg font-medium">Details</h2>
+        <h2 className="text-lg font-medium">Детали</h2>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -70,7 +70,7 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
           
           <h3 className="text-lg font-medium">{document.name}</h3>
           <p className="text-sm text-muted-foreground">
-            {isFolder ? 'Folder' : fileExtension}
+            {isFolder ? 'Папка' : fileExtension}
           </p>
         </div>
         
@@ -78,23 +78,23 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
           {!isFolder && (
             <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
-              Download
+              Скачать
             </Button>
           )}
           
           <Button variant="outline" size="sm">
             <Share2 className="h-4 w-4 mr-2" />
-            Share
+            Поделиться
           </Button>
           
           <Button variant="outline" size="sm">
             <Star className="h-4 w-4 mr-2" />
-            {document.favorited ? 'Unstar' : 'Star'}
+            {document.favorited ? 'Убрать из избранного' : 'В избранное'}
           </Button>
           
           <Button variant="outline" size="sm" className="text-destructive border-destructive">
             <Trash className="h-4 w-4 mr-2" />
-            Delete
+            Удалить
           </Button>
         </div>
         
@@ -102,29 +102,29 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
         
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Type</span>
+            <span className="text-sm text-muted-foreground">Тип</span>
             <span className="text-sm font-medium">
-              {isFolder ? 'Folder' : fileExtension}
+              {isFolder ? 'Папка' : fileExtension}
             </span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Size</span>
-            <span className="text-sm font-medium">{document.size || 'N/A'}</span>
+            <span className="text-sm text-muted-foreground">Размер</span>
+            <span className="text-sm font-medium">{document.size || 'Нет данных'}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Owner</span>
+            <span className="text-sm text-muted-foreground">Владелец</span>
             <span className="text-sm font-medium">{document.owner}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Modified</span>
-            <span className="text-sm font-medium">{format(modifiedDate, 'MMM d, yyyy h:mm a')}</span>
+            <span className="text-sm text-muted-foreground">Изменен</span>
+            <span className="text-sm font-medium">{format(modifiedDate, 'dd.MM.yyyy HH:mm')}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Location</span>
+            <span className="text-sm text-muted-foreground">Расположение</span>
             <span className="text-sm font-medium">{document.path || '/'}</span>
           </div>
         </div>
@@ -132,10 +132,10 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
         <Separator />
         
         <MetadataCard 
-          title="Activity" 
+          title="Активность" 
           items={[
-            { label: 'Last opened by', value: document.owner },
-            { label: 'Last modified', value: format(modifiedDate, 'MMM d, yyyy h:mm a') },
+            { label: 'Открыто пользователем', value: document.owner },
+            { label: 'Последнее изменение', value: format(modifiedDate, 'dd.MM.yyyy HH:mm') },
           ]} 
         />
       </div>
