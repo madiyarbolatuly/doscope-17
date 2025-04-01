@@ -3,7 +3,7 @@ import React from 'react';
 import { SearchBar } from './SearchBar';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Grid2X2, List, Plus, Upload } from 'lucide-react';
+import { Grid2X2, List, RefreshCw, Upload } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 
 interface PageHeaderProps {
@@ -54,11 +54,11 @@ export function PageHeader({
     
     return (
       <div className="flex gap-2">
-        <Button className="flex items-center gap-1">
-          <Plus size={16} />
-          <span>Новый</span>
+        <Button variant="outline" className="flex items-center gap-2">
+          <RefreshCw size={16} />
+          <span>Обновить</span>
         </Button>
-        <Button variant="outline" className="flex items-center gap-1">
+        <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
           <Upload size={16} />
           <span>Загрузить</span>
         </Button>

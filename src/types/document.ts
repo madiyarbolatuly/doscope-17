@@ -13,6 +13,24 @@ export interface Document {
   thumbnail?: string;
   shared?: boolean;
   favorited?: boolean;
+  
+  // New metadata fields
+  engineer?: string;
+  dueDate?: string;
+  linkedAssets?: string[];
+  dependencies?: string[];
+  complianceBadges?: string[];
+  version?: string;
+  status?: 'draft' | 'review' | 'approved' | 'rejected';
+}
+
+export interface Version {
+  id: string;
+  version: string;
+  modified: string;
+  modifiedBy: string;
+  size: string;
+  comment?: string;
 }
 
 export type CategoryType = 
