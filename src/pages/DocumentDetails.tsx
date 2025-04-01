@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   FileText, FileSpreadsheet, FileImage, File, 
-  MoreHorizontal, Download, Share2, Trash
+  MoreHorizontal, Download, Share2, Trash, Grid2X2, List
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -25,109 +24,87 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ActivityItem } from '@/components/ActivityItem';
 import { MetadataCard } from '@/components/MetadataCard';
-import { Document, ActivityAction, Version } from '@/types/document';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-import { CustomFieldsPanel } from '@/components/metadata/CustomFieldsPanel';
-import { DocumentRelationshipMap } from '@/components/relationships/DocumentRelationshipMap';
-import { VisualVersionTree } from '@/components/versions/VisualVersionTree';
-import { DocumentComparison } from '@/components/versions/DocumentComparison';
-import { PermissionManager } from '@/components/permissions/PermissionManager';
-import { ApprovalWorkflow } from '@/components/approvals/ApprovalWorkflow';
-import { DocumentAnnotations } from '@/components/annotations/DocumentAnnotations';
 import { VersionHistoryList } from '@/components/VersionHistoryList';
-
-interface Activity {
-  id: string;
-  action: ActivityAction;
-  timestamp: string;
-  user: string;
-  date: string;
-}
+import { Document, ActivityAction } from '@/types/document';
+import { DocumentGrid } from '@/components/DocumentGrid';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const MOCK_ACTIVITIES: Activity[] = [
   {
     id: '1',
     action: "viewed",
     timestamp: new Date(Date.now() - 3600000).toISOString(),
-    user: 'Александр Иванов',
-    date: new Date(Date.now() - 3600000).toISOString()
+    user: 'Alex Johnson'
   },
   {
     id: '2',
     action: "modified",
     timestamp: new Date(Date.now() - 86400000).toISOString(),
-    user: 'Мария Петрова',
-    date: new Date(Date.now() - 86400000).toISOString()
+    user: 'Sarah Miller'
   },
   {
     id: '3',
     action: "commented",
     timestamp: new Date(Date.now() - 172800000).toISOString(),
-    user: 'Дмитрий Соколов',
-    date: new Date(Date.now() - 172800000).toISOString()
+    user: 'David Chen'
   },
   {
     id: '4',
     action: "uploaded",
     timestamp: new Date(Date.now() - 259200000).toISOString(),
-    user: 'Елена Смирнова',
-    date: new Date(Date.now() - 259200000).toISOString()
+    user: 'Emily Wang'
   },
   {
     id: '5',
     action: "downloaded",
     timestamp: new Date(Date.now() - 345600000).toISOString(),
-    user: 'Александр Иванов',
-    date: new Date(Date.now() - 345600000).toISOString()
+    user: 'Alex Johnson'
   }
 ];
 
-const MOCK_VERSIONS: Version[] = [
-  { 
-    id: '1', 
-    version: '1.0', 
-    modified: '2023-01-01', 
-    modifiedBy: 'Иван Петров',
-    size: '1.2 MB',
-    comment: 'Первоначальная версия',
-    versionNumber: 1,
-    createdAt: '2023-01-01',
-    createdBy: 'Иван Петров',
-    comments: 'Первоначальная версия'
+const MOCK_VERSIONS = [
+  { id: '1', version: '1.0', modified: '2023-01-01', user: 'John Doe' },
+  { id: '2', version: '1.1', modified: '2023-02-15', user: 'Jane Smith' },
+  { id: '3', version: '1.2', modified: '2023-03-20', user: 'John Doe' },
+];
+
+const MOCK_RELATED_DOCUMENTS: Document[] = [
+  {
+    id: '7',
+    name: 'Competitor Analysis.pdf',
+    type: 'pdf',
+    size: '2.9 MB',
+    modified: new Date(Date.now() - 518400000).toISOString(),
+    owner: 'Michelle Lee',
+    category: 'marketing'
   },
-  { 
-    id: '2', 
-    version: '1.1', 
-    modified: '2023-02-15', 
-    modifiedBy: 'Мария Иванова',
-    size: '1.3 MB',
-    versionNumber: 2,
-    createdAt: '2023-02-15',
-    createdBy: 'Мария Иванова',
-    comments: ''
+  {
+    id: '8',
+    name: 'Sales Report Q1 2023.xlsx',
+    type: 'xlsx',
+    size: '2.1 MB',
+    modified: new Date(Date.now() - 604800000).toISOString(),
+    owner: 'David Chen',
+    category: 'sales'
   },
-  { 
-    id: '3', 
-    version: '1.2', 
-    modified: '2023-03-20', 
-    modifiedBy: 'Иван Петров',
-    size: '1.4 MB',
-    comment: 'Добавлено краткое содержание',
-    versionNumber: 3,
-    createdAt: '2023-03-20',
-    createdBy: 'Иван Петров',
-    comments: 'Добавлено краткое содержание'
-  },
+  {
+    id: '9',
+    name: 'Customer Feedback Survey.doc',
+    type: 'doc',
+    size: '1.5 MB',
+    modified: new Date(Date.now() - 691200000).toISOString(),
+    owner: 'Emily Wang',
+    category: 'customer'
+  }
 ];
 
 const MOCK_DOCUMENT: Document =   {
   id: '1',
-  name: 'Годовой отчет 2023.pdf',
+  name: 'Annual Report 2023.pdf',
   type: 'pdf',
   size: '4.2 MB',
   modified: new Date(Date.now() - 3600000).toISOString(),
-  owner: 'Александр Иванов',
+  owner: 'Alex Johnson',
   category: 'reports',
   favorited: true
 };
@@ -136,22 +113,21 @@ const DocumentDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [document, setDocument] = useState<Document | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [activeTab, setActiveTab] = useState('details');
+  const [versions, setVersions] = useState(MOCK_VERSIONS);
+  const [relatedDocuments, setRelatedDocuments] = useState<Document[]>(MOCK_RELATED_DOCUMENTS);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
+    // Mock fetch document details
     setTimeout(() => {
       setDocument(MOCK_DOCUMENT);
       setActivities(MOCK_ACTIVITIES);
     }, 500);
   }, [id]);
 
-  const handleMetadataUpdate = (field: string, value: any) => {
-    console.log('Updating metadata field:', field, value);
-    // In a real application, you would save this to your backend
-  };
-
   return (
     <div className="flex flex-col h-screen">
+      <Header />
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto py-6 px-4 md:px-6">
           <div className="mb-6">
@@ -222,57 +198,30 @@ const DocumentDetails = () => {
                 </CardContent>
               </Card>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid grid-cols-4 mb-6">
-                  <TabsTrigger value="details">Детали</TabsTrigger>
-                  <TabsTrigger value="versions">Версии</TabsTrigger>
-                  <TabsTrigger value="permissions">Доступ</TabsTrigger>
-                  <TabsTrigger value="annotations">Комментарии</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="details" className="space-y-6">
-                  <CustomFieldsPanel 
-                    document={document || undefined} 
-                    onUpdate={handleMetadataUpdate}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Похожие документы</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
+                      <ToggleGroupItem value="grid" aria-label="Сетка">
+                        <Grid2X2 className="h-4 w-4" />
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="list" aria-label="Список">
+                        <List className="h-4 w-4" />
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <DocumentGrid 
+                    documents={relatedDocuments} 
+                    onDocumentClick={() => {}} 
+                    viewMode={viewMode}
+                    selectedDocument={null}
+                    onDocumentSelect={() => {}}
                   />
-                  
-                  <DocumentRelationshipMap 
-                    document={document || undefined} 
-                    relatedDocuments={[]} 
-                  />
-                </TabsContent>
-                
-                <TabsContent value="versions" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>История версий</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <VersionHistoryList versions={MOCK_VERSIONS} />
-                    </CardContent>
-                  </Card>
-                  
-                  <VisualVersionTree 
-                    currentVersion="v1.2"
-                    onVersionSelect={(versionId) => console.log('Selected version:', versionId)}
-                  />
-                  
-                  <DocumentComparison documentId={id} />
-                </TabsContent>
-                
-                <TabsContent value="permissions" className="space-y-6">
-                  <PermissionManager 
-                    documentId={id}
-                    onUpdatePermission={(userId, role) => console.log('Updated permission:', userId, role)}
-                  />
-                  
-                  <ApprovalWorkflow documentId={id} />
-                </TabsContent>
-                
-                <TabsContent value="annotations" className="space-y-6">
-                  <DocumentAnnotations documentId={id} />
-                </TabsContent>
-              </Tabs>
+                </CardContent>
+              </Card>
             </div>
 
             <div className="space-y-6">
@@ -297,6 +246,16 @@ const DocumentDetails = () => {
                       <ActivityItem key={activity.id} activity={activity} />
                     ))}
                   </ScrollArea>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>История версий</CardTitle>
+                  <CardDescription>Предыдущие версии документа</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <VersionHistoryList versions={versions} />
                 </CardContent>
               </Card>
             </div>

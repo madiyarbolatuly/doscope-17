@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { DocumentGrid } from '@/components/DocumentGrid';
@@ -6,14 +7,8 @@ import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
-import { RoleSelector } from '@/components/RoleSelector';
-import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
-import { Button } from '@/components/ui/button';
-import { Upload, RefreshCw } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { FileUploadDialog } from '@/components/FileUploadDialog';
-import { useNavigate } from 'react-router-dom';
 
+// Mock data
 const mockDocuments: Document[] = [
   {
     id: '1',
@@ -127,6 +122,7 @@ const mockDocuments: Document[] = [
     owner: 'HR Department',
     category: 'hr'
   },
+  // Add more folders for testing
   {
     id: '13',
     name: 'HR Documents',
@@ -171,57 +167,43 @@ const Index = () => {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
-  const {
-    roles,
-    selectedRole,
-    documents: roleDocuments,
-    isLoading,
-    handleRoleChange,
-    uploadFile,
-    downloadFile,
-    deleteFile,
-    fetchDocumentsByRole
-  } = useRoleBasedDocuments();
-
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-
+  // Filter documents based on category and search query
   useEffect(() => {
     let filteredDocs = [...mockDocuments];
     
-    if (selectedRole) {
-      filteredDocs = roleDocuments;
-    } else {
-      if (category !== 'all') {
-        if (category === 'favorites') {
-          filteredDocs = filteredDocs.filter(doc => doc.favorited);
-        } else if (category === 'shared') {
-          filteredDocs = filteredDocs.filter(doc => doc.shared);
-        } else if (category === 'recent') {
-          filteredDocs = [...filteredDocs]
-            .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
-            .slice(0, 5);
-        } else if (category === 'trash') {
-          filteredDocs = [];
+    // Apply category filter
+    if (category !== 'all') {
+      if (category === 'favorites') {
+        filteredDocs = filteredDocs.filter(doc => doc.favorited);
+      } else if (category === 'shared') {
+        filteredDocs = filteredDocs.filter(doc => doc.shared);
+      } else if (category === 'recent') {
+        // For demo purposes, we'll just show the 5 most recently modified
+        filteredDocs = [...filteredDocs]
+          .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
+          .slice(0, 5);
+      } else if (category === 'trash') {
+        // Trash category logic
+        filteredDocs = [];
+      } else {
+        // Filter by specific category - we map the new Russian categories to the existing ones
+        if (category === 'managers') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'hr');
+        } else if (category === 'development') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'reports');
+        } else if (category === 'procurement') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'contracts');
+        } else if (category === 'electrical' || category === 'weakening' || category === 'interface' || category === 'pse') {
+          filteredDocs = filteredDocs.filter(doc => doc.category === 'invoices' || doc.category === 'marketing');
         } else {
-          if (category === 'managers') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'hr');
-          } else if (category === 'development') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'reports');
-          } else if (category === 'procurement') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'contracts');
-          } else if (category === 'electrical' || category === 'weakening' || category === 'interface' || category === 'pse') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'invoices' || doc.category === 'marketing');
-          } else {
-            filteredDocs = filteredDocs.filter(doc => doc.category === category);
-          }
+          filteredDocs = filteredDocs.filter(doc => doc.category === category);
         }
       }
     }
     
+    // Apply search filter
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       filteredDocs = filteredDocs.filter(doc => 
@@ -231,30 +213,30 @@ const Index = () => {
     }
     
     setDocuments(filteredDocs);
-  }, [category, searchQuery, selectedRole, roleDocuments]);
+  }, [category, searchQuery]);
 
   const handleDocumentClick = (document: Document) => {
-    if (selectedRole && document.type !== 'folder') {
-      downloadFile();
-    } else {
-      toast({
-        title: "Документ выбран",
-        description: `Вы выбрали: ${document.name}`,
-      });
-    }
+    toast({
+      title: "Документ выбран",
+      description: `Вы выбрали: ${document.name}`,
+    });
   };
 
   const handleDocumentSelect = (document: Document) => {
     if (selectedDocumentIds.includes(document.id)) {
+      // If already selected, remove from selection
       setSelectedDocumentIds(selectedDocumentIds.filter(id => id !== document.id));
       
+      // Only clear sidebar if it's showing the deselected document
       if (selectedDocument?.id === document.id) {
         setSelectedDocument(null);
         setShowSidebar(false);
       }
     } else {
+      // Add to selection
       setSelectedDocumentIds([...selectedDocumentIds, document.id]);
       
+      // If this is the first selection or only selection, show in sidebar
       if (selectedDocumentIds.length === 0) {
         setSelectedDocument(document);
         setShowSidebar(true);
@@ -264,12 +246,15 @@ const Index = () => {
 
   const handleSelectAll = () => {
     if (selectedDocumentIds.length === documents.length) {
+      // If all are already selected, clear selection
       setSelectedDocumentIds([]);
       setSelectedDocument(null);
       setShowSidebar(false);
     } else {
+      // Select all documents
       setSelectedDocumentIds(documents.map(doc => doc.id));
       
+      // If no document was previously selected for sidebar, select the first one
       if (!selectedDocument && documents.length > 0) {
         setSelectedDocument(documents[0]);
         setShowSidebar(true);
@@ -284,40 +269,22 @@ const Index = () => {
   };
 
   const handleDeleteSelected = () => {
-    if (selectedRole && selectedDocumentIds.length > 0) {
-      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-      
-      selectedDocuments.forEach(() => {
-        deleteFile();
-      });
-      
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    } else {
-      toast({
-        title: "Удаление документов",
-        description: `Выбрано ${selectedDocumentIds.length} документов для удаления`,
-      });
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    }
+    toast({
+      title: "Удаление документов",
+      description: `Выбрано ${selectedDocumentIds.length} документов для удаления`,
+    });
+    // In a real app, you would call an API to delete these documents
+    setSelectedDocumentIds([]);
+    setSelectedDocument(null);
+    setShowSidebar(false);
   };
 
   const handleDownloadSelected = () => {
-    if (selectedRole && selectedDocumentIds.length > 0) {
-      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-      
-      selectedDocuments.forEach(() => {
-        downloadFile();
-      });
-    } else {
-      toast({
-        title: "Скачивание документов",
-        description: `Выбрано ${selectedDocumentIds.length} документов для скачивания`,
-      });
-    }
+    toast({
+      title: "Скачивание документов",
+      description: `Выбрано ${selectedDocumentIds.length} документов для скачивания`,
+    });
+    // In a real app, you would trigger download of these documents
   };
 
   const handleShareSelected = () => {
@@ -325,6 +292,7 @@ const Index = () => {
       title: "Общий доступ",
       description: `Выбрано ${selectedDocumentIds.length} документов для общего доступа`,
     });
+    // In a real app, you would open a sharing dialog
   };
 
   const handleCloseSidebar = () => {
@@ -333,10 +301,6 @@ const Index = () => {
   };
 
   const getCategoryTitle = (type: CategoryType): string => {
-    if (selectedRole) {
-      return `Папка: ${selectedRole}`;
-    }
-    
     switch (type) {
       case 'all':
         return 'Все документы';
@@ -367,58 +331,6 @@ const Index = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFileToUpload(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = () => {
-    if (fileToUpload) {
-      uploadFile();
-      setFileToUpload(null);
-      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-    } else {
-      toast({
-        title: "Ошибка загрузки",
-        description: "Пожалуйста, выберите файл для загрузки",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleRefresh = () => {
-    if (selectedRole) {
-      fetchDocumentsByRole();
-    }
-  };
-
-  const handleSelectDestination = (destination: 'downloads' | 'new') => {
-    toast({
-      title: "Папка выбрана",
-      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
-    });
-  };
-
-  const handleCreateFolder = () => {
-    toast({
-      title: "Создание новой папки",
-      description: "Функция создания новой папки будет реализована в будущем.",
-    });
-  };
-
-  const handleUploadToDestination = () => {
-    toast({
-      title: "Переход к загрузке",
-      description: "Переход на страницу загрузки файлов.",
-    });
-    setShowUploadDialog(false);
-    navigate('/upload');
-  };
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
@@ -436,7 +348,7 @@ const Index = () => {
                 setViewMode={setViewMode}
               />
               
-              <div className="mt-4 animate-fade-in">
+              <div className="mt-6 animate-fade-in">
                 <DocumentGrid 
                   documents={documents} 
                   onDocumentClick={handleDocumentClick}
@@ -470,14 +382,6 @@ const Index = () => {
           </>
         )}
       </ResizablePanelGroup>
-      
-      <FileUploadDialog
-        open={showUploadDialog}
-        onOpenChange={setShowUploadDialog}
-        onSelectDestination={handleSelectDestination}
-        onCreateFolder={handleCreateFolder}
-        onUpload={handleUploadToDestination}
-      />
     </div>
   );
 };
