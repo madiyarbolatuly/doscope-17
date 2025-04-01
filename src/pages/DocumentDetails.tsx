@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -24,48 +25,83 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ActivityItem } from '@/components/ActivityItem';
 import { MetadataCard } from '@/components/MetadataCard';
-import { VersionHistoryList } from '@/components/VersionHistoryList';
+import { VersionHistoryList, Version } from '@/components/VersionHistoryList';
 import { Document, ActivityAction } from '@/types/document';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+// Define Activity interface
+interface Activity {
+  id: string;
+  action: ActivityAction;
+  timestamp: string;
+  user: string;
+  date: string;
+}
 
 const MOCK_ACTIVITIES: Activity[] = [
   {
     id: '1',
     action: "viewed",
     timestamp: new Date(Date.now() - 3600000).toISOString(),
-    user: 'Alex Johnson'
+    user: 'Alex Johnson',
+    date: new Date(Date.now() - 3600000).toISOString()
   },
   {
     id: '2',
     action: "modified",
     timestamp: new Date(Date.now() - 86400000).toISOString(),
-    user: 'Sarah Miller'
+    user: 'Sarah Miller',
+    date: new Date(Date.now() - 86400000).toISOString()
   },
   {
     id: '3',
     action: "commented",
     timestamp: new Date(Date.now() - 172800000).toISOString(),
-    user: 'David Chen'
+    user: 'David Chen',
+    date: new Date(Date.now() - 172800000).toISOString()
   },
   {
     id: '4',
     action: "uploaded",
     timestamp: new Date(Date.now() - 259200000).toISOString(),
-    user: 'Emily Wang'
+    user: 'Emily Wang',
+    date: new Date(Date.now() - 259200000).toISOString()
   },
   {
     id: '5',
     action: "downloaded",
     timestamp: new Date(Date.now() - 345600000).toISOString(),
-    user: 'Alex Johnson'
+    user: 'Alex Johnson',
+    date: new Date(Date.now() - 345600000).toISOString()
   }
 ];
 
-const MOCK_VERSIONS = [
-  { id: '1', version: '1.0', modified: '2023-01-01', user: 'John Doe' },
-  { id: '2', version: '1.1', modified: '2023-02-15', user: 'Jane Smith' },
-  { id: '3', version: '1.2', modified: '2023-03-20', user: 'John Doe' },
+// Create MOCK_VERSIONS matching the Version interface from VersionHistoryList
+const MOCK_VERSIONS: Version[] = [
+  { 
+    id: '1', 
+    version: '1.0', 
+    modified: '2023-01-01', 
+    modifiedBy: 'John Doe',
+    size: '1.2 MB',
+    comment: 'Initial version'
+  },
+  { 
+    id: '2', 
+    version: '1.1', 
+    modified: '2023-02-15', 
+    modifiedBy: 'Jane Smith',
+    size: '1.3 MB'
+  },
+  { 
+    id: '3', 
+    version: '1.2', 
+    modified: '2023-03-20', 
+    modifiedBy: 'John Doe',
+    size: '1.4 MB',
+    comment: 'Added executive summary'
+  },
 ];
 
 const MOCK_RELATED_DOCUMENTS: Document[] = [
@@ -113,7 +149,7 @@ const DocumentDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [document, setDocument] = useState<Document | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [versions, setVersions] = useState(MOCK_VERSIONS);
+  const [versions, setVersions] = useState<Version[]>(MOCK_VERSIONS);
   const [relatedDocuments, setRelatedDocuments] = useState<Document[]>(MOCK_RELATED_DOCUMENTS);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -127,7 +163,7 @@ const DocumentDetails = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      <Header />
+      {/* Removed Header component reference */}
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto py-6 px-4 md:px-6">
           <div className="mb-6">

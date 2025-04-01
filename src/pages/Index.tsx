@@ -11,6 +11,8 @@ import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
 import { Button } from '@/components/ui/button';
 import { Upload, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { FileUploadDialog } from '@/components/FileUploadDialog';
+import { useNavigate } from 'react-router-dom';
 
 const mockDocuments: Document[] = [
   {
@@ -169,7 +171,9 @@ const Index = () => {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const {
     roles,
@@ -231,7 +235,7 @@ const Index = () => {
 
   const handleDocumentClick = (document: Document) => {
     if (selectedRole && document.type !== 'folder') {
-      downloadFile(document.name);
+      downloadFile();
     } else {
       toast({
         title: "Документ выбран",
@@ -283,8 +287,8 @@ const Index = () => {
     if (selectedRole && selectedDocumentIds.length > 0) {
       const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
       
-      selectedDocuments.forEach(doc => {
-        deleteFile(doc.name);
+      selectedDocuments.forEach(() => {
+        deleteFile();
       });
       
       setSelectedDocumentIds([]);
@@ -305,8 +309,8 @@ const Index = () => {
     if (selectedRole && selectedDocumentIds.length > 0) {
       const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
       
-      selectedDocuments.forEach(doc => {
-        downloadFile(doc.name);
+      selectedDocuments.forEach(() => {
+        downloadFile();
       });
     } else {
       toast({
@@ -371,7 +375,7 @@ const Index = () => {
 
   const handleUpload = () => {
     if (fileToUpload) {
-      uploadFile(fileToUpload);
+      uploadFile();
       setFileToUpload(null);
       const fileInput = document.getElementById('file-upload') as HTMLInputElement;
       if (fileInput) {
@@ -388,8 +392,31 @@ const Index = () => {
 
   const handleRefresh = () => {
     if (selectedRole) {
-      fetchDocumentsByRole(selectedRole);
+      fetchDocumentsByRole();
     }
+  };
+
+  const handleSelectDestination = (destination: 'downloads' | 'new') => {
+    toast({
+      title: "Папка выбрана",
+      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
+    });
+  };
+
+  const handleCreateFolder = () => {
+    toast({
+      title: "Создание новой папки",
+      description: "Функция создания новой папки будет реализована в будущем.",
+    });
+  };
+
+  const handleUploadToDestination = () => {
+    toast({
+      title: "Переход к загрузке",
+      description: "Переход на страницу загрузки файлов.",
+    });
+    setShowUploadDialog(false);
+    navigate('/upload');
   };
 
   return (
@@ -409,43 +436,27 @@ const Index = () => {
                 setViewMode={setViewMode}
               />
               
-              <RoleSelector 
-                roles={roles} 
-                selectedRole={selectedRole}
-                onRoleChange={handleRoleChange}
-                isLoading={isLoading}
-              />
+              <div className="mt-4 flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Обновить
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => setShowUploadDialog(true)}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Загрузить
+                </Button>
+              </div>
               
-              {selectedRole && (
-                <div className="mb-6 p-4 border rounded-md bg-muted/30">
-                  <h3 className="text-md font-medium mb-3">Загрузить файл в папку {selectedRole}</h3>
-                  <div className="flex flex-wrap gap-3 items-center">
-                    <Input
-                      id="file-upload"
-                      type="file"
-                      onChange={handleFileChange}
-                      className="w-auto flex-1"
-                    />
-                    <Button 
-                      onClick={handleUpload} 
-                      disabled={!fileToUpload || isLoading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Загрузить
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleRefresh}
-                      disabled={isLoading}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Обновить
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-6 animate-fade-in">
+              <div className="mt-4 animate-fade-in">
                 <DocumentGrid 
                   documents={documents} 
                   onDocumentClick={handleDocumentClick}
@@ -479,6 +490,14 @@ const Index = () => {
           </>
         )}
       </ResizablePanelGroup>
+      
+      <FileUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onSelectDestination={handleSelectDestination}
+        onCreateFolder={handleCreateFolder}
+        onUpload={handleUploadToDestination}
+      />
     </div>
   );
 };
