@@ -27,6 +27,7 @@ interface User {
   email: string;
   avatar?: string;
   role: 'admin' | 'editor' | 'viewer';
+  department: string;
 }
 
 // Mock users with permissions
@@ -36,33 +37,38 @@ const MOCK_USERS: User[] = [
     name: 'Алексей Петров',
     email: 'a.petrov@example.com',
     avatar: '/assets/avatars/avatar1.jpg',
-    role: 'admin'
+    role: 'admin',
+    department: 'Руководители'
   },
   {
     id: 'user2',
     name: 'Мария Иванова',
     email: 'm.ivanova@example.com',
     avatar: '/assets/avatars/avatar2.jpg',
-    role: 'editor'
+    role: 'editor',
+    department: 'Documentation Center-Документооборот'
   },
   {
     id: 'user3',
     name: 'Николай Смирнов',
     email: 'n.smirnov@example.com',
     avatar: '/assets/avatars/avatar3.jpg',
-    role: 'viewer'
+    role: 'viewer',
+    department: 'Руководители'
   },
   {
     id: 'user4',
     name: 'Елена Козлова',
     email: 'e.kozlova@example.com',
-    role: 'editor'
+    role: 'editor',
+    department: 'Documentation Center-Документооборот'
   },
   {
     id: 'user5',
     name: 'Дмитрий Соколов',
     email: 'd.sokolov@example.com',
-    role: 'viewer'
+    role: 'viewer',
+    department: 'Руководители'
   }
 ];
 
@@ -123,6 +129,7 @@ export function PermissionManager({ documentId, onUpdatePermission }: Permission
             <TableRow>
               <TableHead className="w-[250px]">Пользователь</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Департамент</TableHead>
               <TableHead className="w-[120px]">Права</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
@@ -140,6 +147,7 @@ export function PermissionManager({ documentId, onUpdatePermission }: Permission
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                <TableCell>{user.department}</TableCell>
                 <TableCell>{getRoleBadge(user.role)}</TableCell>
                 <TableCell>
                   <DropdownMenu>
