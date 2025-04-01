@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { CalendarIcon, Check } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -26,7 +27,6 @@ import {
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { Document } from '@/types/document';
-import { useToast } from "@/components/ui/use-toast";
 
 // Mock data
 const TEAM_MEMBERS = [
@@ -59,7 +59,6 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
   const [open, setOpen] = React.useState(false);
   const [openAssets, setOpenAssets] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState(""); // For filtering assets
-  const { toast } = useToast();
 
   const handleDateChange = (date: Date | undefined) => {
     setDueDate(date);
@@ -92,13 +91,6 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
     if (onUpdate) {
       onUpdate("linkedAssets", newAssets);
     }
-  };
-
-  const handleSubmit = () => {
-    toast({
-      title: "Метаданные обновлены",
-      description: `Уведомления отправлены ответственному инженеру: ${engineer || "не выбрано"}`,
-    });
   };
 
   // Filter assets based on search input
@@ -168,12 +160,7 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-full p-0">
-              <Command 
-                groups={[]} 
-                items={[]} 
-                rootIds={[]} 
-                commands={[]}
-              >
+              <Command>
                 <CommandInput 
                   placeholder="Поиск объектов..." 
                   value={searchValue}
@@ -217,11 +204,6 @@ export function CustomFieldsPanel({ document, onUpdate }: CustomFieldsPanelProps
           )}
         </div>
       </CardContent>
-      <CardFooter>
-        <Button onClick={handleSubmit} className="ml-auto">
-          Подтвердить
-        </Button>
-      </CardFooter>
     </Card>
   );
 }
