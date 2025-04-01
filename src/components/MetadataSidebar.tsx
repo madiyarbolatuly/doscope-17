@@ -20,17 +20,6 @@ import { PermissionManager } from '@/components/permissions/PermissionManager';
 import { VersionHistoryList } from '@/components/VersionHistoryList';
 import { useToast } from '@/hooks/use-toast';
 
-// Define the proper activity type
-type ActivityAction = "viewed" | "modified" | "commented" | "uploaded" | "deleted" | "restored" | "downloaded" | "shared";
-
-interface Activity {
-  id: string;
-  action: ActivityAction;
-  timestamp: string;
-  user: string;
-  date: string;
-}
-
 interface MetadataSidebarProps {
   document?: Document;
   onClose: () => void;
@@ -71,8 +60,8 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
   const fileExtension = document.name.split('.').pop()?.toUpperCase() || '';
   const modifiedDate = new Date(document.modified);
 
-  // Mock data for activities with correct type
-  const activities: Activity[] = [
+  // Mock data for activities
+  const activities = [
     {
       id: '1',
       action: "viewed",

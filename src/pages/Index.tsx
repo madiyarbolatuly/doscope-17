@@ -1,13 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
-import { ResizablePanelGroup, ResizablePanel } from '@/components/ui/resizable';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
+import { RoleSelector } from '@/components/RoleSelector';
 import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Upload, RefreshCw, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
 
@@ -243,17 +248,27 @@ const Index = () => {
   };
 
   const handleFolderOpen = (folder: Document) => {
+    // In a real app, this would load the contents of the folder
     toast({
       title: "Открытие папки",
       description: `Открытие папки: ${folder.name}`,
     });
     
+    // Add folder to current path
     setCurrentPath([...currentPath, folder]);
   };
 
   const handlePreviewFile = (file: Document) => {
+    // Show document details sidebar
     setSelectedDocument(file);
     setShowSidebar(true);
+  };
+
+  const handleEditFile = (file: Document) => {
+    toast({
+      title: "Редактирование файла",
+      description: `Редактирование файла: ${file.name}`,
+    });
   };
 
   const handleDocumentSelect = (document: Document) => {
@@ -402,52 +417,89 @@ const Index = () => {
     }
   };
 
+  const handleRefresh = () => {
+    if (selectedRole) {
+      fetchDocumentsByRole();
+    }
+  };
+
+  const handleSelectDestination = (destination: 'downloads' | 'new') => {
+    toast({
+      title: "Папка выбрана",
+      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
+    });
+  };
+
+  const handleCreateFolder = () => {
+    toast({
+      title: "Создание новой папки",
+      description: "Функция создания новой папки будет реализована в будущем.",
+    });
+  };
+
+  const handleUploadToDestination = () => {
+    toast({
+      title: "Переход к загрузке",
+      description: "Переход на страницу загрузки файлов.",
+    });
+    setShowUploadDialog(false);
+    navigate('/upload');
+  };
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
       
-      <main className="flex-1 h-full overflow-hidden flex flex-col">
-        <div className="p-6 flex-1 overflow-auto">
-          <PageHeader 
-            title={getCategoryTitle(category)}
-            categoryType={category}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-          />
-          
-          <div className="mt-4 animate-fade-in">
-            <DocumentGrid 
-              documents={documents} 
-              onDocumentClick={handleDocumentClick}
-              viewMode={viewMode}
-              selectedDocument={selectedDocument}
-              onDocumentSelect={handleDocumentSelect}
-              multipleSelection={true}
-              selectionActions={{
-                selectedIds: selectedDocumentIds,
-                onSelectAll: handleSelectAll,
-                onClearSelection: handleClearSelection,
-                onDeleteSelected: handleDeleteSelected,
-                onDownloadSelected: handleDownloadSelected,
-                onShareSelected: handleShareSelected
-              }}
-              onFolderOpen={handleFolderOpen}
-              onPreviewFile={handlePreviewFile}
-            />
-          </div>
-        </div>
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel defaultSize={showSidebar ? 70 : 100} minSize={30}>
+          <main className="h-full overflow-auto">
+            <div className="p-6">
+              <PageHeader 
+                title={getCategoryTitle(category)}
+                categoryType={category}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+              />
+              
+              <div className="mt-4 animate-fade-in">
+                <DocumentGrid 
+                  documents={documents} 
+                  onDocumentClick={handleDocumentClick}
+                  viewMode={viewMode}
+                  selectedDocument={selectedDocument}
+                  onDocumentSelect={handleDocumentSelect}
+                  multipleSelection={true}
+                  selectionActions={{
+                    selectedIds: selectedDocumentIds,
+                    onSelectAll: handleSelectAll,
+                    onClearSelection: handleClearSelection,
+                    onDeleteSelected: handleDeleteSelected,
+                    onDownloadSelected: handleDownloadSelected,
+                    onShareSelected: handleShareSelected
+                  }}
+                  onFolderOpen={handleFolderOpen}
+                  onPreviewFile={handlePreviewFile}
+                  onEditFile={handleEditFile}
+                />
+              </div>
+            </div>
+          </main>
+        </ResizablePanel>
         
         {showSidebar && (
-          <div className="border-t h-1/2 overflow-hidden">
-            <MetadataSidebar 
-              document={selectedDocument || undefined} 
-              onClose={handleCloseSidebar} 
-            />
-          </div>
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={30} minSize={20}>
+              <MetadataSidebar 
+                document={selectedDocument || undefined} 
+                onClose={handleCloseSidebar} 
+              />
+            </ResizablePanel>
+          </>
         )}
-      </main>
+      </ResizablePanelGroup>
       
       <FileUploadDialog
         open={showUploadDialog}
