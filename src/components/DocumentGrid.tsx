@@ -1,12 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
-import { Document, MultipleSelectionActions } from '@/types/document';
+import React from 'react';
+import { Document } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
-import { FolderPlus, Upload, Check, Trash, Download, Share2, X } from 'lucide-react';
+import { FolderPlus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocumentListItem } from './DocumentListItem';
 import { cn } from '@/lib/utils';
-import { Checkbox } from '@/components/ui/checkbox';
 
 interface DocumentGridProps {
   documents: Document[];
@@ -14,8 +13,6 @@ interface DocumentGridProps {
   viewMode?: 'grid' | 'list';
   selectedDocument?: Document | null;
   onDocumentSelect: (document: Document) => void;
-  multipleSelection?: boolean;
-  selectionActions?: MultipleSelectionActions;
 }
 
 export function DocumentGrid({ 
@@ -23,81 +20,11 @@ export function DocumentGrid({
   onDocumentClick, 
   viewMode = 'grid',
   selectedDocument,
-  onDocumentSelect,
-  multipleSelection = false,
-  selectionActions
+  onDocumentSelect 
 }: DocumentGridProps) {
   // Separate folders and files
   const folders = documents.filter(doc => doc.type === 'folder');
   const files = documents.filter(doc => doc.type !== 'folder');
-  
-  // For shift+click functionality
-  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-  const [isShiftPressed, setIsShiftPressed] = useState(false);
-
-  // Event listeners for shift key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') {
-        setIsShiftPressed(true);
-      }
-    };
-    
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') {
-        setIsShiftPressed(false);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
-
-  // Handle multi-selection with shift key
-  const handleDocumentSelect = (document: Document, index: number) => {
-    if (!multipleSelection || !selectionActions) {
-      onDocumentSelect(document);
-      return;
-    }
-
-    if (isShiftPressed && lastSelectedIndex !== null) {
-      // Find all documents between lastSelectedIndex and current index
-      const allDocs = [...folders, ...files];
-      const startIdx = Math.min(lastSelectedIndex, index);
-      const endIdx = Math.max(lastSelectedIndex, index);
-      
-      const docsBetween = allDocs.slice(startIdx, endIdx + 1);
-      const idsToAdd = docsBetween.map(doc => doc.id).filter(id => !selectionActions.selectedIds.includes(id));
-      
-      // Add all documents in between to selection
-      if (selectionActions.selectedIds.includes(document.id)) {
-        onDocumentSelect(document); // Toggle current document
-      } else {
-        // Add all documents in between to selection
-        idsToAdd.forEach(id => {
-          const doc = allDocs.find(d => d.id === id);
-          if (doc) onDocumentSelect(doc);
-        });
-      }
-    } else {
-      // Regular toggle selection
-      onDocumentSelect(document);
-      setLastSelectedIndex(index);
-    }
-  };
-
-  const handleSelectAll = () => {
-    selectionActions?.onSelectAll?.();
-  };
-
-  const handleClearSelection = () => {
-    selectionActions?.onClearSelection?.();
-  };
 
   if (!documents.length) {
     return (
@@ -136,110 +63,21 @@ export function DocumentGrid({
     );
   }
 
-  // Render selection actions bar when items are selected
-  const renderSelectionActionsBar = () => {
-    if (!multipleSelection || !selectionActions || selectionActions.selectedIds.length === 0) return null;
-    
-    return (
-      <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md mb-4 sticky top-0 z-10 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <Checkbox 
-            checked={selectionActions.selectedIds.length === documents.length}
-            onCheckedChange={() => {
-              if (selectionActions.selectedIds.length === documents.length) {
-                handleClearSelection();
-              } else {
-                handleSelectAll();
-              }
-            }}
-          />
-          <span className="text-sm font-medium">
-            {selectionActions.selectedIds.length} selected
-          </span>
-        </div>
-        <div className="flex gap-2">
-          {selectionActions.onClearSelection && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleClearSelection}
-              className="flex items-center gap-1"
-            >
-              <X size={16} />
-              <span className="hidden md:inline">Cancel</span>
-            </Button>
-          )}
-          {selectionActions.onDownloadSelected && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={selectionActions.onDownloadSelected}
-              className="flex items-center gap-1"
-            >
-              <Download size={16} />
-              <span className="hidden md:inline">Download</span>
-            </Button>
-          )}
-          {selectionActions.onShareSelected && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={selectionActions.onShareSelected}
-              className="flex items-center gap-1"
-            >
-              <Share2 size={16} />
-              <span className="hidden md:inline">Share</span>
-            </Button>
-          )}
-          {selectionActions.onRestoreSelected && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={selectionActions.onRestoreSelected}
-              className="flex items-center gap-1"
-            >
-              <Check size={16} />
-              <span className="hidden md:inline">Restore</span>
-            </Button>
-          )}
-          {selectionActions.onDeleteSelected && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={selectionActions.onDeleteSelected}
-              className="flex items-center gap-1"
-            >
-              <Trash size={16} />
-              <span className="hidden md:inline">Delete</span>
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6">
-      {renderSelectionActionsBar()}
-      
       {viewMode === 'grid' ? (
         <div className="space-y-6">
           {folders.length > 0 && (
             <div>
               <h2 className="text-lg font-medium mb-3">Folders</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {folders.map((folder, index) => (
+                {folders.map((folder) => (
                   <DocumentCard 
                     key={folder.id} 
                     document={folder} 
                     onClick={onDocumentClick}
-                    isSelected={
-                      multipleSelection && selectionActions
-                        ? selectionActions.selectedIds.includes(folder.id)
-                        : selectedDocument?.id === folder.id
-                    }
-                    onSelect={() => handleDocumentSelect(folder, index)}
-                    multipleSelection={multipleSelection}
+                    isSelected={selectedDocument?.id === folder.id}
+                    onSelect={() => onDocumentSelect(folder)}
                   />
                 ))}
               </div>
@@ -250,18 +88,13 @@ export function DocumentGrid({
             <div>
               <h2 className="text-lg font-medium mb-3">Files</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {files.map((file, index) => (
+                {files.map((file) => (
                   <DocumentCard 
                     key={file.id} 
                     document={file} 
                     onClick={onDocumentClick}
-                    isSelected={
-                      multipleSelection && selectionActions
-                        ? selectionActions.selectedIds.includes(file.id)
-                        : selectedDocument?.id === file.id
-                    }
-                    onSelect={() => handleDocumentSelect(file, folders.length + index)}
-                    multipleSelection={multipleSelection}
+                    isSelected={selectedDocument?.id === file.id}
+                    onSelect={() => onDocumentSelect(file)}
                   />
                 ))}
               </div>
@@ -274,18 +107,13 @@ export function DocumentGrid({
             <div>
               <h2 className="text-lg font-medium mb-2">Folders</h2>
               <div className={cn("rounded-md border")}>
-                {folders.map((folder, index) => (
+                {folders.map((folder) => (
                   <DocumentListItem 
                     key={folder.id} 
                     document={folder} 
                     onClick={onDocumentClick}
-                    isSelected={
-                      multipleSelection && selectionActions
-                        ? selectionActions.selectedIds.includes(folder.id)
-                        : selectedDocument?.id === folder.id
-                    }
-                    onSelect={() => handleDocumentSelect(folder, index)}
-                    multipleSelection={multipleSelection}
+                    isSelected={selectedDocument?.id === folder.id}
+                    onSelect={() => onDocumentSelect(folder)}
                   />
                 ))}
               </div>
@@ -296,18 +124,13 @@ export function DocumentGrid({
             <div>
               <h2 className="text-lg font-medium mb-2">Files</h2>
               <div className={cn("rounded-md border")}>
-                {files.map((file, index) => (
+                {files.map((file) => (
                   <DocumentListItem 
                     key={file.id} 
                     document={file} 
                     onClick={onDocumentClick}
-                    isSelected={
-                      multipleSelection && selectionActions
-                        ? selectionActions.selectedIds.includes(file.id)
-                        : selectedDocument?.id === file.id
-                    }
-                    onSelect={() => handleDocumentSelect(file, folders.length + index)}
-                    multipleSelection={multipleSelection}
+                    isSelected={selectedDocument?.id === file.id}
+                    onSelect={() => onDocumentSelect(file)}
                   />
                 ))}
               </div>
