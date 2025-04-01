@@ -39,3 +39,14 @@ export type ActivityAction =
   | "restored" 
   | "downloaded" 
   | "shared";
+
+export interface MultipleSelectionActions {
+  selectedIds: string[];
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
+  onDeleteSelected?: () => void;
+  onRestoreSelected?: () => void;
+  onDownloadSelected?: () => void;
+  onMoveSelected?: () => void;
+  onShareSelected?: () => void;
+}
