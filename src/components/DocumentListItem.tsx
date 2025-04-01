@@ -6,7 +6,7 @@ import {
   FileText, File, FileSpreadsheet, 
   FileImage, Folder, MoreVertical, 
   Star, Download, Trash,
-  Share2, CheckCircle2, Eye, Edit
+  Share2, CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -106,39 +106,6 @@ export function DocumentListItem({
         {document.size || '-'}
       </div>
       
-      {!isFolder && (
-        <div className="flex-shrink-0 flex gap-1 mx-2">
-          {onPreview && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPreview(document);
-              }}
-              className="h-8 px-2"
-            >
-              <Eye className="h-4 w-4" />
-              <span className="sr-only">Просмотр</span>
-            </Button>
-          )}
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(document);
-              }}
-              className="h-8 px-2"
-            >
-              <Edit className="h-4 w-4" />
-              <span className="sr-only">Редактировать</span>
-            </Button>
-          )}
-        </div>
-      )}
-      
       <div className="flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -152,13 +119,11 @@ export function DocumentListItem({
             </DropdownMenuItem>
             {!isFolder && onPreview && (
               <DropdownMenuItem onClick={() => onPreview(document)}>
-                <Eye className="h-4 w-4 mr-2" />
                 Просмотр
               </DropdownMenuItem>
             )}
             {!isFolder && onEdit && (
               <DropdownMenuItem onClick={() => onEdit(document)}>
-                <Edit className="h-4 w-4 mr-2" />
                 Редактировать
               </DropdownMenuItem>
             )}

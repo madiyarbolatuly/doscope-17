@@ -6,7 +6,7 @@ import {
   FileText, File, FileSpreadsheet, 
   FileImage, MoreVertical, 
   Star, Calendar, User,
-  Folder, CheckCircle2, Eye, Edit
+  Folder, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -82,13 +82,11 @@ export function DocumentCard({
             </DropdownMenuItem>
             {!isFolder && onPreview && (
               <DropdownMenuItem onClick={() => onPreview(document)}>
-                <Eye className="h-4 w-4 mr-2" />
                 Просмотр
               </DropdownMenuItem>
             )}
             {!isFolder && onEdit && (
               <DropdownMenuItem onClick={() => onEdit(document)}>
-                <Edit className="h-4 w-4 mr-2" />
                 Редактировать
               </DropdownMenuItem>
             )}
@@ -143,39 +141,6 @@ export function DocumentCard({
               <span>{new Date(document.modified).toLocaleDateString()}</span>
             </div>
           </div>
-
-          {!isFolder && (
-            <div className="mt-3 flex gap-1">
-              {onPreview && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full text-xs py-1 h-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onPreview(document);
-                  }}
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  Просмотр
-                </Button>
-              )}
-              {onEdit && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full text-xs py-1 h-7"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(document);
-                  }}
-                >
-                  <Edit className="h-3 w-3 mr-1" />
-                  Редактировать
-                </Button>
-              )}
-            </div>
-          )}
         </div>
 
         {document.favorited && (
