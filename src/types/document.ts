@@ -15,38 +15,4 @@ export interface Document {
   favorited?: boolean;
 }
 
-export type CategoryType = 
-  | 'all' 
-  | 'recent' 
-  | 'shared' 
-  | 'favorites' 
-  | 'trash' 
-  | 'managers' 
-  | 'development' 
-  | 'procurement' 
-  | 'electrical' 
-  | 'weakening' 
-  | 'interface' 
-  | 'pse'
-  | string;
-
-export type ActivityAction = 
-  | "viewed" 
-  | "modified" 
-  | "commented" 
-  | "uploaded" 
-  | "deleted" 
-  | "restored" 
-  | "downloaded" 
-  | "shared";
-
-export interface MultipleSelectionActions {
-  selectedIds: string[];
-  onSelectAll?: () => void;
-  onClearSelection?: () => void;
-  onDeleteSelected?: () => void;
-  onRestoreSelected?: () => void;
-  onDownloadSelected?: () => void;
-  onMoveSelected?: () => void;
-  onShareSelected?: () => void;
-}
+export type CategoryType = 'all' | 'recent' | 'shared' | 'favorites' | 'trash' | string;

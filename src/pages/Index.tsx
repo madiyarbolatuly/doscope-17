@@ -1,17 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
-import { MetadataSidebar } from '@/components/MetadataSidebar';
-import { RoleSelector } from '@/components/RoleSelector';
-import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
-import { Button } from '@/components/ui/button';
-import { Upload, RefreshCw } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 
+// Mock data
 const mockDocuments: Document[] = [
   {
     id: '1',
@@ -124,40 +119,6 @@ const mockDocuments: Document[] = [
     modified: '2023-05-28T13:15:00',
     owner: 'HR Department',
     category: 'hr'
-  },
-  {
-    id: '13',
-    name: 'HR Documents',
-    type: 'folder',
-    modified: '2023-07-15T10:00:00',
-    owner: 'HR Department',
-    category: 'hr'
-  },
-  {
-    id: '14',
-    name: 'Financial Reports',
-    type: 'folder',
-    modified: '2023-07-12T14:30:00',
-    owner: 'Finance Department',
-    category: 'reports',
-    favorited: true
-  },
-  {
-    id: '15',
-    name: 'Marketing Materials',
-    type: 'folder',
-    modified: '2023-07-05T09:45:00',
-    owner: 'Marketing Team',
-    category: 'marketing'
-  },
-  {
-    id: '16',
-    name: 'Client Contracts',
-    type: 'folder',
-    modified: '2023-06-28T16:20:00',
-    owner: 'Legal Team',
-    category: 'contracts',
-    shared: true
   }
 ];
 
@@ -166,58 +127,30 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const {
-    roles,
-    selectedRole,
-    documents: roleDocuments,
-    isLoading,
-    handleRoleChange,
-    uploadFile,
-    downloadFile,
-    deleteFile,
-    fetchDocumentsByRole
-  } = useRoleBasedDocuments();
-
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-
+  // Filter documents based on category and search query
   useEffect(() => {
     let filteredDocs = [...mockDocuments];
     
-    if (selectedRole) {
-      filteredDocs = roleDocuments;
-    } else {
-      if (category !== 'all') {
-        if (category === 'favorites') {
-          filteredDocs = filteredDocs.filter(doc => doc.favorited);
-        } else if (category === 'shared') {
-          filteredDocs = filteredDocs.filter(doc => doc.shared);
-        } else if (category === 'recent') {
-          filteredDocs = [...filteredDocs]
-            .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
-            .slice(0, 5);
-        } else if (category === 'trash') {
-          filteredDocs = [];
-        } else {
-          if (category === 'managers') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'hr');
-          } else if (category === 'development') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'reports');
-          } else if (category === 'procurement') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'contracts');
-          } else if (category === 'electrical' || category === 'weakening' || category === 'interface' || category === 'pse') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'invoices' || doc.category === 'marketing');
-          } else {
-            filteredDocs = filteredDocs.filter(doc => doc.category === category);
-          }
-        }
+    // Apply category filter
+    if (category !== 'all') {
+      if (category === 'favorites') {
+        filteredDocs = filteredDocs.filter(doc => doc.favorited);
+      } else if (category === 'shared') {
+        filteredDocs = filteredDocs.filter(doc => doc.shared);
+      } else if (category === 'recent') {
+        // For demo purposes, we'll just show the 5 most recently modified
+        filteredDocs = [...filteredDocs]
+          .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
+          .slice(0, 5);
+      } else if (category !== 'trash') {
+        // Filter by specific category
+        filteredDocs = filteredDocs.filter(doc => doc.category === category);
       }
     }
     
+    // Apply search filter
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       filteredDocs = filteredDocs.filter(doc => 
@@ -227,168 +160,29 @@ const Index = () => {
     }
     
     setDocuments(filteredDocs);
-  }, [category, searchQuery, selectedRole, roleDocuments]);
+  }, [category, searchQuery]);
 
   const handleDocumentClick = (document: Document) => {
-    if (selectedRole && document.type !== 'folder') {
-      downloadFile();
-    } else {
-      toast({
-        title: "Документ выбран",
-        description: `Вы выбрали: ${document.name}`,
-      });
-    }
-  };
-
-  const handleDocumentSelect = (document: Document) => {
-    if (selectedDocumentIds.includes(document.id)) {
-      setSelectedDocumentIds(selectedDocumentIds.filter(id => id !== document.id));
-      
-      if (selectedDocument?.id === document.id) {
-        setSelectedDocument(null);
-        setShowSidebar(false);
-      }
-    } else {
-      setSelectedDocumentIds([...selectedDocumentIds, document.id]);
-      
-      if (selectedDocumentIds.length === 0) {
-        setSelectedDocument(document);
-        setShowSidebar(true);
-      }
-    }
-  };
-
-  const handleSelectAll = () => {
-    if (selectedDocumentIds.length === documents.length) {
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    } else {
-      setSelectedDocumentIds(documents.map(doc => doc.id));
-      
-      if (!selectedDocument && documents.length > 0) {
-        setSelectedDocument(documents[0]);
-        setShowSidebar(true);
-      }
-    }
-  };
-
-  const handleClearSelection = () => {
-    setSelectedDocumentIds([]);
-    setSelectedDocument(null);
-    setShowSidebar(false);
-  };
-
-  const handleDeleteSelected = () => {
-    if (selectedRole && selectedDocumentIds.length > 0) {
-      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-      
-      selectedDocuments.forEach(() => {
-        deleteFile();
-      });
-      
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    } else {
-      toast({
-        title: "Удаление документов",
-        description: `Выбрано ${selectedDocumentIds.length} документов для удаления`,
-      });
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    }
-  };
-
-  const handleDownloadSelected = () => {
-    if (selectedRole && selectedDocumentIds.length > 0) {
-      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-      
-      selectedDocuments.forEach(() => {
-        downloadFile();
-      });
-    } else {
-      toast({
-        title: "Скачивание документов",
-        description: `Выбрано ${selectedDocumentIds.length} документов для скачивания`,
-      });
-    }
-  };
-
-  const handleShareSelected = () => {
     toast({
-      title: "Общий доступ",
-      description: `Выбрано ${selectedDocumentIds.length} документов для общего доступа`,
+      title: "Document Selected",
+      description: `You selected: ${document.name}`,
     });
   };
 
-  const handleCloseSidebar = () => {
-    setSelectedDocument(null);
-    setShowSidebar(false);
-  };
-
   const getCategoryTitle = (type: CategoryType): string => {
-    if (selectedRole) {
-      return `Папка: ${selectedRole}`;
-    }
-    
     switch (type) {
       case 'all':
-        return 'Все документы';
+        return 'All Documents';
       case 'recent':
-        return 'Недавние документы';
+        return 'Recent Documents';
       case 'shared':
-        return 'Общий доступ';
+        return 'Shared with Me';
       case 'favorites':
-        return 'Избранное';
+        return 'Favorites';
       case 'trash':
-        return 'Корзина';
-      case 'managers':
-        return 'Руководители';
-      case 'development':
-        return 'Отдел развития';
-      case 'procurement':
-        return 'Прокюрмент';
-      case 'electrical':
-        return 'Электрические сети';
-      case 'weakening':
-        return 'Слаботочные системы';
-      case 'interface':
-        return 'Отдел интерфейс';
-      case 'pse':
-        return 'PSE DCC';
+        return 'Trash';
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFileToUpload(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = () => {
-    if (fileToUpload) {
-      uploadFile();
-      setFileToUpload(null);
-      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-    } else {
-      toast({
-        title: "Ошибка загрузки",
-        description: "Пожалуйста, выберите файл для загрузки",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleRefresh = () => {
-    if (selectedRole) {
-      fetchDocumentsByRole();
     }
   };
 
@@ -396,53 +190,23 @@ const Index = () => {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
       
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
-          <main className="h-full overflow-auto">
-            <div className="p-6">
-              <PageHeader 
-                title={getCategoryTitle(category)}
-                categoryType={category}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-              />
-              
-              <div className="mt-6 animate-fade-in">
-                <DocumentGrid 
-                  documents={documents} 
-                  onDocumentClick={handleDocumentClick}
-                  viewMode={viewMode}
-                  selectedDocument={selectedDocument}
-                  onDocumentSelect={handleDocumentSelect}
-                  multipleSelection={true}
-                  selectionActions={{
-                    selectedIds: selectedDocumentIds,
-                    onSelectAll: handleSelectAll,
-                    onClearSelection: handleClearSelection,
-                    onDeleteSelected: handleDeleteSelected,
-                    onDownloadSelected: handleDownloadSelected,
-                    onShareSelected: handleShareSelected
-                  }}
-                />
-              </div>
-            </div>
-          </main>
-        </ResizablePanel>
+      <main className="flex-1 overflow-auto p-6">
+        <PageHeader 
+          title={getCategoryTitle(category)}
+          categoryType={category}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+        />
         
-        {showSidebar && (
-          <>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25} minSize={20}>
-              <MetadataSidebar 
-                document={selectedDocument || undefined} 
-                onClose={handleCloseSidebar} 
-              />
-            </ResizablePanel>
-          </>
-        )}
-      </ResizablePanelGroup>
+        <div className="mt-6 animate-fade-in">
+          <DocumentGrid 
+            documents={documents} 
+            onDocumentClick={handleDocumentClick} 
+          />
+        </div>
+      </main>
     </div>
   );
 };

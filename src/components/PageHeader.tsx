@@ -2,68 +2,42 @@
 import React from 'react';
 import { SearchBar } from './SearchBar';
 import { Button } from '@/components/ui/button';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Grid2X2, List, Plus, Upload } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Grid, List, Plus, Upload } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 
 interface PageHeaderProps {
   title: string;
-  description?: string;
-  children?: React.ReactNode;
-  categoryType?: CategoryType;
-  searchQuery?: string;
-  setSearchQuery?: (query: string) => void;
-  viewMode?: 'grid' | 'list';
-  setViewMode?: (mode: 'grid' | 'list') => void;
+  categoryType: CategoryType;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  viewMode: 'grid' | 'list';
+  setViewMode: (mode: 'grid' | 'list') => void;
 }
 
 export function PageHeader({ 
   title, 
-  description,
-  children,
   categoryType,
   searchQuery, 
   setSearchQuery,
   viewMode,
   setViewMode
 }: PageHeaderProps) {
-  const getCategoryDescription = (type?: CategoryType) => {
-    if (!type) return description;
-    
+  const getCategoryDescription = (type: CategoryType) => {
     switch (type) {
       case 'all':
-        return 'Все документы в вашем рабочем пространстве';
+        return 'All documents in your workspace';
       case 'recent':
-        return 'Недавно открытые документы';
+        return 'Recently accessed documents';
       case 'shared':
-        return 'Документы, которыми поделились с вами';
+        return 'Documents shared with you';
       case 'favorites':
-        return 'Ваши избранные документы';
+        return 'Your favorite documents';
       case 'trash':
-        return 'Удаленные документы';
+        return 'Deleted documents';
       default:
-        return `Документы в категории ${type}`;
+        return `Documents in the ${type} category`;
     }
-  };
-
-  // Если children предоставлен, просто отображаем их вместо стандартных кнопок
-  const renderActions = () => {
-    if (children) {
-      return children;
-    }
-    
-    return (
-      <div className="flex gap-2">
-        <Button className="flex items-center gap-1">
-          <Plus size={16} />
-          <span>Новый</span>
-        </Button>
-        <Button variant="outline" className="flex items-center gap-1">
-          <Upload size={16} />
-          <span>Загрузить</span>
-        </Button>
-      </div>
-    );
   };
 
   return (
@@ -71,28 +45,45 @@ export function PageHeader({
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold">{title}</h1>
-          <p className="text-muted-foreground">{description || getCategoryDescription(categoryType)}</p>
+          <p className="text-muted-foreground">{getCategoryDescription(categoryType)}</p>
         </div>
-        {renderActions()}
+        <div className="flex gap-2">
+          <Button className="flex items-center gap-1">
+            <Plus size={16} />
+            <span>New</span>
+          </Button>
+          <Button variant="outline" className="flex items-center gap-1">
+            <Upload size={16} />
+            <span>Upload</span>
+          </Button>
+        </div>
       </div>
 
-      {(searchQuery !== undefined && setSearchQuery && viewMode !== undefined && setViewMode) && (
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-          <SearchBar query={searchQuery} setQuery={setSearchQuery} />
-          <div className="flex items-center gap-4">
-            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
-              <ToggleGroupItem value="grid" aria-label="Сетка">
-                <Grid2X2 className="h-4 w-4 mr-1" />
-                <span>Сетка</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="list" aria-label="Список">
-                <List className="h-4 w-4 mr-1" />
-                <span>Список</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+        <SearchBar query={searchQuery} setQuery={setSearchQuery} />
+        <div className="flex items-center gap-4">
+          <Tabs defaultValue={viewMode} className="w-[160px]">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger 
+                value="grid" 
+                onClick={() => setViewMode('grid')}
+                className="flex items-center gap-1"
+              >
+                <Grid size={16} />
+                <span>Grid</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="list" 
+                onClick={() => setViewMode('list')}
+                className="flex items-center gap-1"
+              >
+                <List size={16} />
+                <span>List</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-      )}
+      </div>
     </div>
   );
 }
