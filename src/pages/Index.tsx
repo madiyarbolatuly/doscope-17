@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { DocumentGrid } from '@/components/DocumentGrid';
@@ -9,7 +10,8 @@ import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { RoleSelector } from '@/components/RoleSelector';
 import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
 import { Button } from '@/components/ui/button';
-import { Upload, RefreshCw } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Upload, RefreshCw, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
@@ -172,6 +174,7 @@ const Index = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -242,6 +245,30 @@ const Index = () => {
         description: `Вы выбрали: ${document.name}`,
       });
     }
+  };
+
+  const handleFolderOpen = (folder: Document) => {
+    // In a real app, this would load the contents of the folder
+    toast({
+      title: "Открытие папки",
+      description: `Открытие папки: ${folder.name}`,
+    });
+    
+    // Add folder to current path
+    setCurrentPath([...currentPath, folder]);
+  };
+
+  const handlePreviewFile = (file: Document) => {
+    // Show document details sidebar
+    setSelectedDocument(file);
+    setShowSidebar(true);
+  };
+
+  const handleEditFile = (file: Document) => {
+    toast({
+      title: "Редактирование файла",
+      description: `Редактирование файла: ${file.name}`,
+    });
   };
 
   const handleDocumentSelect = (document: Document) => {
@@ -424,7 +451,7 @@ const Index = () => {
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
       
       <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
+        <ResizablePanel defaultSize={showSidebar ? 70 : 100} minSize={30}>
           <main className="h-full overflow-auto">
             <div className="p-6">
               <PageHeader 
@@ -452,6 +479,9 @@ const Index = () => {
                     onDownloadSelected: handleDownloadSelected,
                     onShareSelected: handleShareSelected
                   }}
+                  onFolderOpen={handleFolderOpen}
+                  onPreviewFile={handlePreviewFile}
+                  onEditFile={handleEditFile}
                 />
               </div>
             </div>
@@ -461,7 +491,7 @@ const Index = () => {
         {showSidebar && (
           <>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25} minSize={20}>
+            <ResizablePanel defaultSize={30} minSize={20}>
               <MetadataSidebar 
                 document={selectedDocument || undefined} 
                 onClose={handleCloseSidebar} 

@@ -6,7 +6,7 @@ import {
   FileText, File, FileSpreadsheet, 
   FileImage, MoreVertical, 
   Star, Calendar, User,
-  Folder, CheckCircle2
+  Folder, CheckCircle2, Eye, Edit
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -24,6 +24,8 @@ interface DocumentCardProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
+  onPreview?: (document: Document) => void;
+  onEdit?: (document: Document) => void;
 }
 
 export function DocumentCard({ 
@@ -31,7 +33,9 @@ export function DocumentCard({
   onClick, 
   isSelected, 
   onSelect,
-  multipleSelection = false
+  multipleSelection = false,
+  onPreview,
+  onEdit
 }: DocumentCardProps) {
   const renderIcon = () => {
     switch (document.type) {
@@ -73,19 +77,33 @@ export function DocumentCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onClick(document)}>Open</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onClick(document)}>
+              {isFolder ? 'Открыть' : 'Выбрать'}
+            </DropdownMenuItem>
+            {!isFolder && onPreview && (
+              <DropdownMenuItem onClick={() => onPreview(document)}>
+                <Eye className="h-4 w-4 mr-2" />
+                Просмотр
+              </DropdownMenuItem>
+            )}
+            {!isFolder && onEdit && (
+              <DropdownMenuItem onClick={() => onEdit(document)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Редактировать
+              </DropdownMenuItem>
+            )}
             {isFolder ? (
               <>
-                <DropdownMenuItem>New File</DropdownMenuItem>
-                <DropdownMenuItem>New Folder</DropdownMenuItem>
+                <DropdownMenuItem>Новый файл</DropdownMenuItem>
+                <DropdownMenuItem>Новая папка</DropdownMenuItem>
               </>
             ) : (
-              <DropdownMenuItem>Download</DropdownMenuItem>
+              <DropdownMenuItem>Скачать</DropdownMenuItem>
             )}
-            <DropdownMenuItem>Share</DropdownMenuItem>
-            <DropdownMenuItem>Rename</DropdownMenuItem>
+            <DropdownMenuItem>Поделиться</DropdownMenuItem>
+            <DropdownMenuItem>Переименовать</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">Удалить</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -125,6 +143,39 @@ export function DocumentCard({
               <span>{new Date(document.modified).toLocaleDateString()}</span>
             </div>
           </div>
+
+          {!isFolder && (
+            <div className="mt-3 flex gap-1">
+              {onPreview && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs py-1 h-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPreview(document);
+                  }}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  Просмотр
+                </Button>
+              )}
+              {onEdit && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-xs py-1 h-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(document);
+                  }}
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Редактировать
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {document.favorited && (
