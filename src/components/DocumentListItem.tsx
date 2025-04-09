@@ -25,6 +25,8 @@ interface DocumentListItemProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
+  onPreview?: (document: Document) => void;
+  onEdit?: (document: Document) => void;
 }
 
 export function DocumentListItem({ 
@@ -32,7 +34,9 @@ export function DocumentListItem({
   onClick, 
   isSelected, 
   onSelect,
-  multipleSelection = false
+  multipleSelection = false,
+  onPreview,
+  onEdit
 }: DocumentListItemProps) {
   const renderIcon = () => {
     switch (document.type) {
@@ -52,7 +56,8 @@ export function DocumentListItem({
   };
 
   const modifiedDate = new Date(document.modified);
-  const formattedDate = format(modifiedDate, 'MMM d, yyyy');
+  const formattedDate = format(modifiedDate, 'dd.MM.yyyy');
+  const isFolder = document.type === 'folder';
   
   return (
     <div 
@@ -101,7 +106,7 @@ export function DocumentListItem({
         {document.size || '-'}
       </div>
       
-      <div className="flex-shrink-0 hidden group-hover:flex opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
@@ -109,26 +114,38 @@ export function DocumentListItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onClick(document)}>Open</DropdownMenuItem>
-            {document.type === 'folder' ? (
+            <DropdownMenuItem onClick={() => onClick(document)}>
+              {isFolder ? 'Открыть' : 'Выбрать'}
+            </DropdownMenuItem>
+            {!isFolder && onPreview && (
+              <DropdownMenuItem onClick={() => onPreview(document)}>
+                Просмотр
+              </DropdownMenuItem>
+            )}
+            {!isFolder && onEdit && (
+              <DropdownMenuItem onClick={() => onEdit(document)}>
+                Редактировать
+              </DropdownMenuItem>
+            )}
+            {isFolder ? (
               <>
-                <DropdownMenuItem>New File</DropdownMenuItem>
-                <DropdownMenuItem>New Folder</DropdownMenuItem>
+                <DropdownMenuItem>Новый файл</DropdownMenuItem>
+                <DropdownMenuItem>Новая папка</DropdownMenuItem>
               </>
             ) : (
               <DropdownMenuItem>
                 <Download className="h-4 w-4 mr-2" />
-                Download
+                Скачать
               </DropdownMenuItem>
             )}
             <DropdownMenuItem>
               <Share2 className="h-4 w-4 mr-2" />
-              Share
+              Поделиться
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive">
               <Trash className="h-4 w-4 mr-2" />
-              Delete
+              Удалить
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

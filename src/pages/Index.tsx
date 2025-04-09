@@ -4,13 +4,10 @@ import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { ResizablePanelGroup, ResizablePanel } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
-import { RoleSelector } from '@/components/RoleSelector';
 import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
 import { Button } from '@/components/ui/button';
-import { Upload, RefreshCw } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
 
@@ -172,6 +169,7 @@ const Index = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -242,6 +240,20 @@ const Index = () => {
         description: `Вы выбрали: ${document.name}`,
       });
     }
+  };
+
+  const handleFolderOpen = (folder: Document) => {
+    toast({
+      title: "Открытие папки",
+      description: `Открытие папки: ${folder.name}`,
+    });
+    
+    setCurrentPath([...currentPath, folder]);
+  };
+
+  const handlePreviewFile = (file: Document) => {
+    setSelectedDocument(file);
+    setShowSidebar(true);
   };
 
   const handleDocumentSelect = (document: Document) => {
@@ -390,86 +402,52 @@ const Index = () => {
     }
   };
 
-  const handleRefresh = () => {
-    if (selectedRole) {
-      fetchDocumentsByRole();
-    }
-  };
-
-  const handleSelectDestination = (destination: 'downloads' | 'new') => {
-    toast({
-      title: "Папка выбрана",
-      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
-    });
-  };
-
-  const handleCreateFolder = () => {
-    toast({
-      title: "Создание новой папки",
-      description: "Функция создания новой папки будет реализована в будущем.",
-    });
-  };
-
-  const handleUploadToDestination = () => {
-    toast({
-      title: "Переход к загрузке",
-      description: "Переход на страницу загрузки файлов.",
-    });
-    setShowUploadDialog(false);
-    navigate('/upload');
-  };
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar activeCategory={category} onCategoryChange={setCategory} />
       
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
-          <main className="h-full overflow-auto">
-            <div className="p-6">
-              <PageHeader 
-                title={getCategoryTitle(category)}
-                categoryType={category}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                viewMode={viewMode}
-                setViewMode={setViewMode}
-              />
-              
-              <div className="mt-4 animate-fade-in">
-                <DocumentGrid 
-                  documents={documents} 
-                  onDocumentClick={handleDocumentClick}
-                  viewMode={viewMode}
-                  selectedDocument={selectedDocument}
-                  onDocumentSelect={handleDocumentSelect}
-                  multipleSelection={true}
-                  selectionActions={{
-                    selectedIds: selectedDocumentIds,
-                    onSelectAll: handleSelectAll,
-                    onClearSelection: handleClearSelection,
-                    onDeleteSelected: handleDeleteSelected,
-                    onDownloadSelected: handleDownloadSelected,
-                    onShareSelected: handleShareSelected
-                  }}
-                />
-              </div>
-            </div>
-          </main>
-        </ResizablePanel>
+      <main className="flex-1 h-full overflow-hidden flex flex-col">
+        <div className="p-6 flex-1 overflow-auto">
+          <PageHeader 
+            title={getCategoryTitle(category)}
+            categoryType={category}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
+          
+          <div className="mt-4 animate-fade-in">
+            <DocumentGrid 
+              documents={documents} 
+              onDocumentClick={handleDocumentClick}
+              viewMode={viewMode}
+              selectedDocument={selectedDocument}
+              onDocumentSelect={handleDocumentSelect}
+              multipleSelection={true}
+              selectionActions={{
+                selectedIds: selectedDocumentIds,
+                onSelectAll: handleSelectAll,
+                onClearSelection: handleClearSelection,
+                onDeleteSelected: handleDeleteSelected,
+                onDownloadSelected: handleDownloadSelected,
+                onShareSelected: handleShareSelected
+              }}
+              onFolderOpen={handleFolderOpen}
+              onPreviewFile={handlePreviewFile}
+            />
+          </div>
+        </div>
         
         {showSidebar && (
-          <>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={25} minSize={20}>
-              <MetadataSidebar 
-                document={selectedDocument || undefined} 
-                onClose={handleCloseSidebar} 
-              />
-            </ResizablePanel>
-          </>
+          <div className="border-t h-1/2 overflow-hidden">
+            <MetadataSidebar 
+              document={selectedDocument || undefined} 
+              onClose={handleCloseSidebar} 
+            />
+          </div>
         )}
-      </ResizablePanelGroup>
+      </main>
       
       <FileUploadDialog
         open={showUploadDialog}
