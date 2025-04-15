@@ -8,6 +8,7 @@ export interface User {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
   user: User;
 }
@@ -16,4 +17,5 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   token: string | null;
+  refreshToken: string | null;
 }
