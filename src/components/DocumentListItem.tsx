@@ -6,7 +6,7 @@ import {
   FileText, File, FileSpreadsheet, 
   FileImage, Folder, MoreVertical, 
   Star, Download, Trash,
-  Share2, CheckCircle2
+  Share2, CheckCircle2, Check
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DocumentListItemProps {
   document: Document;
@@ -57,7 +63,7 @@ export function DocumentListItem({
   return (
     <div 
       className={cn(
-        "flex items-center py-2 px-4 hover:bg-accent/50 border-b last:border-0",
+        "group flex items-center py-2 px-4 hover:bg-accent/50 border-b last:border-0",
         isSelected ? "bg-primary/5" : "bg-card"
       )}
       onClick={(e) => {
@@ -67,7 +73,43 @@ export function DocumentListItem({
       onDoubleClick={() => onClick(document)}
     >
       <div className="flex items-center gap-3 flex-1">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 relative">
+          {/* Selection state display */}
+          <div className={cn(
+            "absolute -left-1 -top-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity",
+            isSelected && "opacity-100"
+          )}>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-5 w-5 p-0 rounded-full bg-background/80 backdrop-blur-sm hover:bg-accent"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelect();
+                    }}
+                  >
+                    {isSelected ? (
+                      multipleSelection ? (
+                        <Checkbox checked className="h-3.5 w-3.5" />
+                      ) : (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                      )
+                    ) : (
+                      <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>{isSelected ? "Deselect" : "Select"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          {/* Regular icon or selected state display */}
           {isSelected ? (
             multipleSelection ? (
               <Checkbox checked className="h-5 w-5" />
@@ -101,7 +143,7 @@ export function DocumentListItem({
         {document.size || '-'}
       </div>
       
-      <div className="flex-shrink-0 hidden group-hover:flex opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
