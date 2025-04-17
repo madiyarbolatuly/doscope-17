@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { PageHeader } from '@/components/PageHeader';
@@ -8,7 +7,10 @@ import { Document, CategoryType } from '@/types/document';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Upload, Download, Users, HardDrive } from 'lucide-react';
+import { FileText, Upload, Download, Users, HardDrive, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileUploadDialog } from '@/components/FileUploadDialog';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock documents data
 const MOCK_DOCUMENTS: Document[] = [
@@ -85,7 +87,9 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const filteredDocuments = MOCK_DOCUMENTS.filter(doc => {
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -106,6 +110,29 @@ const Dashboard = () => {
     setSelectedDocument(document);
   };
 
+  const handleSelectDestination = (destination: 'downloads' | 'new') => {
+    toast({
+      title: "Папка выбрана",
+      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
+    });
+  };
+
+  const handleCreateFolder = () => {
+    toast({
+      title: "Обновление",
+      description: "Список файлов обновлен.",
+    });
+  };
+
+  const handleUploadToDestination = () => {
+    toast({
+      title: "Загрузка файлов",
+      description: "Переход на страницу загрузки файлов.",
+    });
+    setShowUploadDialog(false);
+    navigate('/upload');
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
@@ -119,7 +146,25 @@ const Dashboard = () => {
             setSearchQuery={setSearchQuery}
             viewMode={viewMode}
             setViewMode={setViewMode}
-          />
+          >
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+                onClick={() => {}}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Обновить
+              </Button>
+              <Button 
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowUploadDialog(true)}
+              >
+                <Upload className="h-4 w-4" />
+                Загрузить
+              </Button>
+            </div>
+          </PageHeader>
           
           {activeCategory === 'all' && (
             <div className="mb-8">
@@ -208,6 +253,14 @@ const Dashboard = () => {
           />
         </div>
       </div>
+      
+      <FileUploadDialog 
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onSelectDestination={handleSelectDestination}
+        onCreateFolder={handleCreateFolder}
+        onUpload={handleUploadToDestination}
+      />
     </div>
   );
 };

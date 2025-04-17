@@ -436,26 +436,6 @@ const Index = () => {
                 setViewMode={setViewMode}
               />
               
-              <div className="mt-4 flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Обновить
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={() => setShowUploadDialog(true)}
-                  className="gap-2"
-                >
-                  <Upload className="h-4 w-4" />
-                  Загрузить
-                </Button>
-              </div>
-              
               <div className="mt-4 animate-fade-in">
                 <DocumentGrid 
                   documents={documents} 
