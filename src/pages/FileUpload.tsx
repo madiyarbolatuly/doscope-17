@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -5,6 +6,7 @@ import { FileUploader } from "@/components/FileUploader";
 import { FileUploadDialog } from "@/components/FileUploadDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -15,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -229,7 +232,15 @@ const FileUpload = () => {
                   </Select>
                 </div>
                 
-                {/* Removed the automatic tagging and sharing after upload switches */}
+                <div className="flex items-center space-x-2">
+                  <Switch id="auto-tag" />
+                  <Label htmlFor="auto-tag">Автоматическое тегирование</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch id="share-upload" />
+                  <Label htmlFor="share-upload">Поделиться после загрузки</Label>
+                </div>
               </div>
             </CardContent>
           </Card>

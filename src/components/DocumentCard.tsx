@@ -24,8 +24,6 @@ interface DocumentCardProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
-  onPreview?: (document: Document) => void;
-  onEdit?: (document: Document) => void;
 }
 
 export function DocumentCard({ 
@@ -33,9 +31,7 @@ export function DocumentCard({
   onClick, 
   isSelected, 
   onSelect,
-  multipleSelection = false,
-  onPreview,
-  onEdit
+  multipleSelection = false
 }: DocumentCardProps) {
   const renderIcon = () => {
     switch (document.type) {
@@ -77,31 +73,19 @@ export function DocumentCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onClick(document)}>
-              {isFolder ? 'Открыть' : 'Выбрать'}
-            </DropdownMenuItem>
-            {!isFolder && onPreview && (
-              <DropdownMenuItem onClick={() => onPreview(document)}>
-                Просмотр
-              </DropdownMenuItem>
-            )}
-            {!isFolder && onEdit && (
-              <DropdownMenuItem onClick={() => onEdit(document)}>
-                Редактировать
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem onClick={() => onClick(document)}>Open</DropdownMenuItem>
             {isFolder ? (
               <>
-                <DropdownMenuItem>Новый файл</DropdownMenuItem>
-                <DropdownMenuItem>Новая папка</DropdownMenuItem>
+                <DropdownMenuItem>New File</DropdownMenuItem>
+                <DropdownMenuItem>New Folder</DropdownMenuItem>
               </>
             ) : (
-              <DropdownMenuItem>Скачать</DropdownMenuItem>
+              <DropdownMenuItem>Download</DropdownMenuItem>
             )}
-            <DropdownMenuItem>Поделиться</DropdownMenuItem>
-            <DropdownMenuItem>Переименовать</DropdownMenuItem>
+            <DropdownMenuItem>Share</DropdownMenuItem>
+            <DropdownMenuItem>Rename</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Удалить</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -1,21 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  
+
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -24,53 +18,16 @@ const Auth = () => {
   const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
 
-  const { login, isLoggingIn, register, isRegistering, isAuthenticated } = useAuth();
-
-  useEffect(() => {
-    // Redirect to home if already authenticated
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    
-    if (!loginEmail || !loginPassword) {
-      setError('Please fill in all fields');
-      return;
-    }
-    
-    try {
-      await login({ email: loginEmail, password: loginPassword });
-    } catch (err) {
-      console.error('Login error:', err);
-      // Error is handled in the mutation
-    }
+    console.log('Login attempt with:', { loginEmail, loginPassword });
+    // In a real app, you'd call your authentication API here
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    
-    if (!registerName || !registerEmail) {
-      setError('Please fill in all fields');
-      return;
-    }
-    
-    try {
-      await register({ name: registerName, email: registerEmail });
-      // Reset form after successful submission
-      setRegisterName('');
-      setRegisterEmail('');
-      // Show success message and switch to login tab
-      toast.success('Registration request submitted. Admin will review and create your account.');
-      setActiveTab('login');
-    } catch (err) {
-      console.error('Registration error:', err);
-      // Error is handled in the mutation
-    }
+    console.log('Register request with:', { registerName, registerEmail });
+    // In a real app, you'd call your registration API here
   };
 
   return (
@@ -84,13 +41,6 @@ const Auth = () => {
         </div>
 
         <div className="bg-card rounded-lg border shadow-sm p-6">
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Вход</TabsTrigger>
@@ -111,7 +61,6 @@ const Auth = () => {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       required
-                      disabled={isLoggingIn}
                     />
                   </div>
                 </div>
@@ -133,7 +82,6 @@ const Auth = () => {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
-                      disabled={isLoggingIn}
                     />
                     <Button
                       type="button"
@@ -141,7 +89,6 @@ const Auth = () => {
                       size="icon"
                       className="absolute right-2 top-2 h-6 w-6"
                       onClick={() => setShowPassword(!showPassword)}
-                      disabled={isLoggingIn}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -152,8 +99,8 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                  {isLoggingIn ? 'Вход...' : 'Войти'}
+                <Button type="submit" className="w-full">
+                  Войти
                 </Button>
               </form>
             </TabsContent>
@@ -172,7 +119,6 @@ const Auth = () => {
                       value={registerName}
                       onChange={(e) => setRegisterName(e.target.value)}
                       required
-                      disabled={isRegistering}
                     />
                   </div>
                 </div>
@@ -189,7 +135,6 @@ const Auth = () => {
                       value={registerEmail}
                       onChange={(e) => setRegisterEmail(e.target.value)}
                       required
-                      disabled={isRegistering}
                     />
                   </div>
                 </div>
@@ -198,8 +143,8 @@ const Auth = () => {
                   После отправки запроса администратор создаст учетную запись и отправит вам данные для входа.
                 </p>
 
-                <Button type="submit" className="w-full" disabled={isRegistering}>
-                  {isRegistering ? 'Отправка...' : 'Отправить запрос'}
+                <Button type="submit" className="w-full">
+                  Отправить запрос
                 </Button>
               </form>
             </TabsContent>

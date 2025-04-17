@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Folder, FolderPlus, RefreshCw, Upload, X } from 'lucide-react';
+import { Folder, FolderPlus, Plus, Share2, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface FileUploadDialogProps {
@@ -32,15 +32,26 @@ export function FileUploadDialog({
       <DialogContent className="sm:max-w-md p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-0 flex justify-between items-center">
           <DialogTitle className="text-xl font-bold text-left">Куда загрузить?</DialogTitle>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full w-8 h-8"
-            onClick={() => onOpenChange(false)}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Закрыть</span>
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full w-8 h-8 bg-muted hover:bg-muted/80"
+              onClick={() => onOpenChange(false)}
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="sr-only">Поделиться</span>
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full w-8 h-8"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Закрыть</span>
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="p-6 pt-4 space-y-3">
@@ -74,18 +85,11 @@ export function FileUploadDialog({
         </div>
 
         <div className="flex items-center justify-between p-6 pt-2 border-t">
-          <Button 
-            variant="outline" 
-            onClick={onCreateFolder} 
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Обновить
+          <Button onClick={onCreateFolder} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Новая папка
           </Button>
-          <Button 
-            onClick={onUpload} 
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-          >
+          <Button onClick={onUpload} variant="outline" className="gap-2">
             <Upload className="h-4 w-4" />
             Загрузить
           </Button>

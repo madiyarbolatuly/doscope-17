@@ -2,12 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Document, MultipleSelectionActions } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
-import { FolderPlus, Upload, Check, Trash, Download, Share2, X, Eye, Edit } from 'lucide-react';
+import { FolderPlus, Upload, Check, Trash, Download, Share2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocumentListItem } from './DocumentListItem';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
 
 interface DocumentGridProps {
   documents: Document[];
@@ -17,9 +16,6 @@ interface DocumentGridProps {
   onDocumentSelect: (document: Document) => void;
   multipleSelection?: boolean;
   selectionActions?: MultipleSelectionActions;
-  onFolderOpen?: (folder: Document) => void;
-  onPreviewFile?: (file: Document) => void;
-  onEditFile?: (file: Document) => void;
 }
 
 export function DocumentGrid({ 
@@ -29,18 +25,11 @@ export function DocumentGrid({
   selectedDocument,
   onDocumentSelect,
   multipleSelection = false,
-  selectionActions,
-  onFolderOpen,
-  onPreviewFile,
-  onEditFile
+  selectionActions
 }: DocumentGridProps) {
-  const { toast } = useToast();
-  // Sort documents: folders first, then files
-  const sortedDocuments = [...documents].sort((a, b) => {
-    if (a.type === 'folder' && b.type !== 'folder') return -1;
-    if (a.type !== 'folder' && b.type === 'folder') return 1;
-    return a.name.localeCompare(b.name);
-  });
+  // Separate folders and files
+  const folders = documents.filter(doc => doc.type === 'folder');
+  const files = documents.filter(doc => doc.type !== 'folder');
   
   // For shift+click functionality
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
@@ -78,10 +67,11 @@ export function DocumentGrid({
 
     if (isShiftPressed && lastSelectedIndex !== null) {
       // Find all documents between lastSelectedIndex and current index
+      const allDocs = [...folders, ...files];
       const startIdx = Math.min(lastSelectedIndex, index);
       const endIdx = Math.max(lastSelectedIndex, index);
       
-      const docsBetween = sortedDocuments.slice(startIdx, endIdx + 1);
+      const docsBetween = allDocs.slice(startIdx, endIdx + 1);
       const idsToAdd = docsBetween.map(doc => doc.id).filter(id => !selectionActions.selectedIds.includes(id));
       
       // Add all documents in between to selection
@@ -90,7 +80,7 @@ export function DocumentGrid({
       } else {
         // Add all documents in between to selection
         idsToAdd.forEach(id => {
-          const doc = sortedDocuments.find(d => d.id === id);
+          const doc = allDocs.find(d => d.id === id);
           if (doc) onDocumentSelect(doc);
         });
       }
@@ -98,39 +88,6 @@ export function DocumentGrid({
       // Regular toggle selection
       onDocumentSelect(document);
       setLastSelectedIndex(index);
-    }
-  };
-
-  const handleFolderOpen = (folder: Document) => {
-    if (onFolderOpen) {
-      onFolderOpen(folder);
-    } else {
-      toast({
-        title: "Открытие папки",
-        description: `Открытие папки: ${folder.name}`,
-      });
-    }
-  };
-
-  const handlePreviewFile = (file: Document) => {
-    if (onPreviewFile) {
-      onPreviewFile(file);
-    } else {
-      toast({
-        title: "Просмотр файла",
-        description: `Просмотр файла: ${file.name}`,
-      });
-    }
-  };
-
-  const handleEditFile = (file: Document) => {
-    if (onEditFile) {
-      onEditFile(file);
-    } else {
-      toast({
-        title: "Редактирование файла",
-        description: `Редактирование файла: ${file.name}`,
-      });
     }
   };
 
@@ -161,18 +118,18 @@ export function DocumentGrid({
             />
           </svg>
         </div>
-        <h3 className="text-lg font-medium mb-1">Документы не найдены</h3>
+        <h3 className="text-lg font-medium mb-1">No documents found</h3>
         <p className="text-muted-foreground text-sm max-w-md">
-          Нет документов, соответствующих вашим критериям поиска или фильтрам. Попробуйте изменить условия поиска или добавить новые документы.
+          No documents match your current search or filter criteria. Try changing your search terms or adding new documents.
         </p>
         <div className="flex gap-3 mt-6">
           <Button variant="outline" size="sm">
             <FolderPlus className="h-4 w-4 mr-2" />
-            Создать папку
+            Create Folder
           </Button>
           <Button size="sm">
             <Upload className="h-4 w-4 mr-2" />
-            Загрузить файлы
+            Upload Files
           </Button>
         </div>
       </div>
@@ -183,12 +140,6 @@ export function DocumentGrid({
   const renderSelectionActionsBar = () => {
     if (!multipleSelection || !selectionActions || selectionActions.selectedIds.length === 0) return null;
     
-    // Check if any selected item is a file (not a folder)
-    const hasSelectedFiles = selectionActions.selectedIds.some(id => {
-      const doc = documents.find(d => d.id === id);
-      return doc && doc.type !== 'folder';
-    });
-
     return (
       <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md mb-4 sticky top-0 z-10 backdrop-blur-sm">
         <div className="flex items-center gap-2">
@@ -203,7 +154,7 @@ export function DocumentGrid({
             }}
           />
           <span className="text-sm font-medium">
-            {selectionActions.selectedIds.length} выбрано
+            {selectionActions.selectedIds.length} selected
           </span>
         </div>
         <div className="flex gap-2">
@@ -215,35 +166,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <X size={16} />
-              <span className="hidden md:inline">Отмена</span>
-            </Button>
-          )}
-          {hasSelectedFiles && onPreviewFile && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                const selectedFile = documents.find(d => d.id === selectionActions.selectedIds[0] && d.type !== 'folder');
-                if (selectedFile) handlePreviewFile(selectedFile);
-              }}
-              className="flex items-center gap-1"
-            >
-              <Eye size={16} />
-              <span className="hidden md:inline">Просмотр</span>
-            </Button>
-          )}
-          {hasSelectedFiles && onEditFile && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                const selectedFile = documents.find(d => d.id === selectionActions.selectedIds[0] && d.type !== 'folder');
-                if (selectedFile) handleEditFile(selectedFile);
-              }}
-              className="flex items-center gap-1"
-            >
-              <Edit size={16} />
-              <span className="hidden md:inline">Редактировать</span>
+              <span className="hidden md:inline">Cancel</span>
             </Button>
           )}
           {selectionActions.onDownloadSelected && (
@@ -254,7 +177,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Download size={16} />
-              <span className="hidden md:inline">Скачать</span>
+              <span className="hidden md:inline">Download</span>
             </Button>
           )}
           {selectionActions.onShareSelected && (
@@ -265,7 +188,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Share2 size={16} />
-              <span className="hidden md:inline">Поделиться</span>
+              <span className="hidden md:inline">Share</span>
             </Button>
           )}
           {selectionActions.onRestoreSelected && (
@@ -276,7 +199,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Check size={16} />
-              <span className="hidden md:inline">Восстановить</span>
+              <span className="hidden md:inline">Restore</span>
             </Button>
           )}
           {selectionActions.onDeleteSelected && (
@@ -287,7 +210,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Trash size={16} />
-              <span className="hidden md:inline">Удалить</span>
+              <span className="hidden md:inline">Delete</span>
             </Button>
           )}
         </div>
@@ -300,42 +223,96 @@ export function DocumentGrid({
       {renderSelectionActionsBar()}
       
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {sortedDocuments.map((doc, index) => (
-            <DocumentCard 
-              key={doc.id} 
-              document={doc} 
-              onClick={doc.type === 'folder' ? handleFolderOpen : onDocumentClick}
-              isSelected={
-                multipleSelection && selectionActions
-                  ? selectionActions.selectedIds.includes(doc.id)
-                  : selectedDocument?.id === doc.id
-              }
-              onSelect={() => handleDocumentSelect(doc, index)}
-              multipleSelection={multipleSelection}
-              onPreview={doc.type !== 'folder' ? handlePreviewFile : undefined}
-              onEdit={doc.type !== 'folder' ? handleEditFile : undefined}
-            />
-          ))}
+        <div className="space-y-6">
+          {folders.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-3">Folders</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {folders.map((folder, index) => (
+                  <DocumentCard 
+                    key={folder.id} 
+                    document={folder} 
+                    onClick={onDocumentClick}
+                    isSelected={
+                      multipleSelection && selectionActions
+                        ? selectionActions.selectedIds.includes(folder.id)
+                        : selectedDocument?.id === folder.id
+                    }
+                    onSelect={() => handleDocumentSelect(folder, index)}
+                    multipleSelection={multipleSelection}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {files.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-3">Files</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {files.map((file, index) => (
+                  <DocumentCard 
+                    key={file.id} 
+                    document={file} 
+                    onClick={onDocumentClick}
+                    isSelected={
+                      multipleSelection && selectionActions
+                        ? selectionActions.selectedIds.includes(file.id)
+                        : selectedDocument?.id === file.id
+                    }
+                    onSelect={() => handleDocumentSelect(file, folders.length + index)}
+                    multipleSelection={multipleSelection}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className={cn("rounded-md border")}>
-          {sortedDocuments.map((doc, index) => (
-            <DocumentListItem 
-              key={doc.id} 
-              document={doc} 
-              onClick={doc.type === 'folder' ? handleFolderOpen : onDocumentClick}
-              isSelected={
-                multipleSelection && selectionActions
-                  ? selectionActions.selectedIds.includes(doc.id)
-                  : selectedDocument?.id === doc.id
-              }
-              onSelect={() => handleDocumentSelect(doc, index)}
-              multipleSelection={multipleSelection}
-              onPreview={doc.type !== 'folder' ? handlePreviewFile : undefined}
-              onEdit={doc.type !== 'folder' ? handleEditFile : undefined}
-            />
-          ))}
+        <div className="space-y-4">
+          {folders.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-2">Folders</h2>
+              <div className={cn("rounded-md border")}>
+                {folders.map((folder, index) => (
+                  <DocumentListItem 
+                    key={folder.id} 
+                    document={folder} 
+                    onClick={onDocumentClick}
+                    isSelected={
+                      multipleSelection && selectionActions
+                        ? selectionActions.selectedIds.includes(folder.id)
+                        : selectedDocument?.id === folder.id
+                    }
+                    onSelect={() => handleDocumentSelect(folder, index)}
+                    multipleSelection={multipleSelection}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {files.length > 0 && (
+            <div>
+              <h2 className="text-lg font-medium mb-2">Files</h2>
+              <div className={cn("rounded-md border")}>
+                {files.map((file, index) => (
+                  <DocumentListItem 
+                    key={file.id} 
+                    document={file} 
+                    onClick={onDocumentClick}
+                    isSelected={
+                      multipleSelection && selectionActions
+                        ? selectionActions.selectedIds.includes(file.id)
+                        : selectedDocument?.id === file.id
+                    }
+                    onSelect={() => handleDocumentSelect(file, folders.length + index)}
+                    multipleSelection={multipleSelection}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
