@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser } from '../services/authService';
 
@@ -43,6 +42,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsAuthenticated(false);
           localStorage.removeItem('authToken');
         }
+      } else {
+        setIsAuthenticated(false);
       }
       setIsLoading(false);
     };
@@ -55,15 +56,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const data = await loginUserService(credentials);
       setToken(data.access_token);
+      setUser(data.user);
       setIsAuthenticated(true);
-      
-      // Optionally fetch user data if not included in login response
-      if (data.user) {
-        setUser(data.user);
-      } else {
-        const userData = await getCurrentUser();
-        setUser(userData);
-      }
     } catch (err: any) {
       setError(err.message || "Не удалось войти");
       throw err;

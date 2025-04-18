@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -50,7 +49,7 @@ const Auth = () => {
         title: "Успешный вход",
         description: "Вы успешно вошли в систему",
       });
-      navigate('/');
+      navigate('/'); // Ensure this navigation happens after successful login
     } catch (error: any) {
       setLoginError(error.message || "Ошибка входа");
       toast({
