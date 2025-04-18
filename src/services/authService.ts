@@ -1,8 +1,22 @@
 
 import axios from 'axios';
 
-// Use a constant instead of env variables since we don't have access to those in this setup
-const API_URL = 'http://localhost:8000'; 
+// Mock user data
+const MOCK_USERS = [
+  {
+    id: '1',
+    name: 'Test User',
+    email: 'test@example.com',
+    password: 'password123' // In a real app, this would be hashed
+  }
+];
+
+// Mock token generation
+const generateToken = (userId: string) => {
+  return `mock-jwt-token-${userId}-${Date.now()}`;
+};
+
+const API_URL = 'http://localhost:8000';
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -11,37 +25,54 @@ const apiClient = axios.create({
 
 // Register a new user
 export const registerUser = async (userData: { name: string; email: string; password: string }) => {
-  try {
-    const response = await apiClient.post('/auth/register', userData);
-    console.log('Registration Response:', response.data);
-    return response.data;
-  } catch (error: any) {
-    console.error("Registration error:", error.response?.data || error.message);
-    throw error.response?.data || new Error("Registration failed");
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Check if user already exists
+  if (MOCK_USERS.find(user => user.email === userData.email)) {
+    throw new Error("User already exists");
   }
+
+  // Create new user
+  const newUser = {
+    id: String(MOCK_USERS.length + 1),
+    ...userData
+  };
+  
+  MOCK_USERS.push(newUser);
+  
+  return {
+    message: "Registration successful",
+    user: { id: newUser.id, name: newUser.name, email: newUser.email }
+  };
 };
 
 // Login user
 export const loginUser = async (credentials: { email: string; password: string }) => {
-  try {
-    // Assuming your FastAPI uses a standard JSON request for login
-    // Adjust as needed for your specific backend implementation
-    const response = await apiClient.post('/auth/login', credentials);
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
-    console.log('Login Response:', response.data);
-    if (response.data && response.data.access_token) {
-      localStorage.setItem('authToken', response.data.access_token);
-      // Set auth header for future requests
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
-      return response.data;
-    } else {
-      throw new Error("Токен не получен");
-    }
-  } catch (error: any) {
-    console.error("Login error:", error.response?.data || error.message);
-    localStorage.removeItem('authToken');
-    throw error.response?.data || new Error("Ошибка входа");
+  // Find user
+  const user = MOCK_USERS.find(u => u.email === credentials.email);
+  
+  if (!user || user.password !== credentials.password) {
+    throw new Error("Invalid email or password");
   }
+
+  const token = generateToken(user.id);
+  
+  // Store token
+  localStorage.setItem('authToken', token);
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  
+  return {
+    access_token: token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }
+  };
 };
 
 // Logout user
@@ -52,16 +83,30 @@ export const logoutUser = () => {
 
 // Get current user info
 export const getCurrentUser = async () => {
-  try {
-    const response = await apiClient.get('/users/me');
-    return response.data;
-  } catch (error: any) {
-    console.error("Error fetching user:", error.response?.data || error.message);
-    throw error.response?.data || new Error("Ошибка получения данных пользователя");
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error("Not authenticated");
   }
+  
+  // Extract user ID from mock token
+  const userId = token.split('-')[2];
+  const user = MOCK_USERS.find(u => u.id === userId);
+  
+  if (!user) {
+    throw new Error("User not found");
+  }
+  
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email
+  };
 };
 
-// Initialize auth header if token exists on app load
+// Initialize auth header if token exists
 const initialToken = localStorage.getItem('authToken');
 if (initialToken) {
   apiClient.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
