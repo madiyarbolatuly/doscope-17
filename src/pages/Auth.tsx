@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
+import { registerUser } from '@/services/authService';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import apiClient from '@/lib/apiClient';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -50,7 +50,7 @@ const Auth = () => {
         title: "Успешный вход",
         description: "Вы успешно вошли в систему",
       });
-      navigate('/'); // Ensure this navigation happens after successful login
+      navigate('/');
     } catch (error: any) {
       setLoginError(error.message || "Ошибка входа");
       toast({
@@ -69,8 +69,7 @@ const Auth = () => {
     setRegisterLoading(true);
     
     try {
-      // Call backend registration endpoint
-      await apiClient.post('/auth/register', { 
+      await registerUser({ 
         name: registerName, 
         email: registerEmail, 
         password: registerPassword 
@@ -88,12 +87,11 @@ const Auth = () => {
       setRegisterPassword('');
       
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message || "Ошибка при регистрации";
-      setRegisterError(errorMessage);
+      setRegisterError(error.message || "Ошибка при регистрации");
       toast({
         variant: "destructive",
         title: "Ошибка регистрации",
-        description: errorMessage || "Не удалось отправить запрос на регистрацию",
+        description: error.message || "Не удалось отправить запрос на регистрацию",
       });
     } finally {
       setRegisterLoading(false);

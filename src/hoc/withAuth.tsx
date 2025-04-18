@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -9,7 +9,6 @@ export const withAuth = <P extends object>(
 ): React.FC<P> => {
   const WithAuth: React.FC<P> = (props) => {
     const { isAuthenticated, isLoading } = useAuth();
-    const location = useLocation();
 
     if (isLoading) {
       return (
@@ -20,7 +19,7 @@ export const withAuth = <P extends object>(
     }
 
     if (!isAuthenticated) {
-      return <Navigate to="/login" state={{ from: location }} replace />;
+      return <Navigate to="/login" replace />;
     }
 
     return <Component {...props} />;

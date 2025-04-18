@@ -10,10 +10,6 @@ export interface Document {
   shared?: boolean;
   favorited?: boolean;
   thumbnail?: string;
-  path?: string;
-  dueDate?: string;
-  engineer?: string;
-  linkedAssets?: string[];
 }
 
 export interface Version {
@@ -23,11 +19,6 @@ export interface Version {
   author: string;
   changes: string;
   fileSize: string;
-  version?: string;
-  modified?: string;
-  modifiedBy?: string;
-  size?: string;
-  comment?: string;
 }
 
 export type CategoryType = 
@@ -41,46 +32,4 @@ export type CategoryType =
   | 'finance'
   | 'marketing'
   | 'products'
-  | 'design'
-  | 'managers'
-  | 'development'
-  | 'procurement'
-  | 'electrical'
-  | 'weakening'
-  | 'interface'
-  | 'pse'
-  | 'hr'
-  | 'contracts'
-  | 'invoices'
-  | 'sales'
-  | 'customer'
-  | 'meetings';
-
-export type DocumentType = 
-  | 'pdf'
-  | 'doc'
-  | 'xlsx'
-  | 'ppt'
-  | 'image'
-  | 'folder'
-  | string;
-
-export type ActivityAction = 
-  | 'viewed'
-  | 'modified'
-  | 'commented'
-  | 'uploaded'
-  | 'downloaded'
-  | 'deleted'
-  | 'shared'
-  | 'created';
-
-export interface MultipleSelectionActions {
-  selectedIds: string[];
-  onSelectAll?: () => void;
-  onClearSelection?: () => void;
-  onDeleteSelected?: () => void;
-  onDownloadSelected?: () => void;
-  onShareSelected?: () => void;
-  onRestoreSelected?: () => void;
-}
+  | 'design';
