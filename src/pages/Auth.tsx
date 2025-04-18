@@ -1,33 +1,101 @@
 
-import React, { useState } from 'react';
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/context/AuthContext';
+import { registerUser } from '@/services/authService';
+import { useNavigate } from 'react-router-dom';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
+  const { isAuthenticated, login, error: authError } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // Register form state
   const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt with:', { loginEmail, loginPassword });
-    // In a real app, you'd call your authentication API here
+    setLoginError(null);
+    setLoginLoading(true);
+    
+    try {
+      await login({ email: loginEmail, password: loginPassword });
+      toast({
+        title: "Успешный вход",
+        description: "Вы успешно вошли в систему",
+      });
+      navigate('/');
+    } catch (error: any) {
+      setLoginError(error.message || "Ошибка входа");
+      toast({
+        variant: "destructive",
+        title: "Ошибка входа",
+        description: error.message || "Проверьте ваши учетные данные",
+      });
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Register request with:', { registerName, registerEmail });
-    // In a real app, you'd call your registration API here
+    setRegisterError(null);
+    setRegisterLoading(true);
+    
+    try {
+      await registerUser({ 
+        name: registerName, 
+        email: registerEmail, 
+        password: registerPassword 
+      });
+      
+      setRegisterSuccess(true);
+      toast({
+        title: "Запрос отправлен",
+        description: "Запрос на регистрацию успешно отправлен.",
+      });
+      
+      // Clear form
+      setRegisterName('');
+      setRegisterEmail('');
+      setRegisterPassword('');
+      
+    } catch (error: any) {
+      setRegisterError(error.message || "Ошибка при регистрации");
+      toast({
+        variant: "destructive",
+        title: "Ошибка регистрации",
+        description: error.message || "Не удалось отправить запрос на регистрацию",
+      });
+    } finally {
+      setRegisterLoading(false);
+    }
   };
 
   return (
@@ -48,6 +116,14 @@ const Auth = () => {
             </TabsList>
 
             <TabsContent value="login">
+              {loginError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Ошибка</AlertTitle>
+                  <AlertDescription>{loginError}</AlertDescription>
+                </Alert>
+              )}
+
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -61,6 +137,7 @@ const Auth = () => {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       required
+                      disabled={loginLoading}
                     />
                   </div>
                 </div>
@@ -82,6 +159,7 @@ const Auth = () => {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
+                      disabled={loginLoading}
                     />
                     <Button
                       type="button"
@@ -89,6 +167,7 @@ const Auth = () => {
                       size="icon"
                       className="absolute right-2 top-2 h-6 w-6"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={loginLoading}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -99,13 +178,37 @@ const Auth = () => {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full">
-                  Войти
+                <Button type="submit" className="w-full" disabled={loginLoading}>
+                  {loginLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Вход...
+                    </>
+                  ) : (
+                    "Войти"
+                  )}
                 </Button>
               </form>
             </TabsContent>
 
             <TabsContent value="register">
+              {registerSuccess && (
+                <Alert className="mb-4 bg-green-50 border-green-200">
+                  <AlertTitle>Запрос отправлен!</AlertTitle>
+                  <AlertDescription>
+                    Администратор создаст учетную запись и отправит вам данные для входа.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {registerError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Ошибка</AlertTitle>
+                  <AlertDescription>{registerError}</AlertDescription>
+                </Alert>
+              )}
+
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Полное имя</Label>
@@ -119,6 +222,7 @@ const Auth = () => {
                       value={registerName}
                       onChange={(e) => setRegisterName(e.target.value)}
                       required
+                      disabled={registerLoading || registerSuccess}
                     />
                   </div>
                 </div>
@@ -135,7 +239,39 @@ const Auth = () => {
                       value={registerEmail}
                       onChange={(e) => setRegisterEmail(e.target.value)}
                       required
+                      disabled={registerLoading || registerSuccess}
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="register-password">Пароль</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="register-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      className="pl-10"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      required
+                      disabled={registerLoading || registerSuccess}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-2 h-6 w-6"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={registerLoading || registerSuccess}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
                 </div>
 
@@ -143,8 +279,21 @@ const Auth = () => {
                   После отправки запроса администратор создаст учетную запись и отправит вам данные для входа.
                 </p>
 
-                <Button type="submit" className="w-full">
-                  Отправить запрос
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={registerLoading || registerSuccess}
+                >
+                  {registerLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Отправка...
+                    </>
+                  ) : registerSuccess ? (
+                    "Запрос отправлен"
+                  ) : (
+                    "Отправить запрос"
+                  )}
                 </Button>
               </form>
             </TabsContent>
