@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff, Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -5,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/AuthContext';
-import { registerUser } from '@/services/authService';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import apiClient from '@/lib/apiClient';
 
 const Auth = () => {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -68,7 +69,8 @@ const Auth = () => {
     setRegisterLoading(true);
     
     try {
-      await registerUser({ 
+      // Call backend registration endpoint
+      await apiClient.post('/auth/register', { 
         name: registerName, 
         email: registerEmail, 
         password: registerPassword 
@@ -86,11 +88,12 @@ const Auth = () => {
       setRegisterPassword('');
       
     } catch (error: any) {
-      setRegisterError(error.message || "Ошибка при регистрации");
+      const errorMessage = error.response?.data?.detail || error.message || "Ошибка при регистрации";
+      setRegisterError(errorMessage);
       toast({
         variant: "destructive",
         title: "Ошибка регистрации",
-        description: error.message || "Не удалось отправить запрос на регистрацию",
+        description: errorMessage || "Не удалось отправить запрос на регистрацию",
       });
     } finally {
       setRegisterLoading(false);

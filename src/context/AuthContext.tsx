@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser } from '../services/authService';
+import apiClient, { setAuthToken } from '../lib/apiClient';
 
 interface User {
   id: string;
@@ -32,15 +33,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsLoading(true);
       if (token) {
         try {
-          const userData = await getCurrentUser();
-          setUser(userData);
+          // Get current user from backend API
+          const response = await apiClient.get('/users/me');
+          setUser(response.data);
           setIsAuthenticated(true);
         } catch (err) {
           console.error("Failed to load user data", err);
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
-          localStorage.removeItem('authToken');
+          setAuthToken(null); // Clear token in storage and headers
         }
       } else {
         setIsAuthenticated(false);
@@ -54,18 +56,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (credentials: { email: string; password: string }) => {
     setError(null);
     try {
-      const data = await loginUserService(credentials);
+      // Send login request to backend API
+      const response = await apiClient.post('/auth/token', {
+        username: credentials.email, // FastAPI often uses username instead of email
+        password: credentials.password
+      }, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+      
+      const data = response.data;
       setToken(data.access_token);
-      setUser(data.user);
+      setAuthToken(data.access_token);
+      
+      // Get user profile if not included in token response
+      if (!data.user) {
+        const userResponse = await apiClient.get('/users/me');
+        setUser(userResponse.data);
+      } else {
+        setUser(data.user);
+      }
+      
       setIsAuthenticated(true);
     } catch (err: any) {
-      setError(err.message || "Не удалось войти");
-      throw err;
+      const errorMessage = err.response?.data?.detail || err.message || "Не удалось войти";
+      setError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const logout = () => {
-    logoutUserService();
+    setAuthToken(null);
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);
