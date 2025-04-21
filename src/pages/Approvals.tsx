@@ -92,7 +92,7 @@ const Approvals = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Утверждения документов</h1>
           <div className="w-1/3">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+            <SearchBar query={searchQuery} setQuery={setSearchQuery} />
           </div>
         </div>
 
