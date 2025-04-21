@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -8,7 +7,7 @@ export const withAuth = <P extends object>(
   Component: React.ComponentType<P>
 ): React.FC<P> => {
   const WithAuth: React.FC<P> = (props) => {
-    const { isAuthenticated, isLoading } = useAuth();
+    const { isLoading } = useAuth();
 
     if (isLoading) {
       return (
@@ -18,10 +17,7 @@ export const withAuth = <P extends object>(
       );
     }
 
-    if (!isAuthenticated) {
-      return <Navigate to="/login" replace />;
-    }
-
+    // No authentication check or redirect
     return <Component {...props} />;
   };
 
