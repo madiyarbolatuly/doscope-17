@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +26,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { DocumentGrid } from "@/components/DocumentGrid";
-import { Document, DocumentType } from '@/types/document';
+import { Document, DocumentType, CategoryType } from '@/types/document';
 import { Upload, Loader2, Grid2X2, List } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -95,7 +94,6 @@ const FileUpload = () => {
     setShowUploadDialog(false);
   };
 
-  // Mock documents that represent uploaded files
   const uploadedDocuments: Document[] = uploadedFiles.map((file, index) => ({
     id: `temp-${index}`,
     name: file.name,
@@ -103,7 +101,7 @@ const FileUpload = () => {
     size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
     modified: new Date().toISOString(),
     owner: 'Текущий пользователь',
-    category: category || 'uncategorized',
+    category: (category || 'uncategorized') as CategoryType,
   }));
 
   return (
