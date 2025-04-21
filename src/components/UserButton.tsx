@@ -14,10 +14,8 @@ import { LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export const UserButton: React.FC = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  if (!isAuthenticated || !user) return null;
 
   const handleLogout = () => {
     logout();
@@ -29,33 +27,50 @@ export const UserButton: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <span className="cursor-pointer">
           <Avatar>
-            <AvatarImage src={undefined} alt={user.name} />
+            <AvatarImage src={undefined} alt={user?.name ?? "User"} />
             <AvatarFallback>
-              {user.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()}
+              {user
+                ? user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                : <User className="w-5 h-5" />}
             </AvatarFallback>
           </Avatar>
         </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 z-50">
-        <DropdownMenuLabel>
-          <div className="flex flex-col gap-0.5">
-            <span className="font-medium truncate flex items-center gap-2">
-              <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
-              {user.name}
-            </span>
-            <span className="text-xs text-muted-foreground truncate">{user.email}</span>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Выйти
-        </DropdownMenuItem>
+        {user ? (
+          <>
+            <DropdownMenuLabel>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium truncate flex items-center gap-2">
+                  <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
+                  {user.name}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Выйти
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <DropdownMenuLabel>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-medium truncate flex items-center gap-2">
+                <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
+                Не вошли в систему
+              </span>
+              <span className="text-xs text-muted-foreground truncate">Нет пользователя</span>
+            </div>
+          </DropdownMenuLabel>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
+
