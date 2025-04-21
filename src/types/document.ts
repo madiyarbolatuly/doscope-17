@@ -20,11 +20,12 @@ export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder' |
 
 export interface Version {
   id: string;
-  versionNumber: number;
-  date: string;
-  author: string;
-  changes: string;
-  fileSize: string;
+  versionNumber?: number;
+  date?: string;
+  author?: string;
+  changes?: string;
+  fileSize?: string;
+  // Alternative properties for the same data
   version?: string;
   modified?: string;
   modifiedBy?: string;
