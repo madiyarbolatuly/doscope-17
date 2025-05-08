@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/SearchBar';
 import { useNavigate } from 'react-router-dom';
-import { Check, X } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { API_ROOT } from '@/config/api';
@@ -18,6 +18,7 @@ const Approvals = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [processingIds, setProcessingIds] = useState<Record<string, boolean>>({});
   
   const { docs, loading, error, refetch } = useDocuments(undefined, activeTab === 'all' ? undefined : activeTab);
   
@@ -30,6 +31,7 @@ const Approvals = () => {
   };
 
   const handleApprove = async (id: string) => {
+    setProcessingIds(prev => ({ ...prev, [id]: true }));
     try {
       await axios.post(`${API_ROOT}/docs/${id}/approve`);
       toast({
@@ -43,10 +45,13 @@ const Approvals = () => {
         description: "Failed to approve document",
         variant: "destructive",
       });
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [id]: false }));
     }
   };
 
   const handleReject = async (id: string) => {
+    setProcessingIds(prev => ({ ...prev, [id]: true }));
     try {
       await axios.post(`${API_ROOT}/docs/${id}/reject`);
       toast({
@@ -60,6 +65,8 @@ const Approvals = () => {
         description: "Failed to reject document",
         variant: "destructive",
       });
+    } finally {
+      setProcessingIds(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -90,39 +97,54 @@ const Approvals = () => {
                 <CardDescription>Документы, требующие вашего рассмотрения</CardDescription>
               </CardHeader>
               <CardContent>
-                {filteredApprovals.map(doc => (
-                  <div key={doc.id} className="flex items-center justify-between p-4 border-b last:border-0">
-                    <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
-                      <h3 className="font-medium">{doc.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Запрошено: {new Date(doc.uploaded_at).toLocaleDateString()} от {doc.owner}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-green-600" 
-                        onClick={() => handleApprove(doc.id)}
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        Утвердить
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="text-red-600" 
-                        onClick={() => handleReject(doc.id)}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Отклонить
-                      </Button>
-                    </div>
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
-                ))}
-                {filteredApprovals.length === 0 && (
+                ) : filteredApprovals.length > 0 ? (
+                  filteredApprovals.map(doc => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 border-b last:border-0">
+                      <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
+                        <h3 className="font-medium">{doc.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Запрошено: {new Date(doc.uploaded_at).toLocaleDateString()} от {doc.owner || "Unknown"}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-green-600" 
+                          onClick={() => handleApprove(doc.id)}
+                          disabled={processingIds[doc.id]}
+                        >
+                          {processingIds[doc.id] ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          Утвердить
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="text-red-600" 
+                          onClick={() => handleReject(doc.id)}
+                          disabled={processingIds[doc.id]}
+                        >
+                          {processingIds[doc.id] ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <X className="h-4 w-4 mr-1" />
+                          )}
+                          Отклонить
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
                   <div className="text-center py-6 text-muted-foreground">
-                    Нет ожидающих документов
+                    {error ? `Error: ${error}` : "Нет ожидающих документов"}
                   </div>
                 )}
               </CardContent>

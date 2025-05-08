@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ROOT } from "@/config/api";
-import { Document } from "@/types/document";
 
 export interface DocumentMeta {
   id: string;
@@ -21,40 +20,34 @@ export function useDocuments(category?: string, status?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
-  useEffect(() => {
-    let url = `${API_ROOT}/docs`;
-    const params = new URLSearchParams();
-    
-    if (category) params.append('category', category);
-    if (status) params.append('status', status);
-    
-    if (params.toString()) {
-      url = `${url}?${params.toString()}`;
-    }
-
-    axios.get<{ response: DocumentMeta[] }>(url)
-      .then(res => setDocs(res.data.response))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [category, status]);
-
-  const refetch = () => {
+  const fetchDocuments = async () => {
     setLoading(true);
-    let url = `${API_ROOT}/docs`;
-    const params = new URLSearchParams();
+    setError(undefined);
     
-    if (category) params.append('category', category);
-    if (status) params.append('status', status);
-    
-    if (params.toString()) {
-      url = `${url}?${params.toString()}`;
-    }
+    try {
+      let url = `${API_ROOT}/docs`;
+      const params = new URLSearchParams();
+      
+      if (category) params.append('category', category);
+      if (status) params.append('status', status);
+      
+      if (params.toString()) {
+        url = `${url}?${params.toString()}`;
+      }
 
-    axios.get<{ response: DocumentMeta[] }>(url)
-      .then(res => setDocs(res.data.response))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+      const response = await axios.get<{ response: DocumentMeta[] }>(url);
+      setDocs(response.data.response);
+    } catch (err: any) {
+      setError(err.message);
+      console.error("Error fetching documents:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return { docs, loading, error, refetch };
+  useEffect(() => {
+    fetchDocuments();
+  }, [category, status]);
+
+  return { docs, loading, error, refetch: fetchDocuments };
 }
