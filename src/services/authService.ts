@@ -1,6 +1,7 @@
 
 import axios from 'axios';
 import { AUTH_ENDPOINTS } from '@/config/api';
+import { User } from '@/context/AuthContext';
 
 // Types to match our backend
 interface LoginCredentials {
@@ -12,11 +13,6 @@ interface SignupData {
   username: string;
   email: string;
   password: string;
-}
-
-interface UserData {
-  id: string;
-  username: string;
 }
 
 interface AuthTokens {
@@ -37,14 +33,14 @@ apiClient.interceptors.request.use(config => {
 });
 
 // Register a new user
-export const registerUser = async (userData: SignupData): Promise<UserData> => {
-  const response = await apiClient.post<UserData>(AUTH_ENDPOINTS.SIGNUP, userData);
+export const registerUser = async (userData: SignupData): Promise<User> => {
+  const response = await apiClient.post<User>(AUTH_ENDPOINTS.SIGNUP, userData);
   return response.data;
 };
 
 // Login user
 export const loginUser = async (credentials: LoginCredentials): Promise<AuthTokens> => {
-  // Create form data for OAuth2 password flow (as shown in the API spec)
+  // Create form data for OAuth2 password flow
   const formData = new FormData();
   formData.append('username', credentials.username);
   formData.append('password', credentials.password);
@@ -70,8 +66,8 @@ export const logoutUser = () => {
 };
 
 // Get current user info
-export const getCurrentUser = async (): Promise<UserData> => {
-  const response = await apiClient.get<UserData>(AUTH_ENDPOINTS.ME);
+export const getCurrentUser = async (): Promise<User> => {
+  const response = await apiClient.get<User>(AUTH_ENDPOINTS.ME);
   return response.data;
 };
 

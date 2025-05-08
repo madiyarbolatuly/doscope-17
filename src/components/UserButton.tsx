@@ -27,14 +27,10 @@ export const UserButton: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <span className="cursor-pointer">
           <Avatar>
-            <AvatarImage src={undefined} alt={user?.name ?? "User"} />
+            <AvatarImage src={undefined} alt={user?.username ?? "User"} />
             <AvatarFallback>
               {user
-                ? user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
+                ? user.username[0].toUpperCase()
                 : <User className="w-5 h-5" />}
             </AvatarFallback>
           </Avatar>
@@ -47,9 +43,9 @@ export const UserButton: React.FC = () => {
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium truncate flex items-center gap-2">
                   <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
-                  {user.name}
+                  {user.username}
                 </span>
-                <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                <span className="text-xs text-muted-foreground truncate">ID: {user.id}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -73,4 +69,3 @@ export const UserButton: React.FC = () => {
     </DropdownMenu>
   );
 };
-

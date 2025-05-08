@@ -19,13 +19,13 @@ const Auth = () => {
   const { toast } = useToast();
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Register form state
-  const [registerName, setRegisterName] = useState('');
+  const [registerUsername, setRegisterUsername] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -45,7 +45,7 @@ const Auth = () => {
     setLoginLoading(true);
     
     try {
-      await login({ email: loginEmail, password: loginPassword });
+      await login({ username: loginUsername, password: loginPassword });
       toast({
         title: "Успешный вход",
         description: "Вы успешно вошли в систему",
@@ -70,7 +70,7 @@ const Auth = () => {
     
     try {
       await registerUser({ 
-        name: registerName, 
+        username: registerUsername, 
         email: registerEmail, 
         password: registerPassword 
       });
@@ -82,7 +82,7 @@ const Auth = () => {
       });
       
       // Clear form
-      setRegisterName('');
+      setRegisterUsername('');
       setRegisterEmail('');
       setRegisterPassword('');
       
@@ -126,16 +126,16 @@ const Auth = () => {
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="username">Имя пользователя</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
+                      id="username"
+                      type="text"
+                      placeholder="username"
                       className="pl-10"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
                       required
                       disabled={loginLoading}
                     />

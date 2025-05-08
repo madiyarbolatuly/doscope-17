@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { DOCUMENT_ENDPOINTS } from "@/config/api";
 
-export type DocumentStatus = "public" | "private" | "shared" | "deleted" | "archived";
+export type DocumentStatus = "public" | "private" | "shared" | "deleted" | "archived" | "pending" | "approved" | "rejected";
 
 export interface DocumentMeta {
   id: string;

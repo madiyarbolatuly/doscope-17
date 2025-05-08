@@ -2,9 +2,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser } from '../services/authService';
 
-interface User {
+// Update User interface to match backend API
+export interface User {
   id: string;
   username: string;
+  // Email is not returned by the backend API
 }
 
 interface AuthContextType {
