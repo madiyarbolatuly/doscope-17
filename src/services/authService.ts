@@ -1,78 +1,66 @@
 
 import axios from 'axios';
+import { AUTH_ENDPOINTS } from '@/config/api';
 
-// Mock user data
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: 'Test User',
-    email: 'test@example.com',
-    password: 'password123' // In a real app, this would be hashed
+// Types to match our backend
+interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+interface SignupData {
+  username: string;
+  email: string;
+  password: string;
+}
+
+interface UserData {
+  id: string;
+  username: string;
+}
+
+interface AuthTokens {
+  access_token: string;
+  token_type: string;
+}
+
+// Create axios instance with auth header handling
+const apiClient = axios.create();
+
+// Add auth token to all requests if available
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-];
-
-// Mock token generation
-const generateToken = (userId: string) => {
-  return `mock-jwt-token-${userId}-${Date.now()}`;
-};
-
-const API_URL = 'http://localhost:8000';
-
-const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' }
+  return config;
 });
 
 // Register a new user
-export const registerUser = async (userData: { name: string; email: string; password: string }) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  // Check if user already exists
-  if (MOCK_USERS.find(user => user.email === userData.email)) {
-    throw new Error("User already exists");
-  }
-
-  // Create new user
-  const newUser = {
-    id: String(MOCK_USERS.length + 1),
-    ...userData
-  };
-  
-  MOCK_USERS.push(newUser);
-  
-  return {
-    message: "Registration successful",
-    user: { id: newUser.id, name: newUser.name, email: newUser.email }
-  };
+export const registerUser = async (userData: SignupData): Promise<UserData> => {
+  const response = await apiClient.post<UserData>(AUTH_ENDPOINTS.SIGNUP, userData);
+  return response.data;
 };
 
 // Login user
-export const loginUser = async (credentials: { email: string; password: string }) => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+export const loginUser = async (credentials: LoginCredentials): Promise<AuthTokens> => {
+  // Create form data for OAuth2 password flow (as shown in the API spec)
+  const formData = new FormData();
+  formData.append('username', credentials.username);
+  formData.append('password', credentials.password);
+  formData.append('grant_type', 'password');
 
-  // Find user
-  const user = MOCK_USERS.find(u => u.email === credentials.email);
-  
-  if (!user || user.password !== credentials.password) {
-    throw new Error("Invalid email or password");
-  }
-
-  const token = generateToken(user.id);
+  const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  });
   
   // Store token
-  localStorage.setItem('authToken', token);
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  localStorage.setItem('authToken', response.data.access_token);
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
   
-  return {
-    access_token: token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email
-    }
-  };
+  return response.data;
 };
 
 // Logout user
@@ -82,28 +70,9 @@ export const logoutUser = () => {
 };
 
 // Get current user info
-export const getCurrentUser = async () => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const token = localStorage.getItem('authToken');
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-  
-  // Extract user ID from mock token
-  const userId = token.split('-')[2];
-  const user = MOCK_USERS.find(u => u.id === userId);
-  
-  if (!user) {
-    throw new Error("User not found");
-  }
-  
-  return {
-    id: user.id,
-    name: user.name,
-    email: user.email
-  };
+export const getCurrentUser = async (): Promise<UserData> => {
+  const response = await apiClient.get<UserData>(AUTH_ENDPOINTS.ME);
+  return response.data;
 };
 
 // Initialize auth header if token exists

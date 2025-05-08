@@ -1,18 +1,23 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { API_ROOT } from "@/config/api";
+import { DOCUMENT_ENDPOINTS } from "@/config/api";
+
+export type DocumentStatus = "public" | "private" | "shared" | "deleted" | "archived";
 
 export interface DocumentMeta {
   id: string;
+  owner_id: string;
   name: string;
-  file_path: string;
-  uploaded_at: string;
-  size: number;
-  file_type: string;
-  owner?: string;
-  category?: string;
-  status?: 'pending' | 'approved' | 'rejected';
+  file_path: string | null;
+  created_at: string;
+  size: number | null;
+  file_type: string | null;
+  tags: string[] | null;
+  categories: string[] | null;
+  status: DocumentStatus;
+  file_hash: string | null;
+  access_to: string[] | null;
 }
 
 export function useDocuments(category?: string, status?: string) {
@@ -25,7 +30,7 @@ export function useDocuments(category?: string, status?: string) {
     setError(undefined);
     
     try {
-      let url = `${API_ROOT}/docs`;
+      let url = DOCUMENT_ENDPOINTS.METADATA;
       const params = new URLSearchParams();
       
       if (category) params.append('category', category);
@@ -35,8 +40,14 @@ export function useDocuments(category?: string, status?: string) {
         url = `${url}?${params.toString()}`;
       }
 
-      const response = await axios.get<{ response: DocumentMeta[] }>(url);
-      setDocs(response.data.response);
+      // Get the auth token from localStorage
+      const token = localStorage.getItem('authToken');
+      
+      const response = await axios.get<DocumentMeta[]>(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      
+      setDocs(response.data);
     } catch (err: any) {
       setError(err.message);
       console.error("Error fetching documents:", err);

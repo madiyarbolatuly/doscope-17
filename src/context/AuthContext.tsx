@@ -4,8 +4,7 @@ import { loginUser as loginUserService, logoutUser as logoutUserService, getCurr
 
 interface User {
   id: string;
-  name: string;
-  email: string;
+  username: string;
 }
 
 interface AuthContextType {
@@ -13,7 +12,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
+  login: (credentials: { username: string; password: string }) => Promise<void>;
   logout: () => void;
   error: string | null;
 }
@@ -50,22 +49,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loadUserData();
   }, [token]);
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async (credentials: { username: string; password: string }) => {
     setError(null);
     try {
       const data = await loginUserService(credentials);
       setToken(data.access_token);
       setIsAuthenticated(true);
       
-      // Optionally fetch user data if not included in login response
-      if (data.user) {
-        setUser(data.user);
-      } else {
+      // Fetch user data after successful login
+      try {
         const userData = await getCurrentUser();
         setUser(userData);
+      } catch (userErr) {
+        console.error("Failed to fetch user data after login", userErr);
       }
     } catch (err: any) {
-      setError(err.message || "Не удалось войти");
+      setError(err.response?.data?.detail || err.message || "Failed to login");
       throw err;
     }
   };

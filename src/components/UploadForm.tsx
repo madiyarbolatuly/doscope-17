@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-import { API_ROOT } from "@/config/api";
+import { DOCUMENT_ENDPOINTS } from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,11 +33,19 @@ export function UploadForm({ onSuccess }: UploadFormProps) {
     setIsUploading(true);
     const form = new FormData();
     Array.from(files).forEach(f => form.append("files", f));
-    if (folder.trim()) form.append("folder", folder);
 
     try {
-      const res = await axios.post(`${API_ROOT}/upload`, form, {
-        headers: { "Content-Type": "multipart/form-data" }
+      // Get the auth token for authorization
+      const token = localStorage.getItem('authToken');
+      
+      // Send the API request with folder as query parameter
+      const url = folder ? `${DOCUMENT_ENDPOINTS.UPLOAD}?folder=${encodeURIComponent(folder)}` : DOCUMENT_ENDPOINTS.UPLOAD;
+      
+      const res = await axios.post(url, form, {
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        }
       });
       
       toast({
@@ -56,7 +64,7 @@ export function UploadForm({ onSuccess }: UploadFormProps) {
     } catch (err: any) {
       toast({
         title: "Upload failed",
-        description: err.message || "Something went wrong",
+        description: err.response?.data?.detail || err.message || "Something went wrong",
         variant: "destructive"
       });
     } finally {

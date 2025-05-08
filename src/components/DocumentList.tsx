@@ -8,9 +8,10 @@ import { Table, TableHeader, TableRow, TableHead, TableBody } from "@/components
 interface DocumentListProps {
   category?: string;
   status?: string;
+  onDocumentAction?: (action: string, document: DocumentMeta) => void;
 }
 
-export function DocumentList({ category, status }: DocumentListProps) {
+export function DocumentList({ category, status, onDocumentAction }: DocumentListProps) {
   const { docs, loading, error } = useDocuments(category, status);
 
   if (error) {
@@ -24,7 +25,7 @@ export function DocumentList({ category, status }: DocumentListProps) {
           <TableHead>Name</TableHead>
           <TableHead>Size</TableHead>
           <TableHead>Type</TableHead>
-          <TableHead>Uploaded</TableHead>
+          <TableHead>Created</TableHead>
           <TableHead>Owner</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Actions</TableHead>
@@ -46,7 +47,7 @@ export function DocumentList({ category, status }: DocumentListProps) {
             </td>
           </TableRow>
         ) : (
-          docs.map(doc => <DocumentRow key={doc.id} doc={doc} />)
+          docs.map(doc => <DocumentRow key={doc.id} doc={doc} onAction={onDocumentAction} />)
         )}
       </TableBody>
     </Table>
