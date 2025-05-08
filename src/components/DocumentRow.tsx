@@ -31,7 +31,7 @@ export function DocumentRow({ doc }: DocumentRowProps) {
           <Badge 
             variant={
               doc.status === "approved" 
-                ? "success" 
+                ? "default" 
                 : doc.status === "rejected" 
                 ? "destructive" 
                 : "outline"
