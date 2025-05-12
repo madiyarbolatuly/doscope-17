@@ -3,9 +3,8 @@ import React from 'react';
 import { SearchBar } from './SearchBar';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Grid2X2, List, RefreshCw, Upload, Info } from 'lucide-react';
+import { Grid2X2, List, RefreshCw, Upload } from 'lucide-react';
 import { CategoryType } from '@/types/document';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PageHeaderProps {
   title: string;
@@ -71,21 +70,7 @@ export function PageHeader({
     <div className="pb-4 border-b">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{title}</h1>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info size={16} className="text-gray-400 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>DocFlow EDMS v1.0.0</p>
-                  <p className="text-xs text-gray-500">Electronic Document Management System</p>
-                  <p className="text-xs text-gray-500">OpenAPI 3.1 Spec at /openapi.json</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+          <h1 className="text-2xl font-bold">{title}</h1>
           <p className="text-muted-foreground">{description || getCategoryDescription(categoryType)}</p>
         </div>
         {renderActions()}

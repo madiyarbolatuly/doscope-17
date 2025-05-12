@@ -24,7 +24,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ActivityItem } from '@/components/ActivityItem';
 import { MetadataCard } from '@/components/MetadataCard';
-import { Document, ActivityAction, Version, CategoryType } from '@/types/document';
+import { Document, ActivityAction } from '@/types/document';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -126,7 +126,7 @@ const MOCK_RELATED_DOCUMENTS: Document[] = [
     size: '2.1 MB',
     modified: new Date(Date.now() - 604800000).toISOString(),
     owner: 'David Chen',
-    category: 'sales' as CategoryType
+    category: 'sales'
   },
   {
     id: '9',
@@ -135,7 +135,7 @@ const MOCK_RELATED_DOCUMENTS: Document[] = [
     size: '1.5 MB',
     modified: new Date(Date.now() - 691200000).toISOString(),
     owner: 'Emily Wang',
-    category: 'customer' as CategoryType
+    category: 'customer'
   }
 ];
 

@@ -13,7 +13,6 @@ import { Upload, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
-import { UserButton } from "@/components/UserButton";
 
 const mockDocuments: Document[] = [
   {
@@ -421,69 +420,64 @@ const Index = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between px-6 h-16 border-b border-muted bg-background">
-        <div className="text-lg font-semibold">Document Manager</div>
-        <UserButton />
-      </header>
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar activeCategory={category} onCategoryChange={setCategory} />
-        <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
-            <main className="h-full overflow-auto">
-              <div className="p-6">
-                <PageHeader 
-                  title={getCategoryTitle(category)}
-                  categoryType={category}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
+    <div className="flex h-screen overflow-hidden bg-background">
+      <Sidebar activeCategory={category} onCategoryChange={setCategory} />
+      
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
+          <main className="h-full overflow-auto">
+            <div className="p-6">
+              <PageHeader 
+                title={getCategoryTitle(category)}
+                categoryType={category}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+              />
+              
+              <div className="mt-4 animate-fade-in">
+                <DocumentGrid 
+                  documents={documents} 
+                  onDocumentClick={handleDocumentClick}
                   viewMode={viewMode}
-                  setViewMode={setViewMode}
+                  selectedDocument={selectedDocument}
+                  onDocumentSelect={handleDocumentSelect}
+                  multipleSelection={true}
+                  selectionActions={{
+                    selectedIds: selectedDocumentIds,
+                    onSelectAll: handleSelectAll,
+                    onClearSelection: handleClearSelection,
+                    onDeleteSelected: handleDeleteSelected,
+                    onDownloadSelected: handleDownloadSelected,
+                    onShareSelected: handleShareSelected
+                  }}
                 />
-                
-                <div className="mt-4 animate-fade-in">
-                  <DocumentGrid 
-                    documents={documents} 
-                    onDocumentClick={handleDocumentClick}
-                    viewMode={viewMode}
-                    selectedDocument={selectedDocument}
-                    onDocumentSelect={handleDocumentSelect}
-                    multipleSelection={true}
-                    selectionActions={{
-                      selectedIds: selectedDocumentIds,
-                      onSelectAll: handleSelectAll,
-                      onClearSelection: handleClearSelection,
-                      onDeleteSelected: handleDeleteSelected,
-                      onDownloadSelected: handleDownloadSelected,
-                      onShareSelected: handleShareSelected
-                    }}
-                  />
-                </div>
               </div>
-            </main>
-          </ResizablePanel>
-          
-          {showSidebar && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={25} minSize={20}>
-                <MetadataSidebar 
-                  document={selectedDocument || undefined} 
-                  onClose={handleCloseSidebar} 
-                />
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
+            </div>
+          </main>
+        </ResizablePanel>
         
-        <FileUploadDialog
-          open={showUploadDialog}
-          onOpenChange={setShowUploadDialog}
-          onSelectDestination={handleSelectDestination}
-          onCreateFolder={handleCreateFolder}
-          onUpload={handleUploadToDestination}
-        />
-      </div>
+        {showSidebar && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={25} minSize={20}>
+              <MetadataSidebar 
+                document={selectedDocument || undefined} 
+                onClose={handleCloseSidebar} 
+              />
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
+      
+      <FileUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onSelectDestination={handleSelectDestination}
+        onCreateFolder={handleCreateFolder}
+        onUpload={handleUploadToDestination}
+      />
     </div>
   );
 };

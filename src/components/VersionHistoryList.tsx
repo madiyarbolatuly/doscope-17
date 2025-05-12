@@ -4,7 +4,15 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Download, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Version } from '@/types/document';
+
+export interface Version {
+  id: string;
+  version: string;
+  modified: string;
+  modifiedBy: string;
+  size: string;
+  comment?: string;
+}
 
 interface VersionHistoryListProps {
   versions: Version[];
@@ -21,7 +29,7 @@ export function VersionHistoryList({ versions }: VersionHistoryListProps) {
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-medium">{version.version || `v${version.versionNumber}`}</span>
+                <span className="font-medium">{version.version}</span>
                 {index === 0 && (
                   <Badge variant="outline" className="bg-blue-100 text-blue-800 text-xs">
                     Текущая
@@ -29,14 +37,14 @@ export function VersionHistoryList({ versions }: VersionHistoryListProps) {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {format(new Date(version.modified || version.date || ''), 'dd.MM.yyyy HH:mm')}
+                {format(new Date(version.modified), 'dd.MM.yyyy HH:mm')}
               </p>
               <p className="text-sm mt-1">
-                <span className="text-muted-foreground">Автор:</span> {version.modifiedBy || version.author}
+                <span className="text-muted-foreground">Автор:</span> {version.modifiedBy}
               </p>
-              {(version.comment || version.changes) && (
+              {version.comment && (
                 <p className="text-sm mt-2 text-muted-foreground">
-                  "{version.comment || version.changes}"
+                  "{version.comment}"
                 </p>
               )}
             </div>

@@ -19,13 +19,13 @@ const Auth = () => {
   const { toast } = useToast();
 
   // Login form state
-  const [loginUsername, setLoginUsername] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   // Register form state
-  const [registerUsername, setRegisterUsername] = useState('');
+  const [registerName, setRegisterName] = useState('');
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerLoading, setRegisterLoading] = useState(false);
@@ -45,7 +45,7 @@ const Auth = () => {
     setLoginLoading(true);
     
     try {
-      await login({ username: loginUsername, password: loginPassword });
+      await login({ email: loginEmail, password: loginPassword });
       toast({
         title: "Успешный вход",
         description: "Вы успешно вошли в систему",
@@ -70,7 +70,7 @@ const Auth = () => {
     
     try {
       await registerUser({ 
-        username: registerUsername, 
+        name: registerName, 
         email: registerEmail, 
         password: registerPassword 
       });
@@ -82,7 +82,7 @@ const Auth = () => {
       });
       
       // Clear form
-      setRegisterUsername('');
+      setRegisterName('');
       setRegisterEmail('');
       setRegisterPassword('');
       
@@ -126,16 +126,16 @@ const Auth = () => {
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Имя пользователя</Label>
+                  <Label htmlFor="email">Email</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="username"
-                      type="text"
-                      placeholder="username"
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
                       className="pl-10"
-                      value={loginUsername}
-                      onChange={(e) => setLoginUsername(e.target.value)}
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
                       required
                       disabled={loginLoading}
                     />
@@ -211,16 +211,16 @@ const Auth = () => {
 
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="register-username">Имя пользователя</Label>
+                  <Label htmlFor="name">Полное имя</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="register-username"
+                      id="name"
                       type="text"
-                      placeholder="username"
+                      placeholder="Иван Иванов"
                       className="pl-10"
-                      value={registerUsername}
-                      onChange={(e) => setRegisterUsername(e.target.value)}
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
                       required
                       disabled={registerLoading || registerSuccess}
                     />

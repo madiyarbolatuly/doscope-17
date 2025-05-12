@@ -1,117 +1,67 @@
 
 import axios from 'axios';
-import { AUTH_ENDPOINTS } from '@/config/api';
-import { User } from '@/context/AuthContext';
 
-// Types to match our backend
-interface LoginCredentials {
-  username: string;
-  password: string;
-}
+// Use a constant instead of env variables since we don't have access to those in this setup
+const API_URL = 'http://localhost:8000'; 
 
-interface SignupData {
-  username: string;
-  email: string;
-  password: string;
-}
-
-interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-}
-
-// Create axios instance with auth header handling
-const apiClient = axios.create();
-
-// Add auth token to all requests if available
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' }
 });
 
 // Register a new user
-export const registerUser = async (userData: SignupData): Promise<User> => {
-  const response = await apiClient.post<User>(AUTH_ENDPOINTS.SIGNUP, userData);
-  return response.data;
+export const registerUser = async (userData: { name: string; email: string; password: string }) => {
+  try {
+    const response = await apiClient.post('/auth/register', userData);
+    console.log('Registration Response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Registration error:", error.response?.data || error.message);
+    throw error.response?.data || new Error("Registration failed");
+  }
 };
 
 // Login user
-export const loginUser = async (credentials: LoginCredentials): Promise<AuthTokens> => {
-  // Create form data for OAuth2 password flow
-  const formData = new URLSearchParams();
-  formData.append('username', credentials.username);
-  formData.append('password', credentials.password);
-  formData.append('grant_type', 'password');
-
-  const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-  });
-  
-  // Store tokens
-  localStorage.setItem('authToken', response.data.access_token);
-  if (response.data.refresh_token) {
-    localStorage.setItem('refreshToken', response.data.refresh_token);
-  }
-  
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
-  
-  return response.data;
-};
-
-// Refresh the access token
-export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return null;
-  
+export const loginUser = async (credentials: { email: string; password: string }) => {
   try {
-    const formData = new URLSearchParams();
-    formData.append('refresh_token', refreshToken);
-    formData.append('grant_type', 'refresh_token');
-    
-    const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    
-    // Update stored tokens
-    localStorage.setItem('authToken', response.data.access_token);
-    if (response.data.refresh_token) {
-      localStorage.setItem('refreshToken', response.data.refresh_token);
+    // Assuming your FastAPI uses a standard JSON request for login
+    // Adjust as needed for your specific backend implementation
+    const response = await apiClient.post('/auth/login', credentials);
+
+    console.log('Login Response:', response.data);
+    if (response.data && response.data.access_token) {
+      localStorage.setItem('authToken', response.data.access_token);
+      // Set auth header for future requests
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+      return response.data;
+    } else {
+      throw new Error("Токен не получен");
     }
-    
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
-    
-    return response.data;
-  } catch (error) {
-    // If refresh fails, clear tokens
+  } catch (error: any) {
+    console.error("Login error:", error.response?.data || error.message);
     localStorage.removeItem('authToken');
-    localStorage.removeItem('refreshToken');
-    delete apiClient.defaults.headers.common['Authorization'];
-    return null;
+    throw error.response?.data || new Error("Ошибка входа");
   }
 };
 
 // Logout user
 export const logoutUser = () => {
   localStorage.removeItem('authToken');
-  localStorage.removeItem('refreshToken');
   delete apiClient.defaults.headers.common['Authorization'];
 };
 
 // Get current user info
-export const getCurrentUser = async (): Promise<User> => {
-  const response = await apiClient.get<User>(AUTH_ENDPOINTS.ME);
-  return response.data;
+export const getCurrentUser = async () => {
+  try {
+    const response = await apiClient.get('/users/me');
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching user:", error.response?.data || error.message);
+    throw error.response?.data || new Error("Ошибка получения данных пользователя");
+  }
 };
 
-// Initialize auth header if token exists
+// Initialize auth header if token exists on app load
 const initialToken = localStorage.getItem('authToken');
 if (initialToken) {
   apiClient.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;

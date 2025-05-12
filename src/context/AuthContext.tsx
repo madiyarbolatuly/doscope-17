@@ -1,11 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser, refreshAccessToken } from '../services/authService';
+import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser } from '../services/authService';
 
-// Update User interface to match backend API
-export interface User {
+interface User {
   id: string;
-  username: string;
+  name: string;
+  email: string;
 }
 
 interface AuthContextType {
@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { username: string; password: string }) => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<void>;
   logout: () => void;
   error: string | null;
 }
@@ -38,27 +38,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsAuthenticated(true);
         } catch (err) {
           console.error("Failed to load user data", err);
-          
-          // Try to refresh the token
-          try {
-            const refreshResult = await refreshAccessToken();
-            if (refreshResult) {
-              const userData = await getCurrentUser();
-              setUser(userData);
-              setIsAuthenticated(true);
-              setToken(refreshResult.access_token);
-              return;
-            }
-          } catch (refreshErr) {
-            console.error("Failed to refresh token", refreshErr);
-          }
-          
-          // If we get here, both attempts failed
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
           localStorage.removeItem('authToken');
-          localStorage.removeItem('refreshToken');
         }
       }
       setIsLoading(false);
@@ -67,22 +50,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loadUserData();
   }, [token]);
 
-  const login = async (credentials: { username: string; password: string }) => {
+  const login = async (credentials: { email: string; password: string }) => {
     setError(null);
     try {
       const data = await loginUserService(credentials);
       setToken(data.access_token);
       setIsAuthenticated(true);
       
-      // Fetch user data after successful login
-      try {
+      // Optionally fetch user data if not included in login response
+      if (data.user) {
+        setUser(data.user);
+      } else {
         const userData = await getCurrentUser();
         setUser(userData);
-      } catch (userErr) {
-        console.error("Failed to fetch user data after login", userErr);
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || err.message || "Failed to login");
+      setError(err.message || "Не удалось войти");
       throw err;
     }
   };
