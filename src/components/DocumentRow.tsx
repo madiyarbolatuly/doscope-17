@@ -4,7 +4,7 @@ import { DocumentMeta } from "@/hooks/useDocuments";
 import { DOCUMENT_ENDPOINTS } from "@/config/api";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Check, X, Download, Eye, Trash2, Share } from "lucide-react";
+import { Check, X, Download, Eye, Trash2, Share, Archive, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/utils/formatters";
 import { Dialog, DialogContent, DialogTitle, DialogHeader } from "@/components/ui/dialog";
@@ -141,6 +141,20 @@ export function DocumentRow({ doc, onAction }: DocumentRowProps) {
                 </Tooltip>
               )}
               
+              {/* Archive button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => onAction?.('archive', doc)}
+                  >
+                    <Archive className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Archive</TooltipContent>
+              </Tooltip>
+              
               {/* Share button */}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -153,6 +167,20 @@ export function DocumentRow({ doc, onAction }: DocumentRowProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Share</TooltipContent>
+              </Tooltip>
+              
+              {/* Access control button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    onClick={() => onAction?.('access', doc)}
+                  >
+                    <Lock className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Access Control</TooltipContent>
               </Tooltip>
               
               {/* Delete button */}

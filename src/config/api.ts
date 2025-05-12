@@ -20,6 +20,9 @@ export const DOCUMENT_ENDPOINTS = {
   SEARCH: `${API_ROOT}/filter`,
   SHARE: (documentId: string) => `${API_ROOT}/share/${documentId}`,
   SHARE_LINK: (documentId: string) => `${API_ROOT}/share-link/${documentId}`,
+  ARCHIVE: (fileName: string) => `${API_ROOT}/metadata/archive/${encodeURIComponent(fileName)}`,
+  ARCHIVE_LIST: `${API_ROOT}/metadata/archive/list`,
+  UNARCHIVE: (fileName: string) => `${API_ROOT}/metadata/un-archive/${encodeURIComponent(fileName)}`,
 };
 
 // Trash endpoints
@@ -36,3 +39,6 @@ export const NOTIFICATION_ENDPOINTS = {
   CLEAR: `${API_ROOT}/notifications`,
   UPDATE: (notificationId: string) => `${API_ROOT}/notifications/${notificationId}`,
 };
+
+// OpenAPI spec endpoint
+export const OPENAPI_SPEC_URL = "http://localhost:8000/openapi.json";
