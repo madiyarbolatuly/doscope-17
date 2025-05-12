@@ -1,12 +1,11 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser } from '../services/authService';
+import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser, refreshAccessToken } from '../services/authService';
 
 // Update User interface to match backend API
 export interface User {
   id: string;
   username: string;
-  // Email is not returned by the backend API
 }
 
 interface AuthContextType {
@@ -39,10 +38,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setIsAuthenticated(true);
         } catch (err) {
           console.error("Failed to load user data", err);
+          
+          // Try to refresh the token
+          try {
+            const refreshResult = await refreshAccessToken();
+            if (refreshResult) {
+              const userData = await getCurrentUser();
+              setUser(userData);
+              setIsAuthenticated(true);
+              setToken(refreshResult.access_token);
+              return;
+            }
+          } catch (refreshErr) {
+            console.error("Failed to refresh token", refreshErr);
+          }
+          
+          // If we get here, both attempts failed
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
           localStorage.removeItem('authToken');
+          localStorage.removeItem('refreshToken');
         }
       }
       setIsLoading(false);

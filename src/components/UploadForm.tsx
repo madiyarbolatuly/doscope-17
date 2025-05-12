@@ -39,7 +39,10 @@ export function UploadForm({ onSuccess }: UploadFormProps) {
       const token = localStorage.getItem('authToken');
       
       // Send the API request with folder as query parameter
-      const url = folder ? `${DOCUMENT_ENDPOINTS.UPLOAD}?folder=${encodeURIComponent(folder)}` : DOCUMENT_ENDPOINTS.UPLOAD;
+      let url = DOCUMENT_ENDPOINTS.UPLOAD;
+      if (folder) {
+        url = `${url}?folder=${encodeURIComponent(folder)}`;
+      }
       
       const res = await axios.post(url, form, {
         headers: { 
@@ -91,7 +94,7 @@ export function UploadForm({ onSuccess }: UploadFormProps) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="folder">Subfolder (optional)</Label>
+            <Label htmlFor="folder">Folder (optional)</Label>
             <Input
               id="folder"
               type="text"

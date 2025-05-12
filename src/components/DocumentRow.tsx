@@ -30,7 +30,42 @@ export function DocumentRow({ doc, onAction }: DocumentRowProps) {
       case "shared": return "outline";
       case "deleted": return "destructive";
       case "archived": return "outline";
+      case "pending": return "warning";
+      case "approved": return "success";
+      case "rejected": return "destructive";
       default: return "outline";
+    }
+  };
+
+  // Handle token for authenticated requests
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    if (!downloadUrl || !doc.file_path) return;
+    
+    e.preventDefault();
+    
+    try {
+      const response = await fetch(downloadUrl, {
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error("Download error:", error);
     }
   };
 
@@ -57,19 +92,10 @@ export function DocumentRow({ doc, onAction }: DocumentRowProps) {
             variant="outline" 
             size="sm" 
             disabled={!doc.file_path}
-            asChild={!!downloadUrl}
+            onClick={handleDownload}
           >
-            {downloadUrl ? (
-              <a href={downloadUrl} target="_blank" rel="noopener">
-                <Download className="h-4 w-4 mr-1" />
-                Download
-              </a>
-            ) : (
-              <span>
-                <Download className="h-4 w-4 mr-1" />
-                Download
-              </span>
-            )}
+            <Download className="h-4 w-4 mr-1" />
+            Download
           </Button>
           
           {/* Preview button - only if file type is previewable */}
@@ -78,19 +104,10 @@ export function DocumentRow({ doc, onAction }: DocumentRowProps) {
               variant="outline" 
               size="sm" 
               disabled={!doc.file_path}
-              asChild={!!previewUrl}
+              onClick={() => onAction?.('preview', doc)}
             >
-              {previewUrl ? (
-                <a href={previewUrl} target="_blank" rel="noopener">
-                  <Eye className="h-4 w-4 mr-1" />
-                  Preview
-                </a>
-              ) : (
-                <span>
-                  <Eye className="h-4 w-4 mr-1" />
-                  Preview
-                </span>
-              )}
+              <Eye className="h-4 w-4 mr-1" />
+              Preview
             </Button>
           )}
           

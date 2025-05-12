@@ -17,6 +17,7 @@ interface SignupData {
 
 interface AuthTokens {
   access_token: string;
+  refresh_token: string;
   token_type: string;
 }
 
@@ -41,27 +42,66 @@ export const registerUser = async (userData: SignupData): Promise<User> => {
 // Login user
 export const loginUser = async (credentials: LoginCredentials): Promise<AuthTokens> => {
   // Create form data for OAuth2 password flow
-  const formData = new FormData();
+  const formData = new URLSearchParams();
   formData.append('username', credentials.username);
   formData.append('password', credentials.password);
   formData.append('grant_type', 'password');
 
-  const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData, {
+  const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
   });
   
-  // Store token
+  // Store tokens
   localStorage.setItem('authToken', response.data.access_token);
+  if (response.data.refresh_token) {
+    localStorage.setItem('refreshToken', response.data.refresh_token);
+  }
+  
   apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
   
   return response.data;
 };
 
+// Refresh the access token
+export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+  
+  try {
+    const formData = new URLSearchParams();
+    formData.append('refresh_token', refreshToken);
+    formData.append('grant_type', 'refresh_token');
+    
+    const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    
+    // Update stored tokens
+    localStorage.setItem('authToken', response.data.access_token);
+    if (response.data.refresh_token) {
+      localStorage.setItem('refreshToken', response.data.refresh_token);
+    }
+    
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+    
+    return response.data;
+  } catch (error) {
+    // If refresh fails, clear tokens
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    delete apiClient.defaults.headers.common['Authorization'];
+    return null;
+  }
+};
+
 // Logout user
 export const logoutUser = () => {
   localStorage.removeItem('authToken');
+  localStorage.removeItem('refreshToken');
   delete apiClient.defaults.headers.common['Authorization'];
 };
 
