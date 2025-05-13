@@ -4,161 +4,26 @@ import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
 import { useToast } from '@/hooks/use-toast';
-import { ResizablePanelGroup, ResizablePanel } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { useRoleBasedDocuments } from '@/hooks/useRoleBasedDocuments';
 import { Button } from '@/components/ui/button';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
 
-const mockDocuments: Document[] = [
-  {
-    id: '1',
-    name: 'Financial Report Q2 2023.pdf',
-    type: 'pdf',
-    size: '2.4 MB',
-    modified: '2023-06-28T14:30:00',
-    owner: 'John Smith',
-    category: 'reports',
-    favorited: true
-  },
-  {
-    id: '2',
-    name: 'Employee Handbook.doc',
-    type: 'doc',
-    size: '4.1 MB',
-    modified: '2023-05-15T09:45:00',
-    owner: 'HR Department',
-    category: 'hr'
-  },
-  {
-    id: '3',
-    name: 'Project Proposal.ppt',
-    type: 'ppt',
-    size: '8.2 MB',
-    modified: '2023-07-03T16:20:00',
-    owner: 'Jane Cooper',
-    category: 'reports',
-    shared: true
-  },
-  {
-    id: '4',
-    name: 'Client Contract #1082.pdf',
-    type: 'pdf',
-    size: '1.7 MB',
-    modified: '2023-07-10T11:15:00',
-    owner: 'Legal Team',
-    category: 'contracts'
-  },
-  {
-    id: '5',
-    name: 'Budget Spreadsheet.xlsx',
-    type: 'xlsx',
-    size: '3.5 MB',
-    modified: '2023-06-20T13:45:00',
-    owner: 'Finance Department',
-    category: 'invoices',
-    favorited: true
-  },
-  {
-    id: '6',
-    name: 'Meeting Notes.doc',
-    type: 'doc',
-    size: '0.5 MB',
-    modified: '2023-07-12T15:30:00',
-    owner: 'John Smith',
-    category: 'reports',
-    shared: true
-  },
-  {
-    id: '7',
-    name: 'Company Logo.png',
-    type: 'image',
-    size: '2.1 MB',
-    modified: '2023-04-18T10:25:00',
-    owner: 'Marketing Team',
-    category: 'hr'
-  },
-  {
-    id: '8',
-    name: 'Invoice #10492.pdf',
-    type: 'pdf',
-    size: '1.2 MB',
-    modified: '2023-07-05T09:10:00',
-    owner: 'Finance Department',
-    category: 'invoices'
-  },
-  {
-    id: '9',
-    name: 'Project Documents',
-    type: 'folder',
-    modified: '2023-06-30T14:00:00',
-    owner: 'Project Team',
-    category: 'reports'
-  },
-  {
-    id: '10',
-    name: 'Customer Agreement.pdf',
-    type: 'pdf',
-    size: '2.8 MB',
-    modified: '2023-07-08T16:45:00',
-    owner: 'Sales Department',
-    category: 'contracts',
-    favorited: true
-  },
-  {
-    id: '11',
-    name: 'Marketing Plan 2023.ppt',
-    type: 'ppt',
-    size: '5.3 MB',
-    modified: '2023-06-15T11:30:00',
-    owner: 'Marketing Team',
-    category: 'reports'
-  },
-  {
-    id: '12',
-    name: 'Employee Directory.xlsx',
-    type: 'xlsx',
-    size: '1.9 MB',
-    modified: '2023-05-28T13:15:00',
-    owner: 'HR Department',
-    category: 'hr'
-  },
-  {
-    id: '13',
-    name: 'HR Documents',
-    type: 'folder',
-    modified: '2023-07-15T10:00:00',
-    owner: 'HR Department',
-    category: 'hr'
-  },
-  {
-    id: '14',
-    name: 'Financial Reports',
-    type: 'folder',
-    modified: '2023-07-12T14:30:00',
-    owner: 'Finance Department',
-    category: 'reports',
-    favorited: true
-  },
-  {
-    id: '15',
-    name: 'Marketing Materials',
-    type: 'folder',
-    modified: '2023-07-05T09:45:00',
-    owner: 'Marketing Team',
-    category: 'marketing'
-  },
-  {
-    id: '16',
-    name: 'Client Contracts',
-    type: 'folder',
-    modified: '2023-06-28T16:20:00',
-    owner: 'Legal Team',
-    category: 'contracts',
-    shared: true
-  }
-];
+interface BackendDocument {
+  owner_id: string;
+  name: string;
+  file_path: string;
+  created_at: string;
+  size: number;
+  file_type: string;
+  tags: string[] | null;
+  categories: string[] | null;
+  status: string;
+  file_hash: string;
+  access_to: string[] | null;
+  id: string;
+}
 
 const Index = () => {
   const [category, setCategory] = useState<CategoryType>('all');
@@ -173,103 +38,61 @@ const Index = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const {
-    roles,
-    selectedRole,
-    documents: roleDocuments,
-    isLoading,
-    handleRoleChange,
-    uploadFile,
-    downloadFile,
-    deleteFile,
-    fetchDocumentsByRole
-  } = useRoleBasedDocuments();
-
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-
-  const handleSelectDestination = (destination: 'downloads' | 'new') => {
-    toast({
-      title: "Папка выбрана",
-      description: destination === 'downloads' ? "Выбрана папка Загрузки" : "Выбрана Новая папка",
-    });
-  };
-
-  const handleCreateFolder = () => {
-    toast({
-      title: "Создание новой папки",
-      description: "Функция создания новой папки будет реализована в будущем.",
-    });
-  };
-
-  const handleUploadToDestination = () => {
-    toast({
-      title: "Загрузка файлов",
-      description: "Файлы загружены в выбранную папку.",
-    });
-    setShowUploadDialog(false);
-  };
-
   useEffect(() => {
-    let filteredDocs = [...mockDocuments];
-    
-    if (selectedRole) {
-      filteredDocs = roleDocuments;
-    } else {
-      if (category !== 'all') {
-        if (category === 'favorites') {
-          filteredDocs = filteredDocs.filter(doc => doc.favorited);
-        } else if (category === 'shared') {
-          filteredDocs = filteredDocs.filter(doc => doc.shared);
-        } else if (category === 'recent') {
-          filteredDocs = [...filteredDocs]
-            .sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime())
-            .slice(0, 5);
-        } else if (category === 'trash') {
-          filteredDocs = [];
-        } else {
-          if (category === 'managers') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'hr');
-          } else if (category === 'development') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'reports');
-          } else if (category === 'procurement') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'contracts');
-          } else if (category === 'electrical' || category === 'weakening' || category === 'interface' || category === 'pse') {
-            filteredDocs = filteredDocs.filter(doc => doc.category === 'invoices' || doc.category === 'marketing');
-          } else {
-            filteredDocs = filteredDocs.filter(doc => doc.category === category);
+    const fetchDocuments = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/v2/metadata?limit=10&offset=0", {
+          headers: {
+            "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcxMTM0NzgsImlkIjoiMDFKVFE4SzZDSDk5WFdSV1FHRzlXUVlaUUgiLCJ1c2VybmFtZSI6InN0cmluZyJ9.8cgLb1wVYrB8dHrwmMaZv1Jv-q7uas33306G_PdaXGM"
           }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch documents');
         }
+
+        const data = await response.json();
+        
+        // Transform backend documents to match our Document interface
+        const transformedDocuments: Document[] = data["documents of string"].map((doc: BackendDocument) => ({
+          id: doc.id,
+          name: decodeURIComponent(doc.name),
+          type: doc.file_type.includes('pdf') ? 'pdf' : 
+                doc.file_type.includes('doc') ? 'doc' : 
+                doc.file_type.includes('image') ? 'image' : 'pdf',
+          size: `${(doc.size / (1024 * 1024)).toFixed(2)} MB`,
+          modified: doc.created_at,
+          owner: doc.owner_id,
+          category: doc.categories?.[0] || 'uncategorized',
+          path: doc.file_path
+        }));
+
+        setDocuments(transformedDocuments);
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch documents",
+          variant: "destructive"
+        });
       }
-    }
-    
-    if (searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase();
-      filteredDocs = filteredDocs.filter(doc => 
-        doc.name.toLowerCase().includes(query) || 
-        doc.owner.toLowerCase().includes(query)
-      );
-    }
-    
-    setDocuments(filteredDocs);
-  }, [category, searchQuery, selectedRole, roleDocuments]);
+    };
+
+    fetchDocuments();
+  }, [toast]);
 
   const handleDocumentClick = (document: Document) => {
-    if (selectedRole && document.type !== 'folder') {
-      downloadFile();
-    } else {
-      toast({
-        title: "Документ выбран",
-        description: `Вы выбрали: ${document.name}`,
-      });
-    }
+    toast({
+      title: "Document selected",
+      description: `Selected: ${document.name}`,
+    });
   };
 
   const handleFolderOpen = (folder: Document) => {
     toast({
-      title: "Открытие папки",
-      description: `Открытие папки: ${folder.name}`,
+      title: "Opening folder",
+      description: `Opening folder: ${folder.name}`,
     });
-    
     setCurrentPath([...currentPath, folder]);
   };
 
@@ -281,14 +104,12 @@ const Index = () => {
   const handleDocumentSelect = (document: Document) => {
     if (selectedDocumentIds.includes(document.id)) {
       setSelectedDocumentIds(selectedDocumentIds.filter(id => id !== document.id));
-      
       if (selectedDocument?.id === document.id) {
         setSelectedDocument(null);
         setShowSidebar(false);
       }
     } else {
       setSelectedDocumentIds([...selectedDocumentIds, document.id]);
-      
       if (selectedDocumentIds.length === 0) {
         setSelectedDocument(document);
         setShowSidebar(true);
@@ -303,7 +124,6 @@ const Index = () => {
       setShowSidebar(false);
     } else {
       setSelectedDocumentIds(documents.map(doc => doc.id));
-      
       if (!selectedDocument && documents.length > 0) {
         setSelectedDocument(documents[0]);
         setShowSidebar(true);
@@ -318,110 +138,54 @@ const Index = () => {
   };
 
   const handleDeleteSelected = () => {
-    if (selectedRole && selectedDocumentIds.length > 0) {
-      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-      
-      selectedDocuments.forEach(() => {
-        deleteFile();
-      });
-      
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    } else {
-      toast({
-        title: "Удаление документов",
-        description: `Выбрано ${selectedDocumentIds.length} документов для удаления`,
-      });
-      setSelectedDocumentIds([]);
-      setSelectedDocument(null);
-      setShowSidebar(false);
-    }
+    toast({
+      title: "Deleting documents",
+      description: `Selected ${selectedDocumentIds.length} documents for deletion`,
+    });
+    setSelectedDocumentIds([]);
+    setSelectedDocument(null);
+    setShowSidebar(false);
   };
 
   const handleDownloadSelected = () => {
-    if (selectedRole && selectedDocumentIds.length > 0) {
-      const selectedDocuments = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-      
-      selectedDocuments.forEach(() => {
-        downloadFile();
-      });
-    } else {
-      toast({
-        title: "Скачивание документов",
-        description: `Выбрано ${selectedDocumentIds.length} документов для скачивания`,
-      });
-    }
+    toast({
+      title: "Downloading documents",
+      description: `Selected ${selectedDocumentIds.length} documents for download`,
+    });
   };
 
   const handleShareSelected = () => {
     toast({
-      title: "Общий доступ",
-      description: `Выбрано ${selectedDocumentIds.length} документов для общего доступа`,
+      title: "Sharing documents",
+      description: `Selected ${selectedDocumentIds.length} documents for sharing`,
     });
+  };
+
+  const handleSelectDestination = (destination: 'downloads' | 'new') => {
+    toast({
+      title: "Folder selected",
+      description: destination === 'downloads' ? "Selected Downloads folder" : "Selected New folder",
+    });
+  };
+
+  const handleCreateFolder = () => {
+    toast({
+      title: "Creating folder",
+      description: "Creating new folder",
+    });
+  };
+
+  const handleUploadToDestination = () => {
+    toast({
+      title: "Uploading files",
+      description: "Files uploaded to selected folder",
+    });
+    setShowUploadDialog(false);
   };
 
   const handleCloseSidebar = () => {
     setSelectedDocument(null);
     setShowSidebar(false);
-  };
-
-  const getCategoryTitle = (type: CategoryType): string => {
-    if (selectedRole) {
-      return `Папка: ${selectedRole}`;
-    }
-    
-    switch (type) {
-      case 'all':
-        return 'Все документы';
-      case 'recent':
-        return 'Недавние документы';
-      case 'shared':
-        return 'Общий доступ';
-      case 'favorites':
-        return 'Избранное';
-      case 'trash':
-        return 'Корзина';
-      case 'managers':
-        return 'Руководители';
-      case 'development':
-        return 'Отдел развития';
-      case 'procurement':
-        return 'Прокюрмент';
-      case 'electrical':
-        return 'Электрические сети';
-      case 'weakening':
-        return 'Слаботочные системы';
-      case 'interface':
-        return 'Отдел интерфейс';
-      case 'pse':
-        return 'PSE DCC';
-      default:
-        return type.charAt(0).toUpperCase() + type.slice(1);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFileToUpload(e.target.files[0]);
-    }
-  };
-
-  const handleUpload = () => {
-    if (fileToUpload) {
-      uploadFile();
-      setFileToUpload(null);
-      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
-      }
-    } else {
-      toast({
-        title: "Ошибка загрузки",
-        description: "Пожалуйста, выберите файл для загрузки",
-        variant: "destructive"
-      });
-    }
   };
 
   return (
@@ -431,7 +195,7 @@ const Index = () => {
       <main className="flex-1 h-full overflow-hidden flex flex-col">
         <div className="p-6 flex-1 overflow-auto">
           <PageHeader 
-            title={getCategoryTitle(category)}
+            title="All Documents"
             categoryType={category}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
