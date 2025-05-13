@@ -11,7 +11,6 @@ import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
 import { UserButton } from "@/components/UserButton";
 import axios from 'axios';
-import { DOCUMENT_ENDPOINTS } from '@/config/api';
 
 interface BackendDocument {
   owner_id: string;
@@ -150,7 +149,9 @@ const Index = () => {
       link.href = downloadUrl;
       link.setAttribute('download', document.name);
       link.setAttribute('target', '_blank');
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       
       toast({
         title: "Success",

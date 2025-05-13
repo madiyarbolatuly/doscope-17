@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
 import { DocumentGrid } from '@/components/DocumentGrid';
@@ -15,53 +15,101 @@ import {
 import { Document } from '@/types/document';
 import { Trash2, RotateCcw, Grid2X2, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
 
-// Mock deleted documents
-const mockDeletedDocuments: Document[] = [
-  {
-    id: '1',
-    name: 'Project Proposal.pdf',
-    type: 'pdf',
-    size: '2.4 MB',
-    modified: new Date(Date.now() - 3600000).toISOString(),
-    owner: 'Alex Johnson',
-    category: 'projects'
-  },
-  {
-    id: '2',
-    name: 'Meeting Notes.doc',
-    type: 'doc',
-    size: '1.2 MB',
-    modified: new Date(Date.now() - 86400000).toISOString(),
-    owner: 'Sarah Miller',
-    category: 'meetings'
-  },
-  {
-    id: '3',
-    name: 'Budget Analysis.xlsx',
-    type: 'xlsx',
-    size: '3.1 MB',
-    modified: new Date(Date.now() - 172800000).toISOString(),
-    owner: 'David Chen',
-    category: 'finance'
-  }
-];
+interface BackendDocument {
+  owner_id: string;
+  name: string;
+  file_path: string;
+  created_at: string;
+  size: number;
+  file_type: string;
+  tags: string[] | null;
+  categories: string[] | null;
+  status: string;
+  file_hash: string;
+  access_to: string[] | null;
+  id: string;
+}
 
 const TrashBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  const filteredDocuments = mockDeletedDocuments.filter(doc => 
+  // Auth token
+  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcxMTM0NzgsImlkIjoiMDFKVFE4SzZDSDk5WFdSV1FHRzlXUVlaUUgiLCJ1c2VybmFtZSI6InN0cmluZyJ9.8cgLb1wVYrB8dHrwmMaZv1Jv-q7uas33306G_PdaXGM";
+  
+  // Fetch trashed documents
+  const fetchTrashedDocuments = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("http://localhost:8000/v2/trash", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch trashed documents');
+      }
+
+      const data = await response.json();
+      // Transform backend documents to match our Document interface
+      const docsKey = Object.keys(data).find(key => Array.isArray(data[key]));
+      
+      if (docsKey && Array.isArray(data[docsKey])) {
+        const transformedDocuments: Document[] = data[docsKey].map((doc: BackendDocument) => ({
+          id: doc.id,
+          name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
+          type: doc.file_type ? (
+            doc.file_type.includes('pdf') ? 'pdf' :
+            doc.file_type.includes('doc') ? 'doc' :
+            doc.file_type.includes('xls') ? 'xlsx' :
+            doc.file_type.includes('ppt') ? 'ppt' :
+            doc.file_type.includes('image') ? 'image' : 'file'
+          ) : 'file',
+          size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
+          modified: doc.created_at,
+          owner: doc.owner_id,
+          category: doc.categories && doc.categories.length > 0 ? doc.categories[0] : 'uncategorized',
+          path: doc.file_path,
+          tags: doc.tags || []
+        }));
+        setDocuments(transformedDocuments);
+      } else {
+        console.error('No documents array found in response:', data);
+        setDocuments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching trashed documents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch trashed documents",
+        variant: "destructive"
+      });
+      setDocuments([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrashedDocuments();
+  }, []);
+
+  const filteredDocuments = documents.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleDocumentClick = (document: Document) => {
     toast({
-      title: "Документ выбран",
-      description: `Вы выбрали: ${document.name}`,
+      title: "Document selected",
+      description: `Selected: ${document.name}`,
     });
   };
 
@@ -106,22 +154,102 @@ const TrashBin = () => {
     setSelectedDocument(null);
   };
 
-  const handleRestoreSelected = () => {
-    toast({
-      title: "Восстановление документов",
-      description: `Восстановлено ${selectedDocuments.length} документов`,
-    });
-    // In a real app, you'd call an API to restore these documents
+  // Restore document(s) from bin
+  const handleRestoreSelected = async () => {
+    if (selectedDocuments.length === 0) {
+      toast({
+        title: "Error",
+        description: "No documents selected for restoration",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const selectedDocs = documents.filter(doc => selectedDocuments.includes(doc.id));
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const doc of selectedDocs) {
+      try {
+        const encodedFileName = encodeURIComponent(doc.name);
+        await axios.post(`http://localhost:8000/v2/restore/${encodedFileName}`, {}, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        successCount++;
+      } catch (error) {
+        console.error(`Error restoring document ${doc.name}:`, error);
+        failCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast({
+        title: "Success",
+        description: `Restored ${successCount} document(s)`,
+      });
+      fetchTrashedDocuments(); // Refresh the list
+    }
+
+    if (failCount > 0) {
+      toast({
+        title: "Error",
+        description: `Failed to restore ${failCount} document(s)`,
+        variant: "destructive"
+      });
+    }
+
     setSelectedDocuments([]);
     setSelectedDocument(null);
   };
 
-  const handleDeleteSelected = () => {
-    toast({
-      title: "Удаление документов",
-      description: `Окончательно удалено ${selectedDocuments.length} документов`,
-    });
-    // In a real app, you'd call an API to permanently delete these documents
+  // Permanently delete document(s)
+  const handleDeleteSelected = async () => {
+    if (selectedDocuments.length === 0) {
+      toast({
+        title: "Error",
+        description: "No documents selected for deletion",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const selectedDocs = documents.filter(doc => selectedDocuments.includes(doc.id));
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const doc of selectedDocs) {
+      try {
+        const encodedFileName = encodeURIComponent(doc.name);
+        await axios.delete(`http://localhost:8000/v2/trash/${encodedFileName}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        successCount++;
+      } catch (error) {
+        console.error(`Error permanently deleting document ${doc.name}:`, error);
+        failCount++;
+      }
+    }
+
+    if (successCount > 0) {
+      toast({
+        title: "Success",
+        description: `Permanently deleted ${successCount} document(s)`,
+      });
+      fetchTrashedDocuments(); // Refresh the list
+    }
+
+    if (failCount > 0) {
+      toast({
+        title: "Error",
+        description: `Failed to delete ${failCount} document(s)`,
+        variant: "destructive"
+      });
+    }
+
     setSelectedDocuments([]);
     setSelectedDocument(null);
   };
@@ -132,20 +260,20 @@ const TrashBin = () => {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Документы</BreadcrumbLink>
+              <BreadcrumbLink href="/">Documents</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Корзина</BreadcrumbPage>
+              <BreadcrumbPage>Trash Bin</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Корзина</h1>
+        <h1 className="text-2xl font-bold mb-2">Trash Bin</h1>
         <p className="text-muted-foreground">
-          Документы в корзине будут удалены навсегда через 30 дней.
+          Documents in the trash will be deleted permanently after 30 days.
         </p>
       </div>
 
@@ -153,15 +281,15 @@ const TrashBin = () => {
         <SearchBar 
           query={searchQuery} 
           setQuery={setSearchQuery} 
-          placeholder="Поиск в корзине..." 
+          placeholder="Search in trash..." 
         />
         
         <div className="flex items-center gap-4">
           <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
-            <ToggleGroupItem value="grid" aria-label="Сетка">
+            <ToggleGroupItem value="grid" aria-label="Grid view">
               <Grid2X2 className="h-4 w-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="Список">
+            <ToggleGroupItem value="list" aria-label="List view">
               <List className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
@@ -173,9 +301,9 @@ const TrashBin = () => {
           <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
             <Trash2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-1">Корзина пуста</h3>
+          <h3 className="text-lg font-medium mb-1">Trash is empty</h3>
           <p className="text-muted-foreground text-sm max-w-md">
-            Документы не были удалены или ваш поиск не соответствует удаленным документам.
+            No documents have been deleted or your search doesn't match any deleted documents.
           </p>
         </div>
       ) : (
