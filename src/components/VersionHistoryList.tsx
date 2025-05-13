@@ -29,14 +29,14 @@ export function VersionHistoryList({ versions }: VersionHistoryListProps) {
                 )}
               </div>
               <p className="text-sm text-muted-foreground">
-                {format(new Date(version.modified || version.createdAt), 'dd.MM.yyyy HH:mm')}
+                {format(new Date(version.modified || version.date || ''), 'dd.MM.yyyy HH:mm')}
               </p>
               <p className="text-sm mt-1">
-                <span className="text-muted-foreground">Автор:</span> {version.modifiedBy || version.createdBy}
+                <span className="text-muted-foreground">Автор:</span> {version.modifiedBy || version.author}
               </p>
-              {(version.comment || version.comments) && (
+              {(version.comment || version.changes) && (
                 <p className="text-sm mt-2 text-muted-foreground">
-                  "{version.comment || version.comments}"
+                  "{version.comment || version.changes}"
                 </p>
               )}
             </div>

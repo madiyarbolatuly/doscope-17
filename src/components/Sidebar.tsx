@@ -4,9 +4,11 @@ import { cn } from '@/lib/utils';
 import { 
   FileText, Clock, Users, Star, Trash2, 
   Settings, PlusCircle, 
-  HardDrive, Folder, FolderOpen
+  HardDrive, Folder, FolderOpen,
+  Archive, Bell, Upload, Search
 } from 'lucide-react';
 import { CategoryType } from '@/types/document';
+import { Badge } from '@/components/ui/badge';
 
 interface SidebarProps {
   activeCategory: CategoryType;
@@ -17,6 +19,7 @@ interface SidebarItem {
   id: CategoryType;
   label: string;
   icon: React.ReactNode;
+  badge?: string;
 }
 
 export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
@@ -38,12 +41,22 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
     { id: 'pse', label: 'PSE DCC', icon: <FolderOpen size={18} /> },
   ];
 
+  const toolItems: SidebarItem[] = [
+    { id: 'upload' as CategoryType, label: 'Загрузка', icon: <Upload size={18} /> },
+    { id: 'search' as CategoryType, label: 'Поиск', icon: <Search size={18} /> },
+    { id: 'archive' as CategoryType, label: 'Архив', icon: <Archive size={18} /> },
+    { id: 'notifications' as CategoryType, label: 'Уведомления', icon: <Bell size={18} />, badge: '3' },
+  ];
+
   return (
     <div className="w-64 flex-shrink-0 h-screen bg-sidebar border-r border-sidebar-border hidden md:block">
       <div className="p-5">
         <div className="flex items-center gap-2 mb-8">
           <HardDrive className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">EDMS</h1>
+          <div>
+            <h1 className="text-xl font-bold">DocFlow EDMS</h1>
+            <p className="text-xs text-muted-foreground">v1.0.0</p>
+          </div>
         </div>
 
         <button className="w-full flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors">
@@ -83,6 +96,34 @@ export function Sidebar({ activeCategory, onCategoryChange }: SidebarProps) {
               >
                 {item.icon}
                 <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-8 mb-2">
+          <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
+            Инструменты
+          </h2>
+          <nav className="space-y-1">
+            {toolItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onCategoryChange(item.id)}
+                className={cn(
+                  "sidebar-item w-full flex items-center justify-between px-3 py-2 rounded-md text-sm",
+                  activeCategory === item.id ? "active bg-gray-100 dark:bg-gray-800" : ""
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {item.icon}
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {item.badge}
+                  </Badge>
+                )}
               </button>
             ))}
           </nav>

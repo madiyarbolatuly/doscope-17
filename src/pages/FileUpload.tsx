@@ -5,6 +5,7 @@ import { FileUploader } from "@/components/FileUploader";
 import { FileUploadDialog } from "@/components/FileUploadDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -15,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -24,7 +26,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { DocumentGrid } from "@/components/DocumentGrid";
-import { Document, DocumentType } from '@/types/document';
+import { Document, DocumentType, CategoryType } from '@/types/document';
 import { Upload, Loader2, Grid2X2, List } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -92,7 +94,6 @@ const FileUpload = () => {
     setShowUploadDialog(false);
   };
 
-  // Mock documents that represent uploaded files
   const uploadedDocuments: Document[] = uploadedFiles.map((file, index) => ({
     id: `temp-${index}`,
     name: file.name,
@@ -100,7 +101,7 @@ const FileUpload = () => {
     size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
     modified: new Date().toISOString(),
     owner: 'Текущий пользователь',
-    category: category || 'uncategorized',
+    category: (category || 'uncategorized') as CategoryType,
   }));
 
   return (
@@ -229,7 +230,15 @@ const FileUpload = () => {
                   </Select>
                 </div>
                 
-                {/* Removed the automatic tagging and sharing after upload switches */}
+                <div className="flex items-center space-x-2">
+                  <Switch id="auto-tag" />
+                  <Label htmlFor="auto-tag">Автоматическое тегирование</Label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch id="share-upload" />
+                  <Label htmlFor="share-upload">Поделиться после загрузки</Label>
+                </div>
               </div>
             </CardContent>
           </Card>
