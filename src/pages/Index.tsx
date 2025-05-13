@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect } from 'react';
-import { Sidebar } from '@/components/Sidebar';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
@@ -9,7 +7,6 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
-import { UserButton } from "@/components/UserButton";
 import axios from 'axios';
 
 interface BackendDocument {
@@ -434,76 +431,56 @@ const Index = () => {
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
-
+  
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="flex items-center justify-between px-6 h-16 border-b border-muted bg-background">
-        <div className="text-lg font-semibold">DocFlow EDMS 1.0.0</div>
-        <UserButton />
-      </header>
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar activeCategory={category} onCategoryChange={setCategory} />
-        <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel defaultSize={showSidebar ? 75 : 100} minSize={30}>
-            <main className="h-full overflow-auto">
-              <div className="p-6">
-                <PageHeader 
-                  title={getCategoryTitle(category)}
-                  categoryType={category}
-                  searchQuery={searchQuery}
-                  setSearchQuery={setSearchQuery}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                />
-                
-                <div className="mt-4 animate-fade-in">
-                  <DocumentGrid 
-                    documents={documents} 
-                    onDocumentClick={handleDocumentClick}
-                    viewMode={viewMode}
-                    selectedDocument={selectedDocument}
-                    onDocumentSelect={handleDocumentSelect}
-                    multipleSelection={true}
-                    selectionActions={{
-                      selectedIds: selectedDocumentIds,
-                      onSelectAll: handleSelectAll,
-                      onClearSelection: handleClearSelection,
-                      onDeleteSelected: handleDeleteSelected,
-                      onDownloadSelected: handleDownloadSelected,
-                      onShareSelected: handleShareSelected
-                    }}
-                  />
-                </div>
-              </div>
-            </main>
-          </ResizablePanel>
-          
-          {showSidebar && (
-            <>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={25} minSize={20}>
-                <MetadataSidebar 
-                  document={selectedDocument || undefined}
-                  previewUrl={previewUrl}
-                  onClose={handleCloseSidebar}
-                  onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
-                  onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
-                  onUpdateMetadata={handleUpdateMetadata}
-                  token={token}
-                />
-              </ResizablePanel>
-            </>
-          )}
-        </ResizablePanelGroup>
-        
-        <FileUploadDialog
-          open={showUploadDialog}
-          onOpenChange={setShowUploadDialog}
-          onSelectDestination={handleSelectDestination}
-          onCreateFolder={handleCreateFolder}
-          onUpload={handleUploadToDestination}
+    <div className="p-6">
+      <PageHeader 
+        title={getCategoryTitle(category)}
+        categoryType={category}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+      />
+      
+      <div className="mt-4 animate-fade-in">
+        <DocumentGrid 
+          documents={documents} 
+          onDocumentClick={handleDocumentClick}
+          viewMode={viewMode}
+          selectedDocument={selectedDocument}
+          onDocumentSelect={handleDocumentSelect}
+          multipleSelection={true}
+          selectionActions={{
+            selectedIds: selectedDocumentIds,
+            onSelectAll: handleSelectAll,
+            onClearSelection: handleClearSelection,
+            onDeleteSelected: handleDeleteSelected,
+            onDownloadSelected: handleDownloadSelected,
+            onShareSelected: handleShareSelected
+          }}
         />
       </div>
+      
+      {showSidebar && selectedDocument && (
+        <MetadataSidebar 
+          document={selectedDocument}
+          previewUrl={previewUrl}
+          onClose={handleCloseSidebar}
+          onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
+          onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
+          onUpdateMetadata={handleUpdateMetadata}
+          token={token}
+        />
+      )}
+      
+      <FileUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onSelectDestination={handleSelectDestination}
+        onCreateFolder={handleCreateFolder}
+        onUpload={handleUploadToDestination}
+      />
     </div>
   );
 };
