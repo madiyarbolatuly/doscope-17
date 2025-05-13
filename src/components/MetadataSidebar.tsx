@@ -1,21 +1,40 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Document } from '@/types/document';
 import { MetadataCard } from './MetadataCard';
 import {
   FileText, File, FileSpreadsheet, FileImage, 
-  Folder, X, Download, Share2, Star, Trash
+  Folder, X, Download, Share2, Star, Trash, Edit, Check, Download as DownloadIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
 interface MetadataSidebarProps {
   document?: Document;
+  previewUrl?: string | null;
   onClose: () => void;
+  onDownload?: () => void;
+  onDelete?: () => void;
+  onUpdateMetadata?: (id: string, name: string, tags?: string[], categories?: string[]) => Promise<void>;
+  token?: string;
 }
 
-export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
+export function MetadataSidebar({ 
+  document,
+  previewUrl,
+  onClose,
+  onDownload,
+  onDelete,
+  onUpdateMetadata,
+  token
+}: MetadataSidebarProps) {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+
   if (!document) {
     return (
       <div className="h-full flex items-center justify-center border-l p-6">
@@ -43,9 +62,32 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
     }
   };
 
+  const handleStartEdit = () => {
+    setNewName(document.name);
+    setIsEditingName(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!document.id || !onUpdateMetadata || newName.trim() === '') return;
+    
+    setIsSaving(true);
+    try {
+      await onUpdateMetadata(document.id, newName);
+      setIsEditingName(false);
+    } catch (error) {
+      console.error('Error saving document name:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePreviewError = () => {
+    setPreviewError(true);
+  };
+
   const isFolder = document.type === 'folder';
   const fileExtension = document.name.split('.').pop()?.toUpperCase() || '';
-  const modifiedDate = new Date(document.modified);
+  const modifiedDate = document.modified ? new Date(document.modified) : new Date();
   
   return (
     <div className="h-full border-l bg-background overflow-y-auto">
@@ -57,6 +99,27 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
       </div>
       
       <div className="p-6 space-y-6">
+        {/* Preview section for PDF or Images */}
+        {previewUrl && !previewError && (document.type === 'pdf' || document.type === 'image') && (
+          <div className="max-h-[300px] overflow-hidden rounded-md border mb-4">
+            {document.type === 'pdf' ? (
+              <iframe
+                src={`${previewUrl}#toolbar=0`}
+                className="w-full h-[300px]"
+                title={document.name}
+                onError={handlePreviewError}
+              />
+            ) : (
+              <img
+                src={previewUrl}
+                alt={document.name}
+                className="max-h-[300px] w-full object-contain"
+                onError={handlePreviewError}
+              />
+            )}
+          </div>
+        )}
+        
         <div className="flex flex-col items-center text-center">
           <div className="mb-4">
             {document.thumbnail ? (
@@ -68,7 +131,32 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
             ) : renderIcon()}
           </div>
           
-          <h3 className="text-lg font-medium">{document.name}</h3>
+          {isEditingName ? (
+            <div className="flex items-center gap-2 mb-2">
+              <Input 
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full"
+                autoFocus
+              />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleSaveEdit}
+                disabled={isSaving}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-medium">{document.name}</h3>
+              <Button variant="ghost" size="icon" onClick={handleStartEdit}>
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          
           <p className="text-sm text-muted-foreground">
             {isFolder ? 'Folder' : fileExtension}
           </p>
@@ -76,8 +164,12 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
         
         <div className="flex gap-2 justify-center">
           {!isFolder && (
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onDownload}
+            >
+              <DownloadIcon className="h-4 w-4 mr-2" />
               Download
             </Button>
           )}
@@ -92,10 +184,17 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
             {document.favorited ? 'Unstar' : 'Star'}
           </Button>
           
-          <Button variant="outline" size="sm" className="text-destructive border-destructive">
-            <Trash className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
+          {onDelete && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="text-destructive border-destructive"
+              onClick={onDelete}
+            >
+              <Trash className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
         </div>
         
         <Separator />
@@ -127,6 +226,22 @@ export function MetadataSidebar({ document, onClose }: MetadataSidebarProps) {
             <span className="text-sm text-muted-foreground">Location</span>
             <span className="text-sm font-medium">{document.path || '/'}</span>
           </div>
+          
+          {document.tags && document.tags.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-muted-foreground">Tags</span>
+              <div className="flex gap-1 flex-wrap">
+                {document.tags.map((tag, index) => (
+                  <span 
+                    key={index} 
+                    className="text-xs bg-muted px-2 py-1 rounded-full"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
         <Separator />

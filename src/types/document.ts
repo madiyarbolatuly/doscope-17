@@ -14,6 +14,7 @@ export interface Document {
   dueDate?: string;
   engineer?: string;
   linkedAssets?: string[];
+  tags?: string[];
 }
 
 export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder' | string;
