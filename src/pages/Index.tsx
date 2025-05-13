@@ -145,13 +145,13 @@ const Index = () => {
       const downloadUrl = `http://localhost:8000/v2/file/${encodedFileName}/download`;
       
       // Create a temporary anchor element to trigger download
-      const link = document.createElement('a');
+      const link = window.document.createElement('a');
       link.href = downloadUrl;
       link.setAttribute('download', document.name);
       link.setAttribute('target', '_blank');
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
       
       toast({
         title: "Success",

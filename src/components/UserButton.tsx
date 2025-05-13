@@ -51,7 +51,7 @@ export const UserButton: React.FC = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              Выйти
+              Logout
             </DropdownMenuItem>
           </>
         ) : (
@@ -59,9 +59,9 @@ export const UserButton: React.FC = () => {
             <div className="flex flex-col gap-0.5">
               <span className="font-medium truncate flex items-center gap-2">
                 <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
-                Не вошли в систему
+                Not logged in
               </span>
-              <span className="text-xs text-muted-foreground truncate">Нет пользователя</span>
+              <span className="text-xs text-muted-foreground truncate">No user</span>
             </div>
           </DropdownMenuLabel>
         )}
