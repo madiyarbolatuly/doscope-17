@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Document } from '@/types/document';
 import { MetadataCard } from './MetadataCard';
@@ -11,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
+
 interface MetadataSidebarProps {
   document?: Document;
   previewUrl?: string | null;
@@ -18,6 +18,7 @@ interface MetadataSidebarProps {
   onDownload?: () => void;
   onDelete?: () => void;
   onUpdateMetadata?: (id: string, name: string, tags?: string[], categories?: string[]) => Promise<void>;
+  onShare?: () => void;
   token?: string;
 }
 
@@ -27,6 +28,7 @@ export function MetadataSidebar({
   onClose,
   onDownload,
   onDelete,
+  onShare,
   onUpdateMetadata,
   token
 }: MetadataSidebarProps) {
@@ -102,6 +104,7 @@ export function MetadataSidebar({
         {/* Preview section for PDF or Images */}
         {previewUrl && !previewError && (document.type === 'pdf' || document.type === 'image') && (
           <div className="max-h-[300px] overflow-hidden rounded-md border mb-4">
+            {/* blob URL here */}
             {document.type === 'pdf' ? (
               <iframe
                 src={`${previewUrl}#toolbar=0`}
@@ -119,6 +122,7 @@ export function MetadataSidebar({
             )}
           </div>
         )}
+
         
         <div className="flex flex-col items-center text-center">
           <div className="mb-4">
@@ -174,7 +178,7 @@ export function MetadataSidebar({
             </Button>
           )}
           
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={onShare}>
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>

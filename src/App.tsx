@@ -9,6 +9,10 @@ import Login from './pages/Login';
 import { AppLayout } from './components/AppLayout';
 import ArchivedPage from './pages/ArchivedPage';
 import NotificationsPage from './pages/NotificationsPage';
+import FileUpload from './pages/FileUpload';
+import UserManagement from './pages/UserManagement';
+import Approvals from './pages/Approvals';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -20,6 +24,11 @@ function App() {
           <Route path="/trash" element={<AppLayout><TrashBin /></AppLayout>} />
           <Route path="/archived" element={<AppLayout><ArchivedPage /></AppLayout>} />
           <Route path="/notifications" element={<AppLayout><NotificationsPage /></AppLayout>} />
+          <Route path="/fileupload" element={<AppLayout><FileUpload /></AppLayout>} />
+          <Route path="/usersmanagement" element={<AppLayout><UserManagement /></AppLayout>} />
+          <Route path="/approvals" element={<AppLayout><Approvals /></AppLayout>} />
+          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+         
         </Routes>
         <Toaster />
       </Router>

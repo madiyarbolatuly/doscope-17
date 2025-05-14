@@ -6,6 +6,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Grid2X2, List, RefreshCw, Upload, Info } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { NotificationBell } from './NotificationBell';
+import { UserButton } from './UserButton';
 
 interface PageHeaderProps {
   title: string;
@@ -55,14 +57,8 @@ export function PageHeader({
     
     return (
       <div className="flex gap-2">
-        <Button variant="outline" className="flex items-center gap-2">
-          <RefreshCw size={16} />
-          <span>Обновить</span>
-        </Button>
-        <Button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-          <Upload size={16} />
-          <span>Загрузить</span>
-        </Button>
+        <NotificationBell />
+        <UserButton />
       </div>
     );
   };

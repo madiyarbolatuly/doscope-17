@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Document, MultipleSelectionActions } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
@@ -184,7 +183,7 @@ export function DocumentGrid({
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={selectionActions.onShareSelected}
+              onClick={e => { e.stopPropagation(); selectionActions.onShareSelected(); }}
               className="flex items-center gap-1"
             >
               <Share2 size={16} />

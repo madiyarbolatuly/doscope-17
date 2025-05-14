@@ -8,6 +8,9 @@ import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ShareModal } from '@/components/ShareModal';
+import { useShare } from '@/hooks/useShare';
+
 
 interface BackendDocument {
   owner_id: string;
@@ -38,9 +41,13 @@ const Index = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isDragging, setIsDragging] = useState(false);
+  const [shareDoc, setShareDoc] = useState<Document | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+
 
   // Auth token
-  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcxMTM0NzgsImlkIjoiMDFKVFE4SzZDSDk5WFdSV1FHRzlXUVlaUUgiLCJ1c2VybmFtZSI6InN0cmluZyJ9.8cgLb1wVYrB8dHrwmMaZv1Jv-q7uas33306G_PdaXGM";
+  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcyMTQ1MDAsImlkIjoiMDFKVFE4SzZDSDk5WFdSV1FHRzlXUVlaUUgiLCJ1c2VybmFtZSI6InN0cmluZyJ9.2wQ-VyiAIGQwZREO_kAsMzjw_-8lDwYL9Elr_09_ZnQ";
 
   // Fetch documents
   const fetchDocuments = async () => {
@@ -51,7 +58,7 @@ const Index = () => {
           "Authorization": `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch documents');
       }
@@ -59,17 +66,19 @@ const Index = () => {
       const data = await response.json();
       // Transform backend documents to match our Document interface
       const docsKey = Object.keys(data).find(key => Array.isArray(data[key]));
-      
+
       if (docsKey && Array.isArray(data[docsKey])) {
         const transformedDocuments: Document[] = data[docsKey].map((doc: BackendDocument) => ({
           id: doc.id,
           name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
           type: doc.file_type ? (
             doc.file_type.includes('pdf') ? 'pdf' :
-            doc.file_type.includes('doc') ? 'doc' :
-            doc.file_type.includes('xls') ? 'xlsx' :
-            doc.file_type.includes('ppt') ? 'ppt' :
-            doc.file_type.includes('image') ? 'image' : 'file'
+              doc.file_type.includes('doc') ? 'doc' :
+                doc.file_type.includes('xls') ? 'xlsx' :
+                  doc.file_type.includes('ppt') ? 'ppt' :
+                    doc.file_type.includes('pptx') ? 'pptx' :
+                      doc.file_type.includes('png') ? 'png' :
+                        doc.file_type.includes('image') ? 'image' : 'file'
           ) : 'file',
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
@@ -96,6 +105,14 @@ const Index = () => {
     }
   };
 
+  const { createShareLink, shareWithUsers, loading: shareLoading, error: shareError } = useShare();
+
+  // Handler that you’ll pass down to your grid/item “Share” button:
+  const openShare = (doc: Document) => {
+    setShareDoc(doc);
+    setIsShareOpen(true);
+  };
+    
   useEffect(() => {
     fetchDocuments();
   }, []);
@@ -103,56 +120,60 @@ const Index = () => {
   // Preview document
   const handlePreviewFile = async (document: Document) => {
     try {
-      // Encode the file name properly for the URL
-      const encodedFileName = encodeURIComponent(document.name);
-      const response = await fetch(`http://localhost:8000/v2/preview/${encodedFileName}`, {
+      const encoded = encodeURIComponent(document.name);
+      // 1) Fetch with auth header
+      const res = await fetch(`http://localhost:8000/v2/preview/${encoded}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Preview fetch failed');
+  
+      // 2) Read it as a Blob
+      const blob = await res.blob();
+  
+      // 3) Create an object URL so the browser can render it
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+  
+      setSelectedDocument(document);
+      setShowSidebar(true);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'Error',
+        description: 'Не удалось загрузить предпросмотр',
+        variant: 'destructive',
+      });
+    }
+  };
+  
+  // Download document
+  const handleDownloadFile = async (doc: Document) => {
+    try {
+      const encodedFileName = encodeURIComponent(doc.name);
+      const downloadUrl = `http://localhost:8000/v2/file/${encodedFileName}/download`;
+  
+      const response = await fetch(downloadUrl, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
       });
-      
+  
       if (!response.ok) {
-        throw new Error('Failed to preview document');
+        throw new Error('Download failed');
       }
-      
-      // For PDF and images, we can set a preview URL
-      if (document.type === 'pdf' || document.type === 'image') {
-        setPreviewUrl(`http://localhost:8000/v2/preview/${encodedFileName}`);
-      } else {
-        setPreviewUrl(null);
-      }
-      
-      setSelectedDocument(document);
-      setShowSidebar(true);
-    } catch (error) {
-      console.error('Error previewing document:', error);
-      toast({
-        title: "Error",
-        description: "Failed to preview document",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Download document
-  const handleDownloadFile = async (document: Document) => {
-    try {
-      // Encode the file name properly for the URL
-      const encodedFileName = encodeURIComponent(document.name);
-      const downloadUrl = `http://localhost:8000/v2/file/${encodedFileName}/download`;
-      
-      // Create a temporary anchor element to trigger download
-      const link = window.document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', document.name);
-      link.setAttribute('target', '_blank');
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
-      
+  
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+  
       toast({
         title: "Success",
-        description: `Downloading: ${document.name}`,
+        description: `Downloading: ${doc.name}`,
       });
     } catch (error) {
       console.error('Error downloading document:', error);
@@ -163,22 +184,53 @@ const Index = () => {
       });
     }
   };
+  
+
 
   // Upload document
-  const handleUploadFile = async (files: FileList | null) => {
-    if (!files || files.length === 0) {
-      toast({
-        title: "Error",
-        description: "Please select at least one file",
-        variant: "destructive"
-      });
-      return;
+  const traverseFileTree = async (
+    item: FileSystemEntry,
+    path = '',
+    fileList: File[] = []
+  ): Promise<void> => {
+    return new Promise((resolve) => {
+      if (item.isFile) {
+        const fileEntry = item as FileSystemFileEntry;
+        fileEntry.file((file) => {
+          (file as any).relativePath = path + file.name;
+          fileList.push(file);
+          resolve();
+        });
+      } else if (item.isDirectory) {
+        const dirReader = (item as FileSystemDirectoryEntry).createReader();
+        dirReader.readEntries(async (entries) => {
+          for (const entry of entries) {
+            await traverseFileTree(entry, path + item.name + '/', fileList);
+          }
+          resolve();
+        });
+      }
+    });
+  };
+
+  const handleDropWithFolders = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const items = e.dataTransfer.items;
+    const files: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].webkitGetAsEntry?.();
+      if (item) {
+        await traverseFileTree(item, '', files);
+      }
     }
 
     const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append("files", files[i]);
-    }
+    files.forEach(file => {
+      formData.append('files', file, (file as any).relativePath || file.name);
+    });
 
     try {
       const response = await axios.post("http://localhost:8000/v2/upload", formData, {
@@ -193,9 +245,7 @@ const Index = () => {
         description: `Uploaded ${files.length} file(s) successfully`,
       });
 
-      // Refresh document list
       fetchDocuments();
-      setShowUploadDialog(false);
     } catch (error) {
       console.error('Error uploading files:', error);
       toast({
@@ -205,6 +255,7 @@ const Index = () => {
       });
     }
   };
+
 
   // Rename/update document metadata
   const handleUpdateMetadata = async (documentId: string, newName: string, tags?: string[], categories?: string[]) => {
@@ -227,13 +278,14 @@ const Index = () => {
 
       // Refresh document list
       fetchDocuments();
-      
+
       // If this is the selected document, update it
       if (selectedDocument && selectedDocument.id === documentId) {
         setSelectedDocument({
           ...selectedDocument,
           name: newName,
-          tags: tags || selectedDocument.tags
+          tags: tags || selectedDocument.tags,
+          category: categories && categories.length > 0 ? categories[0] : selectedDocument.category,
         });
       }
     } catch (error) {
@@ -264,7 +316,7 @@ const Index = () => {
 
       // Refresh document list
       fetchDocuments();
-      
+
       // If this document was selected, clear selection
       if (selectedDocument && selectedDocument.id === document.id) {
         setSelectedDocument(null);
@@ -334,10 +386,10 @@ const Index = () => {
 
   const handleDeleteSelected = async () => {
     const selectedDocs = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-    
+
     let successCount = 0;
     let failCount = 0;
-    
+
     for (const doc of selectedDocs) {
       try {
         const encodedFileName = encodeURIComponent(doc.name);
@@ -358,11 +410,11 @@ const Index = () => {
         title: "Success",
         description: `${successCount} document(s) moved to bin`,
       });
-      
+
       // Refresh document list
       fetchDocuments();
     }
-    
+
     if (failCount > 0) {
       toast({
         title: "Error",
@@ -370,7 +422,7 @@ const Index = () => {
         variant: "destructive"
       });
     }
-    
+
     setSelectedDocumentIds([]);
     setSelectedDocument(null);
     setShowSidebar(false);
@@ -378,7 +430,7 @@ const Index = () => {
 
   const handleDownloadSelected = () => {
     const selectedDocs = documents.filter(doc => selectedDocumentIds.includes(doc.id));
-    
+
     for (const doc of selectedDocs) {
       handleDownloadFile(doc);
     }
@@ -405,8 +457,38 @@ const Index = () => {
     });
   };
 
-  const handleUploadToDestination = (files: FileList | null) => {
-    handleUploadFile(files);
+  const handleUploadToDestination = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileList = Array.from(files);
+    const formData = new FormData();
+
+    fileList.forEach(file => {
+      formData.append('files', file, (file as any).relativePath || file.name);
+    });
+
+    try {
+      const response = await axios.post("http://localhost:8000/v2/upload", formData, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      toast({
+        title: "Success",
+        description: `Uploaded ${files.length} file(s) successfully`,
+      });
+
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload files",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCloseSidebar = () => {
@@ -418,23 +500,47 @@ const Index = () => {
   const getCategoryTitle = (type: CategoryType): string => {
     switch (type) {
       case 'all':
-        return 'All Documents';
+        return 'Все документы';
       case 'recent':
-        return 'Recent Documents';
+        return 'Недавние документы';
       case 'shared':
-        return 'Shared Documents';
+        return 'Общие документы';
       case 'favorites':
-        return 'Favorite Documents';
+        return 'Избранные документы';
       case 'trash':
-        return 'Trash';
+        return 'Корзина';
       default:
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
-  
+
   return (
-    <div className="p-6">
-      <PageHeader 
+    <div
+      className="relative"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDrop={(e) => handleDropWithFolders(e)}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+    >
+
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center pointer-events-none">
+          <p className="text-lg font-semibold text-blue-600">Drop files to upload</p>
+        </div>
+      )}
+
+     
+
+      <PageHeader
         title={getCategoryTitle(category)}
         categoryType={category}
         searchQuery={searchQuery}
@@ -442,10 +548,10 @@ const Index = () => {
         viewMode={viewMode}
         setViewMode={setViewMode}
       />
-      
+
       <div className="mt-4 animate-fade-in">
-        <DocumentGrid 
-          documents={documents} 
+        <DocumentGrid
+          documents={documents}
           onDocumentClick={handleDocumentClick}
           viewMode={viewMode}
           selectedDocument={selectedDocument}
@@ -461,9 +567,16 @@ const Index = () => {
           }}
         />
       </div>
-      
+
+      {isShareOpen && shareDoc && (
+        <ShareModal
+          document={shareDoc}
+          onClose={() => setIsShareOpen(false)}
+        />
+      )}
+
       {showSidebar && selectedDocument && (
-        <MetadataSidebar 
+        <MetadataSidebar
           document={selectedDocument}
           previewUrl={previewUrl}
           onClose={handleCloseSidebar}
@@ -473,14 +586,16 @@ const Index = () => {
           token={token}
         />
       )}
-      
+
       <FileUploadDialog
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
         onSelectDestination={handleSelectDestination}
         onCreateFolder={handleCreateFolder}
-        onUpload={handleUploadToDestination}
+        onUpload={(files) => { handleUploadToDestination(files); }}
       />
+
+    
     </div>
   );
 };
