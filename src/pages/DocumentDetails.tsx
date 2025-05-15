@@ -155,7 +155,7 @@ const DocumentDetails = () => {
   const [document, setDocument] = useState<Document | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [relatedDocuments, setRelatedDocuments] = useState<Document[]>(MOCK_RELATED_DOCUMENTS);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {

@@ -85,7 +85,7 @@ const activityData = [
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const navigate = useNavigate();
@@ -244,7 +244,7 @@ const Dashboard = () => {
             </div>
           )}
           
-          <DocumentGrid 
+          <DocumentGrid
             documents={filteredDocuments} 
             onDocumentClick={handleDocumentClick}
             viewMode={viewMode}

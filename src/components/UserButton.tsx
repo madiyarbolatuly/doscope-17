@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -51,7 +50,7 @@ export const UserButton: React.FC = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Выйти
             </DropdownMenuItem>
           </>
         ) : (
@@ -59,9 +58,9 @@ export const UserButton: React.FC = () => {
             <div className="flex flex-col gap-0.5">
               <span className="font-medium truncate flex items-center gap-2">
                 <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
-                Not logged in
+                Не вошли в систему
               </span>
-              <span className="text-xs text-muted-foreground truncate">No user</span>
+              <span className="text-xs text-muted-foreground truncate">Нет пользователя</span>
             </div>
           </DropdownMenuLabel>
         )}

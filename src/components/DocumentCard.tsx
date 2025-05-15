@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Document } from '@/types/document';
 import { cn } from '@/lib/utils';
@@ -32,6 +31,7 @@ import {
 interface DocumentCardProps {
   document: Document;
   onClick: (document: Document) => void;
+  onPreview: (document: Document) => void;
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
@@ -40,6 +40,7 @@ interface DocumentCardProps {
 export function DocumentCard({ 
   document, 
   onClick, 
+  onPreview,
   isSelected, 
   onSelect,
   multipleSelection = false
@@ -70,11 +71,8 @@ export function DocumentCard({
         isSelected ? "bg-primary/5 border-primary" : "bg-card hover:bg-accent/50",
         isFolder && "border-yellow-200 hover:border-yellow-300"
       )}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      onDoubleClick={() => onClick(document)}
+      onClick={() => onClick(document)}
+      onDoubleClick={() => onPreview(document)}
     >
       {/* Selection UI that appears on hover */}
       <div className={cn(
@@ -119,19 +117,18 @@ export function DocumentCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onClick(document)}>Open</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onPreview(document)}>Просмотр</DropdownMenuItem>
             {isFolder ? (
               <>
-                <DropdownMenuItem>New File</DropdownMenuItem>
-                <DropdownMenuItem>New Folder</DropdownMenuItem>
+                <DropdownMenuItem>Новая папка</DropdownMenuItem>
               </>
             ) : (
-              <DropdownMenuItem>Download</DropdownMenuItem>
+              <DropdownMenuItem>Скачать</DropdownMenuItem>
             )}
-            <DropdownMenuItem>Share</DropdownMenuItem>
-            <DropdownMenuItem>Rename</DropdownMenuItem>
+            <DropdownMenuItem>Поделиться</DropdownMenuItem>
+            <DropdownMenuItem>Переименовать</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">Удалить</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

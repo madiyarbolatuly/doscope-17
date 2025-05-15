@@ -73,7 +73,7 @@ const MOCK_DOCUMENTS: Document[] = [
 const Documents = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const navigate = useNavigate();

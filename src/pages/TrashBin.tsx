@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
@@ -35,14 +34,14 @@ interface BackendDocument {
 const TrashBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
   // Auth token
-  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcxMTM0NzgsImlkIjoiMDFKVFE4SzZDSDk5WFdSV1FHRzlXUVlaUUgiLCJ1c2VybmFtZSI6InN0cmluZyJ9.8cgLb1wVYrB8dHrwmMaZv1Jv-q7uas33306G_PdaXGM";
+  const token = localStorage.getItem('authToken');
   
   // Fetch trashed documents
   const fetchTrashedDocuments = async () => {
@@ -255,25 +254,25 @@ const TrashBin = () => {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 md:px-6">
+    <div className="container px-4 ml-0 mr-0 w-full md:px-6" style={{ maxWidth: "none" }}>
       <div className="mb-6">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Documents</BreadcrumbLink>
+              <BreadcrumbLink href="/">Документы</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Trash Bin</BreadcrumbPage>
+              <BreadcrumbPage>Корзина</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Trash Bin</h1>
+        <h1 className="text-2xl font-bold mb-2">Корзина</h1>
         <p className="text-muted-foreground">
-          Documents in the trash will be deleted permanently after 30 days.
+          Документы в корзине будут удалены навсегда через 30 дней.
         </p>
       </div>
 
@@ -301,7 +300,7 @@ const TrashBin = () => {
           <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
             <Trash2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-1">Trash is empty</h3>
+          <h3 className="text-lg font-medium mb-1">Корзина пуста</h3>
           <p className="text-muted-foreground text-sm max-w-md">
             No documents have been deleted or your search doesn't match any deleted documents.
           </p>
@@ -320,6 +319,13 @@ const TrashBin = () => {
             onClearSelection: handleClearSelection,
             onDeleteSelected: handleDeleteSelected,
             onRestoreSelected: handleRestoreSelected
+          }}
+          onDocumentPreview={(document) => {
+            // You can customize this handler as needed
+            toast({
+              title: "Preview not implemented",
+              description: `Preview for: ${document.name}`,
+            });
           }}
         />
       )}

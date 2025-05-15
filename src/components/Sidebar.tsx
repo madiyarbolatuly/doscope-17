@@ -28,14 +28,14 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
   const location = useLocation();
 
   const mainNavItems: SidebarItem[] = [
-    { id: 'all', label: 'Все документы', icon: <FileText size={18} /> },
+    { id: 'all', label: 'Все документы', icon: <FileText size={18} />, path: '/'  },
     { id: 'recent', label: 'Недавние', icon: <Clock size={18} /> },
     { id: 'shared', label: 'Общие', icon: <Users size={18} /> },
     { id: 'favorites', label: 'Избранное', icon: <Star size={18} /> },
     { id: 'trash', label: 'Корзина', icon: <Trash2 size={18} />, path: '/trash' },
   ];
 
-  const categoryItems: SidebarItem[] = [
+ /*  const categoryItems: SidebarItem[] = [
     { id: 'managers', label: 'Руководители', icon: <FolderOpen size={18} /> },
     { id: 'development', label: 'Отдел развития', icon: <FolderOpen size={18} /> },
     { id: 'procurement', label: 'Прокюрмент', icon: <FolderOpen size={18} /> },
@@ -44,11 +44,10 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
     { id: 'interface', label: 'Отдел интерфейс', icon: <FolderOpen size={18} /> },
     { id: 'pse', label: 'PSE DCC', icon: <FolderOpen size={18} /> },
   ];
-
+ */
 
   const toolItems: SidebarItem[] = [
-    { id: 'upload' as CategoryType, label: 'Загрузить', icon: <Upload size={18} /> },
-    { id: 'search' as CategoryType, label: 'Поиск', icon: <Search size={18} /> },
+    { id: 'upload' as CategoryType, label: 'Загрузить', icon: <Upload size={18}/>, path: '/fileupload' },
     { id: 'archive' as CategoryType, label: 'Архив', icon: <Archive size={18} />, path: '/archived' },
     { id: 'notifications' as CategoryType, label: 'Уведомления', icon: <Bell size={18} />, badge: '3', path: '/notifications' },
   ];
@@ -98,7 +97,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
             </button>
           ))}
         </nav>
-
+{/* 
         <div className="mt-8 mb-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
             Категории
@@ -119,7 +118,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
             ))}
           </nav>
         </div>
-
+ */}
         <div className="mt-8 mb-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
             Инструменты
@@ -147,7 +146,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
             ))}
           </nav>
         </div>
-      </div>
+      </div> 
 
       <div className="absolute bottom-0 w-64 p-4 border-t border-sidebar-border">
         <button className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-sidebar-accent rounded-md transition-colors">

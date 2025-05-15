@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 interface DocumentGridProps {
   documents: Document[];
   onDocumentClick: (document: Document) => void;
+  onDocumentPreview: (document: Document) => void;
   viewMode?: 'grid' | 'list';
   selectedDocument?: Document | null;
   onDocumentSelect: (document: Document) => void;
@@ -20,6 +21,7 @@ interface DocumentGridProps {
 export function DocumentGrid({ 
   documents, 
   onDocumentClick, 
+  onDocumentPreview,
   viewMode = 'grid',
   selectedDocument,
   onDocumentSelect,
@@ -117,18 +119,18 @@ export function DocumentGrid({
             />
           </svg>
         </div>
-        <h3 className="text-lg font-medium mb-1">No documents found</h3>
+        <h3 className="text-lg font-medium mb-1">Документы не найдены</h3>
         <p className="text-muted-foreground text-sm max-w-md">
-          No documents match your current search or filter criteria. Try changing your search terms or adding new documents.
+          Нет документов, соответствующих вашему поиску или фильтру. Измените параметры поиска или добавьте новые документы.
         </p>
         <div className="flex gap-3 mt-6">
           <Button variant="outline" size="sm">
             <FolderPlus className="h-4 w-4 mr-2" />
-            Create Folder
+            Создать папку
           </Button>
           <Button size="sm">
             <Upload className="h-4 w-4 mr-2" />
-            Upload Files
+            Загрузить файлы
           </Button>
         </div>
       </div>
@@ -153,7 +155,7 @@ export function DocumentGrid({
             }}
           />
           <span className="text-sm font-medium">
-            {selectionActions.selectedIds.length} selected
+            {selectionActions.selectedIds.length} выбранно
           </span>
         </div>
         <div className="flex gap-2">
@@ -165,7 +167,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <X size={16} />
-              <span className="hidden md:inline">Cancel</span>
+              <span className="hidden md:inline">Отмена</span>
             </Button>
           )}
           {selectionActions.onDownloadSelected && (
@@ -176,7 +178,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Download size={16} />
-              <span className="hidden md:inline">Download</span>
+              <span className="hidden md:inline">Скачать</span>
             </Button>
           )}
           {selectionActions.onShareSelected && (
@@ -187,7 +189,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Share2 size={16} />
-              <span className="hidden md:inline">Share</span>
+              <span className="hidden md:inline">Поделиться</span>
             </Button>
           )}
           {selectionActions.onRestoreSelected && (
@@ -198,7 +200,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Check size={16} />
-              <span className="hidden md:inline">Restore</span>
+              <span className="hidden md:inline">Восстановить</span>
             </Button>
           )}
           {selectionActions.onDeleteSelected && (
@@ -209,7 +211,7 @@ export function DocumentGrid({
               className="flex items-center gap-1"
             >
               <Trash size={16} />
-              <span className="hidden md:inline">Delete</span>
+              <span className="hidden md:inline">Удалить</span>
             </Button>
           )}
         </div>
@@ -220,18 +222,18 @@ export function DocumentGrid({
   return (
     <div className="space-y-6">
       {renderSelectionActionsBar()}
-      
       {viewMode === 'grid' ? (
         <div className="space-y-6">
           {folders.length > 0 && (
             <div>
-              <h2 className="text-lg font-medium mb-3">Folders</h2>
+              <h2 className="text-lg font-medium mb-3">Папки</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {folders.map((folder, index) => (
                   <DocumentCard 
                     key={folder.id} 
                     document={folder} 
                     onClick={onDocumentClick}
+                    onPreview={onDocumentPreview}
                     isSelected={
                       multipleSelection && selectionActions
                         ? selectionActions.selectedIds.includes(folder.id)
@@ -244,16 +246,16 @@ export function DocumentGrid({
               </div>
             </div>
           )}
-          
           {files.length > 0 && (
             <div>
-              <h2 className="text-lg font-medium mb-3">Files</h2>
+              <h2 className="text-lg font-medium mb-3">Файлы</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {files.map((file, index) => (
                   <DocumentCard 
                     key={file.id} 
                     document={file} 
                     onClick={onDocumentClick}
+                    onPreview={onDocumentPreview}
                     isSelected={
                       multipleSelection && selectionActions
                         ? selectionActions.selectedIds.includes(file.id)
@@ -271,13 +273,14 @@ export function DocumentGrid({
         <div className="space-y-4">
           {folders.length > 0 && (
             <div>
-              <h2 className="text-lg font-medium mb-2">Folders</h2>
-              <div className={cn("rounded-md border")}>
+              <h2 className="text-lg font-medium mb-2">Папки</h2>
+              <div className={cn("rounded-md border")}> 
                 {folders.map((folder, index) => (
                   <DocumentListItem 
                     key={folder.id} 
                     document={folder} 
                     onClick={onDocumentClick}
+                    onPreview={onDocumentPreview}
                     isSelected={
                       multipleSelection && selectionActions
                         ? selectionActions.selectedIds.includes(folder.id)
@@ -290,16 +293,16 @@ export function DocumentGrid({
               </div>
             </div>
           )}
-          
           {files.length > 0 && (
             <div>
-              <h2 className="text-lg font-medium mb-2">Files</h2>
-              <div className={cn("rounded-md border")}>
+              <h2 className="text-lg font-medium mb-2">Файлы</h2>
+              <div className={cn("rounded-md border")}> 
                 {files.map((file, index) => (
                   <DocumentListItem 
                     key={file.id} 
                     document={file} 
                     onClick={onDocumentClick}
+                    onPreview={onDocumentPreview}
                     isSelected={
                       multipleSelection && selectionActions
                         ? selectionActions.selectedIds.includes(file.id)

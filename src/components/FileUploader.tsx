@@ -1,8 +1,8 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, X, File, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import axios from 'axios';
 
 interface FileUploaderProps {
   onUploadComplete?: (fileNames: string[]) => void;
@@ -43,35 +43,49 @@ export function FileUploader({
     setUploadStatus(newStatus);
   };
   
-  const simulateUpload = (fileId: string) => {
-    setUploadStatus(prev => ({ ...prev, [fileId]: 'uploading' }));
-    
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        const newProgress = { ...prev };
-        if (newProgress[fileId] < 100) {
-          newProgress[fileId] += 5;
-        } else {
-          clearInterval(interval);
-          setUploadStatus(prevStatus => ({ ...prevStatus, [fileId]: 'success' }));
-          
-          // Check if all files are uploaded
-          const allUploaded = Object.values(newProgress).every(p => p === 100);
-          if (allUploaded && onUploadComplete) {
-            onUploadComplete(files.map(f => f.name));
+  const handleUploadClick = async () => {
+    if (files.length === 0) return;
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file, file.name);
+    });
+    try {
+      // Replace with your actual API endpoint
+      const response = await axios.post('/v2/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          // Add auth header if needed
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress((prev) => {
+              const newProgress = { ...prev };
+              files.forEach(file => {
+                newProgress[file.name] = percent;
+              });
+              return newProgress;
+            });
           }
         }
-        return newProgress;
       });
-    }, 200);
-  };
-  
-  const handleUploadClick = () => {
-    // Simulate upload for each file
-    files.forEach((file, index) => {
-      const fileId = `${file.name}-${Date.now()}`;
-      setTimeout(() => simulateUpload(fileId), index * 300);
-    });
+      setUploadStatus((prev) => {
+        const newStatus = { ...prev };
+        files.forEach(file => {
+          newStatus[file.name] = 'success';
+        });
+        return newStatus;
+      });
+      if (onUploadComplete) onUploadComplete(files.map(f => f.name));
+    } catch (error) {
+      setUploadStatus((prev) => {
+        const newStatus = { ...prev };
+        files.forEach(file => {
+          newStatus[file.name] = 'error';
+        });
+        return newStatus;
+      });
+    }
   };
   
   const removeFile = (index: number) => {
@@ -187,16 +201,15 @@ export function FileUploader({
             })}
           </div>
           
-          <Button 
+          <span 
             onClick={(e) => {
               e.stopPropagation();
               handleUploadClick();
             }}
-            disabled={files.length === 0}
-            className="mt-2"
+            className="ml-1 mt-2"
           >
-            Загрузить {files.length} {files.length === 1 ? 'файл' : files.length >= 2 && files.length <= 4 ? 'файла' : 'файлов'}
-          </Button>
+            {files.length} {files.length === 1 ? 'файл' : files.length >= 2 && files.length <= 4 ? 'файла' : 'файлов'}
+          </span>
         </div>
       )}
     </div>

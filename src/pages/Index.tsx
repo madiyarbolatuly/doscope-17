@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
 import { useShare } from '@/hooks/useShare';
-
+import { DocumentList } from "@/components/DocumentList";
 
 interface BackendDocument {
   owner_id: string;
@@ -30,7 +30,7 @@ interface BackendDocument {
 const Index = () => {
   const [category, setCategory] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -44,10 +44,11 @@ const Index = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
 
 
   // Auth token
-  const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDcyMTQ1MDAsImlkIjoiMDFKVFE4SzZDSDk5WFdSV1FHRzlXUVlaUUgiLCJ1c2VybmFtZSI6InN0cmluZyJ9.2wQ-VyiAIGQwZREO_kAsMzjw_-8lDwYL9Elr_09_ZnQ";
+  const token = localStorage.getItem('authToken')
 
   // Fetch documents
   const fetchDocuments = async () => {
@@ -333,19 +334,8 @@ const Index = () => {
   };
 
   const handleDocumentClick = (document: Document) => {
-    if (document.type === 'folder') {
-      handleFolderOpen(document);
-    } else {
-      handlePreviewFile(document);
-    }
-  };
-
-  const handleFolderOpen = (folder: Document) => {
-    toast({
-      title: "Opening folder",
-      description: `Opening folder: ${folder.name}`,
-    });
-    setCurrentPath([...currentPath, folder]);
+    setSelectedDocument(document);
+    setShowSidebar(true);
   };
 
   const handleDocumentSelect = (document: Document) => {
@@ -357,10 +347,7 @@ const Index = () => {
       }
     } else {
       setSelectedDocumentIds([...selectedDocumentIds, document.id]);
-      if (selectedDocumentIds.length === 0) {
-        setSelectedDocument(document);
-        setShowSidebar(true);
-      }
+      // Do not open sidebar or set selectedDocument here
     }
   };
 
@@ -514,60 +501,91 @@ const Index = () => {
     }
   };
 
-  return (
-    <div
-      className="relative"
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onDrop={(e) => handleDropWithFolders(e)}
-      onDragEnter={(e) => {
-        e.preventDefault();
-        setIsDragging(true);
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
+  // Drag and drop handlers for a dedicated drop area
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter((c) => c + 1);
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter((c) => {
+      const next = c - 1;
+      if (next <= 0) {
         setIsDragging(false);
-      }}
-    >
+        return 0;
+      }
+      return next;
+    });
+  };
 
-      {isDragging && (
-        <div className="absolute inset-0 z-50 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center pointer-events-none">
-          <p className="text-lg font-semibold text-blue-600">Drop files to upload</p>
-        </div>
-      )}
+  const handleDragOverArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
-     
+  const handleDropArea = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(0);
+    setIsDragging(false);
+    await handleDropWithFolders(e);
+  };
 
-      <PageHeader
-        title={getCategoryTitle(category)}
-        categoryType={category}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
-      />
-
-      <div className="mt-4 animate-fade-in">
-        <DocumentGrid
-          documents={documents}
-          onDocumentClick={handleDocumentClick}
-          viewMode={viewMode}
-          selectedDocument={selectedDocument}
-          onDocumentSelect={handleDocumentSelect}
-          multipleSelection={true}
-          selectionActions={{
-            selectedIds: selectedDocumentIds,
-            onSelectAll: handleSelectAll,
-            onClearSelection: handleClearSelection,
-            onDeleteSelected: handleDeleteSelected,
-            onDownloadSelected: handleDownloadSelected,
-            onShareSelected: handleShareSelected
-          }}
-        />
+  return (
+    <div className="relative">
+      <div
+        className="fixed inset-0 z-50"
+        style={{ pointerEvents: isDragging ? 'auto' : 'none', display: isDragging ? 'block' : 'none' }}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOverArea}
+        onDrop={handleDropArea}
+      >
+        {isDragging && (
+          <div className="absolute inset-0 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center">
+            <p className="text-lg font-semibold text-blue-600">Перетащите файлы для загрузки
+            </p>
+          </div>
+        )}
       </div>
-
+      <div
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOverArea}
+        onDrop={handleDropArea}
+      >
+        <PageHeader
+          title={getCategoryTitle(category)}
+          categoryType={category}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+        />
+        <div className="mt-4 animate-fade-in">
+          <DocumentGrid
+            documents={documents}
+            onDocumentClick={handleDocumentClick}
+            onDocumentPreview={handlePreviewFile}
+            viewMode={viewMode}
+            selectedDocument={selectedDocument}
+            onDocumentSelect={handleDocumentSelect}
+            multipleSelection={true}
+            selectionActions={{
+              selectedIds: selectedDocumentIds,
+              onSelectAll: handleSelectAll,
+              onClearSelection: handleClearSelection,
+              onDeleteSelected: handleDeleteSelected,
+              onDownloadSelected: handleDownloadSelected,
+              onShareSelected: handleShareSelected
+            }}
+          />
+        </div>
+      </div>
       {isShareOpen && shareDoc && (
         <ShareModal
           document={shareDoc}
@@ -575,16 +593,46 @@ const Index = () => {
         />
       )}
 
-      {showSidebar && selectedDocument && (
-        <MetadataSidebar
-          document={selectedDocument}
-          previewUrl={previewUrl}
-          onClose={handleCloseSidebar}
-          onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
-          onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
-          onUpdateMetadata={handleUpdateMetadata}
-          token={token}
-        />
+      {previewUrl && selectedDocument && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex flex-col items-center justify-center">
+          <button
+            className="absolute top-4 right-4 z-60 bg-white rounded-full p-2 shadow hover:bg-gray-200"
+            onClick={() => { setPreviewUrl(null); }}
+          >
+            <span className="sr-only">Закрыть Предпросмотр</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          {selectedDocument.type === 'pdf' ? (
+            <iframe
+              src={`${previewUrl}#toolbar=0`}
+              className="w-[90vw] h-[90vh] bg-white rounded shadow-xl"
+              title={selectedDocument.name}
+            />
+          ) : selectedDocument.type === 'image' ? (
+            <img
+              src={previewUrl}
+              alt={selectedDocument.name}
+              className="max-h-[90vh] max-w-[90vw] rounded shadow-xl bg-white"
+            />
+          ) : (
+            <div className="text-white">Предпросмотр не доступен </div>
+          )}
+        </div>
+      )}
+
+      {/* Metadata sidebar only if not previewing */}
+      {!previewUrl && showSidebar && selectedDocument && (
+        <div className="w-128 border bg-background fixed right-0 top-56 h-full z-40">
+          <MetadataSidebar
+            document={selectedDocument}
+            previewUrl={previewUrl}
+            onClose={handleCloseSidebar}
+            onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
+            onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
+            onUpdateMetadata={handleUpdateMetadata}
+            token={token}
+          />
+        </div>
       )}
 
       <FileUploadDialog

@@ -94,7 +94,7 @@ export function MetadataSidebar({
   return (
     <div className="h-full border-l bg-background overflow-y-auto">
       <div className="flex justify-between items-center p-4 border-b">
-        <h2 className="text-lg font-medium">Details</h2>
+        <h2 className="text-lg font-medium">Детали</h2>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
@@ -174,18 +174,18 @@ export function MetadataSidebar({
               onClick={onDownload}
             >
               <DownloadIcon className="h-4 w-4 mr-2" />
-              Download
+              Скачать
             </Button>
           )}
           
           <Button variant="outline" size="sm" onClick={onShare}>
             <Share2 className="h-4 w-4 mr-2" />
-            Share
+            Поделиться
           </Button>
           
           <Button variant="outline" size="sm">
             <Star className="h-4 w-4 mr-2" />
-            {document.favorited ? 'Unstar' : 'Star'}
+            {document.favorited ? 'Убрать' : 'В избранное'}
           </Button>
           
           {onDelete && (
@@ -196,7 +196,7 @@ export function MetadataSidebar({
               onClick={onDelete}
             >
               <Trash className="h-4 w-4 mr-2" />
-              Delete
+              Удалить
             </Button>
           )}
         </div>
@@ -205,35 +205,35 @@ export function MetadataSidebar({
         
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Type</span>
+            <span className="text-sm text-muted-foreground">Тип</span>
             <span className="text-sm font-medium">
-              {isFolder ? 'Folder' : fileExtension}
+              {isFolder ? 'Папка' : fileExtension}
             </span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Size</span>
+            <span className="text-sm text-muted-foreground">Размер</span>
             <span className="text-sm font-medium">{document.size || 'N/A'}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Owner</span>
+            <span className="text-sm text-muted-foreground">Владелец</span>
             <span className="text-sm font-medium">{document.owner}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Modified</span>
+            <span className="text-sm text-muted-foreground">Изменён</span>
             <span className="text-sm font-medium">{format(modifiedDate, 'MMM d, yyyy h:mm a')}</span>
           </div>
           
           <div className="flex justify-between">
-            <span className="text-sm text-muted-foreground">Location</span>
+            <span className="text-sm text-muted-foreground">Расположение</span>
             <span className="text-sm font-medium">{document.path || '/'}</span>
           </div>
           
           {document.tags && document.tags.length > 0 && (
             <div className="flex flex-col gap-1">
-              <span className="text-sm text-muted-foreground">Tags</span>
+              <span className="text-sm text-muted-foreground">Теги</span>
               <div className="flex gap-1 flex-wrap">
                 {document.tags.map((tag, index) => (
                   <span 
@@ -251,10 +251,10 @@ export function MetadataSidebar({
         <Separator />
         
         <MetadataCard 
-          title="Activity" 
+          title="Активность" 
           items={[
-            { label: 'Last opened by', value: document.owner },
-            { label: 'Last modified', value: format(modifiedDate, 'MMM d, yyyy h:mm a') },
+            { label: 'Последний доступ', value: document.owner },
+            { label: 'Последнее изменение', value: format(modifiedDate, 'MMM d, yyyy h:mm a') },
           ]} 
         />
       </div>

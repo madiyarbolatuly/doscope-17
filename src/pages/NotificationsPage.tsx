@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -41,18 +40,18 @@ const NotificationsPage = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Notifications</h1>
+        <h1 className="text-2xl font-bold">Уведомления</h1>
         <Button variant="outline" size="sm" className="flex items-center gap-1">
           <Check size={16} />
-          <span>Mark all as read</span>
+          <span>Отметить все как прочитанные</span>
         </Button>
       </div>
       
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
         <div className="flex justify-between items-center mb-4">
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread">Unread</TabsTrigger>
+            <TabsTrigger value="all">Все</TabsTrigger>
+            <TabsTrigger value="unread">Непрочитанные</TabsTrigger>
           </TabsList>
         </div>
         

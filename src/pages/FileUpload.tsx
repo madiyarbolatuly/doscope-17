@@ -35,7 +35,7 @@ const FileUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [category, setCategory] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<'downloads' | 'new'>('downloads');
   const navigate = useNavigate();

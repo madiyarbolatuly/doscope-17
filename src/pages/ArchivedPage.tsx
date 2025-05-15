@@ -6,14 +6,14 @@ import { Document } from '@/types/document';
 
 const ArchivedPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [documents, setDocuments] = useState<Document[]>([]);
   
   return (
     <div className="p-6">
       <PageHeader 
-        title="Archived Documents"
-        description="Documents that have been archived"
+        title="Архивированные документы"
+        description="Документы, которые вы архивировали, будут отображаться здесь."
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         viewMode={viewMode}
