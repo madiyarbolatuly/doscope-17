@@ -47,13 +47,13 @@ const Login = () => {
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-[400px]">
         <CardHeader>
-          <CardTitle className="text-2xl">DocFlow EDMS</CardTitle>
-          <CardDescription>Enter your credentials to access your documents</CardDescription>
+          <CardTitle className="text-2xl">EDMS</CardTitle>
+          <CardDescription>Введите свои учетные данные</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">Имя пользователя</Label>
               <Input 
                 id="username"
                 value={username} 
@@ -64,7 +64,7 @@ const Login = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Пароль</Label>
               <Input 
                 id="password"
                 type="password" 

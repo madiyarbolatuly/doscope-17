@@ -15,6 +15,8 @@ import Approvals from './pages/Approvals';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import DocumentDetails from './pages/DocumentDetails';
+import Dashboard from './pages/Dashboard';
+import Notifications from './pages/Notifications';
 
 function App() {
   return (
@@ -23,7 +25,6 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<AppLayout><Index /></AppLayout>} />
-        
           <Route path="/archived" element={<AppLayout><ArchivedPage /></AppLayout>} />
           <Route path="/notifications" element={<AppLayout><NotificationsPage /></AppLayout>} />
           <Route path="/fileupload" element={<AppLayout><FileUpload /></AppLayout>} />
@@ -33,7 +34,8 @@ function App() {
           <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
           <Route path="/documentdetails" element={<AppLayout><DocumentDetails /></AppLayout>} />
           <Route path="/trash" element={<AppLayout><TrashBin /></AppLayout>} />
-          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
 
          
         </Routes>

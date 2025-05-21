@@ -12,14 +12,16 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
   const [visits, setVisits] = useState(1);
   const [emails, setEmails] = useState('');
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
 
   const handleGenerateLink = async () => {
     try {
-      const { personal_url } = await createShareLink(document.id!, {
+      const { personal_url, share_this } = await createShareLink(document.id!, {
         visits,
         share_to: emails.split(',').map(e => e.trim()),
       });
       setLinkUrl(personal_url);
+      setShareLink(typeof share_this === 'string' ? share_this : share_this?.shareable_link || null);
     } catch {
       // error state is in hook.error
     }
@@ -42,10 +44,10 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
       onClick={e => e.currentTarget === e.target && onClose()}
     >
       <div className="bg-white rounded p-6 w-96">
-        <h2 className="text-lg font-semibold mb-4">Share “{document.name}”</h2>
+        <h2 className="text-lg font-semibold mb-4">Поделиться “{document.name}”</h2>
 
         {/* Input: recipient emails */}
-        <label className="block text-sm font-medium">Emails (comma-separated)</label>
+        <label className="block text-sm font-medium">Emails </label>
         <input
           type="text"
           value={emails}
@@ -54,14 +56,15 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
           placeholder="user1@mail.com, user2@mail.com"
         />
 
-        {/* Visits */}
-        <label className="block text-sm font-medium">Allowed visits</label>
+        {/* Time Limit */}
+        <label className="block text-sm font-medium">Таймер (в час)</label>
         <input
           type="number"
           min={1}
           value={visits}
           onChange={e => setVisits(Number(e.target.value))}
           className="mt-1 mb-4 w-24 border rounded px-2 py-1"
+          placeholder="e.g. 24"
         />
 
         {/* Actions */}
@@ -71,21 +74,21 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
             disabled={loading}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            Generate Link
+            Создать ссылку  
           </button>
           <button
             onClick={handleShareUsers}
             disabled={loading}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
           >
-            Share to Users
-          </button>
+            Поделиться 
+            </button>
         </div>
 
         {/* Show generated link */}
         {linkUrl && (
           <div className="mt-4">
-            <p className="text-sm">Shareable link:</p>
+            <p className="text-sm">Персональная ссылка:</p>
             <a
               href={linkUrl}
               target="_blank"
@@ -96,8 +99,20 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
             </a>
           </div>
         )}
+        {shareLink && (
+          <div className="mt-2">
+            <p className="text-sm">Общая ссылка для доступа:</p>
+            <a
+              href={shareLink}
+              target="_blank"
+              rel="noopener"
+              className="text-blue-600 underline break-all"
+            >
+              {shareLink}
+            </a>
+          </div>
+        )}
 
-        {/* Error */}
         {error && (
           <p className="mt-4 text-sm text-red-600">Error: {error}</p>
         )}

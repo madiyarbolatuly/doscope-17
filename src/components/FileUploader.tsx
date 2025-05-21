@@ -140,6 +140,7 @@ export function FileUploader({
           multiple
           accept={acceptedFileTypes}
           onChange={(e) => handleFileChange(e.target.files)}
+          aria-label="Выберите файлы для загрузки"
         />
         
         <div className="flex flex-col items-center">

@@ -128,7 +128,8 @@ export function DocumentGrid({
             <FolderPlus className="h-4 w-4 mr-2" />
             Создать папку
           </Button>
-          <Button size="sm">
+          <Button size="sm"
+>
             <Upload className="h-4 w-4 mr-2" />
             Загрузить файлы
           </Button>

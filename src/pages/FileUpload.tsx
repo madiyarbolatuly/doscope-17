@@ -165,6 +165,7 @@ const FileUpload = () => {
                     viewMode={viewMode}
                     selectedDocument={null}
                     onDocumentSelect={() => {}}
+                    onDocumentPreview={() => {}}
                   />
                 </div>
               )}

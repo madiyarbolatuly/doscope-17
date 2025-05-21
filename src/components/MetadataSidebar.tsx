@@ -177,12 +177,14 @@ export function MetadataSidebar({
               Скачать
             </Button>
           )}
+            <Button 
+              variant="outline" 
           
-          <Button variant="outline" size="sm" onClick={onShare}>
-            <Share2 className="h-4 w-4 mr-2" />
-            Поделиться
-          </Button>
-          
+              className="flex items-center gap-1">
+                <Share2 size={16} />
+                <span className="hidden md:inline">Поделиться</span>
+             </Button>
+            
           <Button variant="outline" size="sm">
             <Star className="h-4 w-4 mr-2" />
             {document.favorited ? 'Убрать' : 'В избранное'}
@@ -219,7 +221,7 @@ export function MetadataSidebar({
           <div className="flex justify-between">
             <span className="text-sm text-muted-foreground">Владелец</span>
             <span className="text-sm font-medium">{document.owner}</span>
-          </div>
+            </div>
           
           <div className="flex justify-between">
             <span className="text-sm text-muted-foreground">Изменён</span>

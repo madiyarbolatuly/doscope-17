@@ -1,4 +1,3 @@
-
 export interface Document {
   id: string;
   name: string;
@@ -26,7 +25,6 @@ export interface Version {
   author?: string;
   changes?: string;
   fileSize?: string;
-  // Alternative properties for the same data
   version?: string;
   modified?: string;
   modifiedBy?: string;
@@ -80,3 +78,4 @@ export type CategoryType =
   | 'customer'
   | 'meetings'
   | string;
+

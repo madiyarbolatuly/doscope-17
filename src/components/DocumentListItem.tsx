@@ -85,7 +85,7 @@ export function DocumentListItem({
                       variant="ghost" 
                       size="icon" 
                       className="h-5 w-5 p-0 rounded-full bg-background/80 backdrop-blur-sm hover:bg-accent"
-                      onClick={(e) => {
+                      onClick={(e) => {3
                         e.stopPropagation();
                         onSelect();
                       }}
@@ -116,7 +116,7 @@ export function DocumentListItem({
               )
             ) : renderIcon()}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 ">
             <div className="flex items-center">
               <h3 className="font-medium truncate flex-1" title={document.name}>
                 {document.name}

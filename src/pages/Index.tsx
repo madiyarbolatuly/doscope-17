@@ -28,6 +28,7 @@ interface BackendDocument {
 }
 
 const Index = () => {
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [category, setCategory] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -35,7 +36,6 @@ const Index = () => {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -113,7 +113,7 @@ const Index = () => {
     setShareDoc(doc);
     setIsShareOpen(true);
   };
-    
+
   useEffect(() => {
     fetchDocuments();
   }, []);
@@ -127,14 +127,14 @@ const Index = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Preview fetch failed');
-  
+
       // 2) Read it as a Blob
       const blob = await res.blob();
-  
+
       // 3) Create an object URL so the browser can render it
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
-  
+
       setSelectedDocument(document);
       setShowSidebar(true);
     } catch (err) {
@@ -146,23 +146,23 @@ const Index = () => {
       });
     }
   };
-  
+
   // Download document
   const handleDownloadFile = async (doc: Document) => {
     try {
       const encodedFileName = encodeURIComponent(doc.name);
       const downloadUrl = `http://localhost:8000/v2/file/${encodedFileName}/download`;
-  
+
       const response = await fetch(downloadUrl, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
       });
-  
+
       if (!response.ok) {
         throw new Error('Download failed');
       }
-  
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -171,7 +171,7 @@ const Index = () => {
       document.body.appendChild(a);
       a.click();
       a.remove();
-  
+
       toast({
         title: "Success",
         description: `Downloading: ${doc.name}`,
@@ -185,7 +185,7 @@ const Index = () => {
       });
     }
   };
-  
+
 
 
   // Upload document
@@ -424,10 +424,10 @@ const Index = () => {
   };
 
   const handleShareSelected = () => {
-    toast({
-      title: "Sharing documents",
-      description: `Selected ${selectedDocumentIds.length} documents for sharing`,
-    });
+    if (selectedDocumentIds.length > 0) {
+      const doc = documents.find(d => d.id === selectedDocumentIds[0]);
+      if (doc) openShare(doc);
+    }
   };
 
   const handleSelectDestination = (destination: 'downloads' | 'new') => {
@@ -534,7 +534,6 @@ const Index = () => {
     setIsDragging(false);
     await handleDropWithFolders(e);
   };
-
   return (
     <div className="relative">
       <div
@@ -566,6 +565,14 @@ const Index = () => {
           viewMode={viewMode}
           setViewMode={setViewMode}
         />
+        <div className="flex justify-between items-center mb-4">
+
+          <button
+            className=" flex items-center mt-5 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors"
+            onClick={() => setShowUploadDialog(true)}
+          ><svg height="24" width="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="Icon___StyledSvg-sc-1qxn6g3-0 huCDol" data-testid="cloudUpArrow" aria-label="облакоСтрелка вверх"><path d="M15.52,15.81A.78.78,0,0,1,15,16a.72.72,0,0,1-.55-.24l-1.71-1.85V19.6a.75.75,0,0,1-1.5,0V13.92L9.54,15.77a.76.76,0,0,1-1.06,0,.74.74,0,0,1,0-1.06l3-3.25a.76.76,0,0,1,.55-.24.77.77,0,0,1,.55.24l3,3.25A.76.76,0,0,1,15.52,15.81ZM14.79,3.44A7.94,7.94,0,0,0,7.27,8.8a5.81,5.81,0,0,0-.72-.05,5.3,5.3,0,0,0,0,10.6.75.75,0,1,0,0-1.5,3.8,3.8,0,1,1,1-7.48.65.65,0,0,0,.31,0,.75.75,0,0,0,.72-.57,6.46,6.46,0,1,1,8.21,7.74.77.77,0,0,0-.49.95A.75.75,0,0,0,17,19a.57.57,0,0,0,.22,0,8,8,0,0,0-2.4-15.54Z"></path></svg> Загрузить файлы
+          </button>
+        </div>
         <div className="mt-4 animate-fade-in">
           <DocumentGrid
             documents={documents}
@@ -599,7 +606,7 @@ const Index = () => {
             className="absolute top-4 right-4 z-60 bg-white rounded-full p-2 shadow hover:bg-gray-200"
             onClick={() => { setPreviewUrl(null); }}
           >
-            <span className="sr-only">Закрыть Предпросмотр</span>
+            <span className="sr-only">Закрыть предпросмотр</span>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
           {selectedDocument.type === 'pdf' ? (
@@ -643,7 +650,7 @@ const Index = () => {
         onUpload={(files) => { handleUploadToDestination(files); }}
       />
 
-    
+
     </div>
   );
 };

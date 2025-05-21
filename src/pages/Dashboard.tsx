@@ -250,6 +250,7 @@ const Dashboard = () => {
             viewMode={viewMode}
             selectedDocument={selectedDocument}
             onDocumentSelect={handleDocumentSelect}
+            onDocumentPreview={() => {}}
           />
         </div>
       </div>

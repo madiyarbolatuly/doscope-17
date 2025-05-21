@@ -24,7 +24,7 @@ export function useShare() {
     setError(null);
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`/v2/share-link/${docId}`, {
+      const res = await fetch(`http://localhost:8000/v2/share-link/${docId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ export function useShare() {
     setError(null);
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`/v2/share/${docId}?notify=true`, {
+      const res = await fetch(`http://localhost:8000/v2/share/${docId}?notify=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
