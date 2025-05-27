@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { PageHeader } from '@/components/PageHeader';
@@ -102,6 +101,10 @@ const Documents = () => {
     setShowUploadDialog(true);
   };
 
+  const handleDocumentPreview = (document: Document) => {
+    console.log('Preview document:', document.name);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
@@ -138,6 +141,7 @@ const Documents = () => {
           <DocumentGrid 
             documents={filteredDocuments} 
             onDocumentClick={handleDocumentClick}
+            onDocumentPreview={handleDocumentPreview}
             viewMode={viewMode}
             selectedDocument={selectedDocument}
             onDocumentSelect={handleDocumentSelect}

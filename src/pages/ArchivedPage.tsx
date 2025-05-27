@@ -9,6 +9,10 @@ const ArchivedPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [documents, setDocuments] = useState<Document[]>([]);
   
+  const handleDocumentPreview = (document: Document) => {
+    console.log('Preview document:', document.name);
+  };
+  
   return (
     <div className="p-6">
       <PageHeader 
@@ -24,6 +28,7 @@ const ArchivedPage = () => {
         <DocumentGrid 
           documents={documents} 
           onDocumentClick={() => {}}
+          onDocumentPreview={handleDocumentPreview}
           viewMode={viewMode}
           onDocumentSelect={() => {}}
         />

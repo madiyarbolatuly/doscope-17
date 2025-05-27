@@ -110,6 +110,10 @@ const Dashboard = () => {
     setSelectedDocument(document);
   };
 
+  const handleDocumentPreview = (document: Document) => {
+    console.log('Preview document:', document.name);
+  };
+
   const handleSelectDestination = (destination: 'downloads' | 'new') => {
     toast({
       title: "Папка выбрана",
@@ -247,6 +251,7 @@ const Dashboard = () => {
           <DocumentGrid
             documents={filteredDocuments} 
             onDocumentClick={handleDocumentClick}
+            onDocumentPreview={handleDocumentPreview}
             viewMode={viewMode}
             selectedDocument={selectedDocument}
             onDocumentSelect={handleDocumentSelect}
