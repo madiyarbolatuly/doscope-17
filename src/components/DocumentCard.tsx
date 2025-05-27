@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Document } from '@/types/document';
 import { cn } from '@/lib/utils';
@@ -6,9 +5,10 @@ import {
   FileText, File, FileSpreadsheet, 
   FileImage, MoreVertical, 
   Star, Calendar, User,
-  Folder
+  Folder, CheckCircle2, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +16,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   HoverCard,
   HoverCardContent,
@@ -29,7 +35,6 @@ interface DocumentCardProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
-  hideSelectButton?: boolean;
 }
 
 export function DocumentCard({ 
@@ -38,8 +43,7 @@ export function DocumentCard({
   onPreview,
   isSelected, 
   onSelect,
-  multipleSelection = false,
-  hideSelectButton = false
+  multipleSelection = false
 }: DocumentCardProps) {
   const renderIcon = () => {
     switch (document.type) {
@@ -64,12 +68,47 @@ export function DocumentCard({
     <div 
       className={cn(
         "document-card group relative border p-3 rounded-lg cursor-pointer transition-all",
-        isSelected ? "bg-primary/20 border-primary ring-2 ring-primary/20" : "bg-card hover:bg-accent/50",
+        isSelected ? "bg-primary/5 border-primary" : "bg-card hover:bg-accent/50",
         isFolder && "border-yellow-200 hover:border-yellow-300"
       )}
       onClick={() => onClick(document)}
       onDoubleClick={() => onPreview(document)}
     >
+      {/* Selection UI that appears on hover */}
+      <div className={cn(
+        "absolute left-2 top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity",
+        isSelected && "opacity-100"
+      )}>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 rounded-full bg-background/80 backdrop-blur-sm hover:bg-accent"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect();
+                }}
+              >
+                {isSelected ? (
+                  multipleSelection ? (
+                    <Checkbox checked className="h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  )
+                ) : (
+                  <Check className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>{isSelected ? "Deselect" : "Select"}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
       <div className="absolute right-2 top-2 z-10">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
