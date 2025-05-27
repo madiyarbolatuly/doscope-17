@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { PageHeader } from '@/components/PageHeader';
@@ -75,6 +76,7 @@ const Documents = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -95,6 +97,20 @@ const Documents = () => {
 
   const handleDocumentSelect = (document: Document) => {
     setSelectedDocument(document);
+  };
+
+  const handleNavigateToFolder = (folder: Document) => {
+    setCurrentPath([...currentPath, folder]);
+  };
+
+  const handleNavigateUp = () => {
+    if (currentPath.length > 0) {
+      setCurrentPath(currentPath.slice(0, -1));
+    }
+  };
+
+  const handleUploadFiles = () => {
+    setShowUploadDialog(true);
   };
 
   const handleCreateDocument = () => {
@@ -145,6 +161,10 @@ const Documents = () => {
             viewMode={viewMode}
             selectedDocument={selectedDocument}
             onDocumentSelect={handleDocumentSelect}
+            currentPath={currentPath}
+            onNavigateToFolder={handleNavigateToFolder}
+            onNavigateUp={handleNavigateUp}
+            onUploadFiles={handleUploadFiles}
           />
         </div>
       </div>
