@@ -2,11 +2,26 @@
 import React, { useState, useEffect } from 'react';
 import { Document, MultipleSelectionActions } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
-import { FolderPlus, Upload, Check, Trash, Download, Share2, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { FolderPlus, Upload, Check, Trash, Download, Share2, X, ChevronRight, ChevronDown, Home, User, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocumentListItem } from './DocumentListItem';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface DocumentGridProps {
   documents: Document[];
@@ -17,6 +32,10 @@ interface DocumentGridProps {
   onDocumentSelect: (document: Document) => void;
   multipleSelection?: boolean;
   selectionActions?: MultipleSelectionActions;
+  currentPath?: Document[];
+  onNavigateToFolder?: (folder: Document) => void;
+  onNavigateUp?: () => void;
+  onUploadFiles?: () => void;
 }
 
 interface TreeNode {
@@ -26,6 +45,49 @@ interface TreeNode {
   level: number;
 }
 
+// Mock nested folder structure
+const mockFolderStructure: { [key: string]: Document[] } = {
+  'folder-1': [
+    {
+      id: 'subfolder-1-1',
+      name: 'Project Documents',
+      type: 'folder',
+      modified: new Date().toISOString(),
+      owner: 'John Doe',
+      category: 'projects'
+    },
+    {
+      id: 'file-1-1',
+      name: 'Report.pdf',
+      type: 'pdf',
+      size: '2.1 MB',
+      modified: new Date().toISOString(),
+      owner: 'Jane Smith',
+      category: 'reports'
+    }
+  ],
+  'subfolder-1-1': [
+    {
+      id: 'file-2-1',
+      name: 'Meeting Notes.doc',
+      type: 'doc',
+      size: '1.5 MB',
+      modified: new Date().toISOString(),
+      owner: 'Alice Johnson',
+      category: 'meetings'
+    },
+    {
+      id: 'file-2-2',
+      name: 'Budget.xlsx',
+      type: 'xlsx',
+      size: '800 KB',
+      modified: new Date().toISOString(),
+      owner: 'Bob Wilson',
+      category: 'finance'
+    }
+  ]
+};
+
 export function DocumentGrid({ 
   documents, 
   onDocumentClick, 
@@ -34,46 +96,59 @@ export function DocumentGrid({
   selectedDocument,
   onDocumentSelect,
   multipleSelection = false,
-  selectionActions
+  selectionActions,
+  currentPath = [],
+  onNavigateToFolder,
+  onNavigateUp,
+  onUploadFiles
 }: DocumentGridProps) {
   
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
 
-  // Build tree structure - only folders can have children
+  // Add mock subfolders to documents if we're in a folder
+  const documentsWithSubfolders = React.useMemo(() => {
+    if (currentPath.length === 0) {
+      // Root level - add some mock folders
+      return [
+        ...documents,
+        {
+          id: 'folder-1',
+          name: 'Marketing Materials',
+          type: 'folder' as const,
+          modified: new Date().toISOString(),
+          owner: 'Marketing Team',
+          category: 'marketing' as const
+        },
+        {
+          id: 'folder-2',
+          name: 'Financial Reports',
+          type: 'folder' as const,
+          modified: new Date().toISOString(),
+          owner: 'Finance Team',
+          category: 'finance' as const
+        }
+      ];
+    } else {
+      // Inside a folder - get subfolder content
+      const currentFolderId = currentPath[currentPath.length - 1]?.id;
+      const subContent = mockFolderStructure[currentFolderId] || [];
+      return [...documents, ...subContent];
+    }
+  }, [documents, currentPath]);
+
   const buildTreeStructure = (docs: Document[]): TreeNode[] => {
-    const folders = docs.filter(doc => doc.type === 'folder');
-    const files = docs.filter(doc => doc.type !== 'folder');
-    
-    const tree: TreeNode[] = [];
-    
-    // Add all folders as top-level nodes
-    folders.forEach(folder => {
-      tree.push({
-        document: folder,
-        children: [], // Folders can have children but we'll simulate this
-        isExpanded: expandedFolders.has(folder.id),
-        level: 0
-      });
-    });
-    
-    // Add all files as top-level nodes
-    files.forEach(file => {
-      tree.push({
-        document: file,
-        children: [], // Files never have children
-        isExpanded: false,
-        level: 0
-      });
-    });
-    
-    return tree;
+    return docs.map(doc => ({
+      document: doc,
+      children: [],
+      isExpanded: expandedFolders.has(doc.id),
+      level: 0
+    }));
   };
 
-  const treeNodes = buildTreeStructure(documents);
+  const treeNodes = buildTreeStructure(documentsWithSubfolders);
 
-  // Event listeners for shift key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Shift') {
@@ -108,30 +183,24 @@ export function DocumentGrid({
     });
   };
 
-  // Handle multi-selection with shift key
-  const handleDocumentSelect = (document: Document, index: number) => {
-    if (!multipleSelection || !selectionActions) {
-      onDocumentSelect(document);
-      return;
-    }
-
-    if (isShiftPressed && lastSelectedIndex !== null) {
-      const startIdx = Math.min(lastSelectedIndex, index);
-      const endIdx = Math.max(lastSelectedIndex, index);
-      
-      const docsBetween = treeNodes.slice(startIdx, endIdx + 1);
-      const idsToAdd = docsBetween.map(node => node.document.id).filter(id => !selectionActions.selectedIds.includes(id));
-      
-      if (selectionActions.selectedIds.includes(document.id)) {
-        onDocumentSelect(document);
-      } else {
-        idsToAdd.forEach(id => {
-          const doc = treeNodes.find(n => n.document.id === id)?.document;
-          if (doc) onDocumentSelect(doc);
-        });
-      }
+  const handleDocumentClick = (document: Document, index: number) => {
+    if (document.type === 'folder') {
+      onNavigateToFolder?.(document);
     } else {
-      onDocumentSelect(document);
+      if (multipleSelection && isShiftPressed && lastSelectedIndex !== null) {
+        const startIdx = Math.min(lastSelectedIndex, index);
+        const endIdx = Math.max(lastSelectedIndex, index);
+        
+        const docsBetween = treeNodes.slice(startIdx, endIdx + 1);
+        docsBetween.forEach(node => {
+          if (!selectionActions?.selectedIds.includes(node.document.id)) {
+            onDocumentSelect(node.document);
+          }
+        });
+      } else {
+        onDocumentSelect(document);
+        onDocumentClick(document);
+      }
       setLastSelectedIndex(index);
     }
   };
@@ -144,7 +213,95 @@ export function DocumentGrid({
     selectionActions?.onClearSelection?.();
   };
 
-  if (!documents.length) {
+  const renderBreadcrumbs = () => {
+    if (currentPath.length === 0) return null;
+
+    return (
+      <div className="mb-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigateUp?.();
+                }}
+                className="flex items-center gap-1"
+              >
+                <Home className="h-4 w-4" />
+                Root
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            {currentPath.map((folder, index) => (
+              <React.Fragment key={folder.id}>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  {index === currentPath.length - 1 ? (
+                    <BreadcrumbPage>{folder.name}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink 
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        // Navigate to this level
+                      }}
+                    >
+                      {folder.name}
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </React.Fragment>
+            ))}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+    );
+  };
+
+  const renderToolbar = () => {
+    return (
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onUploadFiles}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Files
+          </Button>
+          <Button variant="outline" size="sm">
+            <FolderPlus className="h-4 w-4 mr-2" />
+            New Folder
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <User className="h-4 w-4 mr-2" />
+                Account
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    );
+  };
+
+  if (!documentsWithSubfolders.length) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
@@ -172,7 +329,7 @@ export function DocumentGrid({
             <FolderPlus className="h-4 w-4 mr-2" />
             Создать папку
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={onUploadFiles}>
             <Upload className="h-4 w-4 mr-2" />
             Загрузить файлы
           </Button>
@@ -188,9 +345,9 @@ export function DocumentGrid({
       <div className="flex items-center justify-between bg-muted/50 p-2 rounded-md mb-4 sticky top-0 z-10 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <Checkbox 
-            checked={selectionActions.selectedIds.length === documents.length}
+            checked={selectionActions.selectedIds.length === documentsWithSubfolders.length}
             onCheckedChange={() => {
-              if (selectionActions.selectedIds.length === documents.length) {
+              if (selectionActions.selectedIds.length === documentsWithSubfolders.length) {
                 handleClearSelection();
               } else {
                 handleSelectAll();
@@ -271,87 +428,38 @@ export function DocumentGrid({
     if (viewMode === 'grid') {
       return (
         <div key={node.document.id} className="relative">
-          {isFolder && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute -top-2 -left-2 z-10 w-6 h-6 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFolder(node.document.id);
-              }}
-            >
-              {node.isExpanded ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-            </Button>
-          )}
           <DocumentCard 
             document={node.document} 
-            onClick={onDocumentClick}
+            onClick={() => handleDocumentClick(node.document, index)}
             onPreview={onDocumentPreview}
             isSelected={isSelected}
-            onSelect={() => handleDocumentSelect(node.document, index)}
+            onSelect={() => onDocumentSelect(node.document)}
             multipleSelection={multipleSelection}
+            hideSelectButton={true}
           />
-          {isFolder && node.isExpanded && (
-            <div className="ml-6 mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {/* Simulate folder content - in real app this would come from data */}
-              <div className="text-sm text-muted-foreground p-2 border border-dashed rounded">
-                Содержимое папки
-              </div>
-            </div>
-          )}
         </div>
       );
     }
 
     return (
       <div key={node.document.id} className="relative">
-        <div className="flex items-center">
-          {isFolder && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-6 h-6 p-0 mr-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFolder(node.document.id);
-              }}
-            >
-              {node.isExpanded ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-            </Button>
-          )}
-          <div className="flex-1">
-            <DocumentListItem 
-              document={node.document} 
-              onClick={onDocumentClick}
-              onPreview={onDocumentPreview}
-              isSelected={isSelected}
-              onSelect={() => handleDocumentSelect(node.document, index)}
-              multipleSelection={multipleSelection}
-            />
-          </div>
-        </div>
-        {isFolder && node.isExpanded && (
-          <div className="ml-8 mt-2 border-l border-muted pl-4">
-            <div className="text-sm text-muted-foreground p-2 border border-dashed rounded">
-              Содержимое папки: {node.document.name}
-            </div>
-          </div>
-        )}
+        <DocumentListItem 
+          document={node.document} 
+          onClick={() => handleDocumentClick(node.document, index)}
+          onPreview={onDocumentPreview}
+          isSelected={isSelected}
+          onSelect={() => onDocumentSelect(node.document)}
+          multipleSelection={multipleSelection}
+          hideSelectButton={true}
+        />
       </div>
     );
   };
 
   return (
     <div className="space-y-4">
+      {renderToolbar()}
+      {renderBreadcrumbs()}
       {renderSelectionActionsBar()}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
