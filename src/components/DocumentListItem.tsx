@@ -120,7 +120,7 @@ export function DocumentListItem({
               Удалить
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+        </div>
       </div>
     </div>
   );
