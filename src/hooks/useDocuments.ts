@@ -29,6 +29,7 @@ export interface Document {
   category: string;
   archived: boolean;
   starred: boolean;
+  status?: 'pending' | 'approved' | 'rejected' | 'draft'; // <-- add status
 }
 
 export function useDocuments(category?: string, status?: string) {
@@ -82,6 +83,8 @@ export function useDocuments(category?: string, status?: string) {
         category: doc.categories?.[0] || "uncategorized",
         archived: doc.status === 'archived',
         starred: false, // or set your own logic here if needed
+        // Mapping status as well
+        status: doc.status as 'pending' | 'approved' | 'rejected' | 'draft' | undefined,
       }));
 
       setDocs(transformedDocuments);
