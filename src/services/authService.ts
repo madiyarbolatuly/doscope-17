@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { AUTH_ENDPOINTS } from '@/config/api';
 import { User } from '@/context/AuthContext';

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -70,6 +69,10 @@ const Approvals = () => {
     }
   };
 
+  const getStatus = (doc: any) => doc.status || "pending";
+  const getCreatedAt = (doc: any) => doc.created_at || doc.modified;
+  const getOwner = (doc: any) => doc.owner_id || doc.owner || "-";
+
   return (
     <div className="container mx-auto py-6 px-4 md:px-6">
       <div className="flex flex-col space-y-4">
@@ -85,7 +88,7 @@ const Approvals = () => {
             <TabsTrigger value="pending">
               Ожидающие
               <Badge variant="secondary" className="ml-2">
-                {docs.filter(a => a.status === "pending" || !a.status).length}
+                {docs.filter(a => getStatus(a) === "pending").length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="approved">Утвержденные</TabsTrigger>
@@ -109,7 +112,7 @@ const Approvals = () => {
                       <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
                         <h3 className="font-medium">{doc.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Запрошено: {new Date(doc.created_at || doc.modified).toLocaleDateString()} от {doc.owner_id || doc.owner}
+                          Запрошено: {new Date(getCreatedAt(doc)).toLocaleDateString()} от {getOwner(doc)}
                         </p>
                       </div>
                       <div className="flex space-x-2">
