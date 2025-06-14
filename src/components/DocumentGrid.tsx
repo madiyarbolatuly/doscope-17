@@ -13,6 +13,10 @@ interface DocumentGridProps {
   viewMode: 'grid' | 'list';
   onDocumentSelect: (document: Document) => void;
   onToggleFavorite?: (document: Document) => void;
+  selectedDocument?: Document | null;
+  multipleSelection?: boolean;
+  selectionActions?: any;
+  toggleFavorite?: (documentId: string) => Promise<void>;
 }
 
 export function DocumentGrid({ 
@@ -21,11 +25,17 @@ export function DocumentGrid({
   onDocumentPreview, 
   viewMode, 
   onDocumentSelect,
-  onToggleFavorite 
+  onToggleFavorite,
+  selectedDocument,
+  multipleSelection = false,
+  selectionActions,
+  toggleFavorite
 }: DocumentGridProps) {
   const handleToggleFavorite = (document: Document) => {
     if (onToggleFavorite) {
       onToggleFavorite(document);
+    } else if (toggleFavorite) {
+      toggleFavorite(document.id);
     }
   };
 
@@ -50,6 +60,8 @@ export function DocumentGrid({
             onPreview={() => onDocumentPreview(document)}
             onSelect={() => onDocumentSelect(document)}
             onToggleFavorite={() => handleToggleFavorite(document)}
+            isSelected={selectedDocument?.id === document.id}
+            multipleSelection={multipleSelection}
           />
         ))}
       </div>
@@ -66,6 +78,8 @@ export function DocumentGrid({
           onPreview={() => onDocumentPreview(document)}
           onSelect={() => onDocumentSelect(document)}
           onToggleFavorite={() => handleToggleFavorite(document)}
+          isSelected={selectedDocument?.id === document.id}
+          multipleSelection={multipleSelection}
         />
       ))}
     </div>

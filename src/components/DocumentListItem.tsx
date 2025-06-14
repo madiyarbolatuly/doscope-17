@@ -31,6 +31,7 @@ interface DocumentListItemProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export function DocumentListItem({ 
@@ -39,7 +40,8 @@ export function DocumentListItem({
   onPreview,
   isSelected, 
   onSelect,
-  multipleSelection = false
+  multipleSelection = false,
+  onToggleFavorite
 }: DocumentListItemProps) {
   const renderIcon = () => {
     switch (document.type) {
@@ -172,4 +174,3 @@ export function DocumentListItem({
     </>
   );
 }
-

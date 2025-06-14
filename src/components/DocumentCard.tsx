@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Document } from '@/types/document';
 import { cn } from '@/lib/utils';
@@ -35,6 +36,7 @@ interface DocumentCardProps {
   isSelected?: boolean;
   onSelect: () => void;
   multipleSelection?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export function DocumentCard({ 
@@ -43,7 +45,8 @@ export function DocumentCard({
   onPreview,
   isSelected, 
   onSelect,
-  multipleSelection = false
+  multipleSelection = false,
+  onToggleFavorite
 }: DocumentCardProps) {
   const renderIcon = () => {
     switch (document.type) {

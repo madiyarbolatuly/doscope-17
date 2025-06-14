@@ -161,10 +161,3 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
-
-// Keep the old User interface for backward compatibility with existing code
-export interface User {
-  id: string;
-  username: string;
-  email?: string;
-}

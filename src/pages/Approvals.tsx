@@ -84,7 +84,9 @@ const Approvals = () => {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pending">
               Ожидающие
-              <Badge variant="secondary" className="ml-2">{docs.filter(a => a.status === "pending").length}</Badge>
+              <Badge variant="secondary" className="ml-2">
+                {docs.filter(a => a.status === "pending" || !a.status).length}
+              </Badge>
             </TabsTrigger>
             <TabsTrigger value="approved">Утвержденные</TabsTrigger>
             <TabsTrigger value="rejected">Отклоненные</TabsTrigger>
@@ -107,7 +109,7 @@ const Approvals = () => {
                       <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
                         <h3 className="font-medium">{doc.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Запрошено: {new Date(doc.created_at).toLocaleDateString()} от {doc.owner_id}
+                          Запрошено: {new Date(doc.created_at || doc.modified).toLocaleDateString()} от {doc.owner_id || doc.owner}
                         </p>
                       </div>
                       <div className="flex space-x-2">
