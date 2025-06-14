@@ -1,3 +1,4 @@
+
 export interface Document {
   id: string;
   name: string;
@@ -5,17 +6,22 @@ export interface Document {
   size?: string;
   modified: string;
   owner: string;
+  owner_id?: string;
   category?: CategoryType;
   shared?: boolean;
   favorited?: boolean;
   thumbnail?: string;
   path?: string;
+  file_path?: string;
   dueDate?: string;
   engineer?: string;
   linkedAssets?: string[];
   tags?: string[];
   archived?: boolean;
   starred?: boolean;
+  created_at?: string;
+  file_type?: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'draft';
 }
 
 export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder' | string;
@@ -104,3 +110,21 @@ export interface BackendDocument {
   starred?: boolean;
 }
 
+export interface DocumentMeta {
+  id: string;
+  name: string;
+  type: string;
+  size?: string;
+  modified: string;
+  owner: string;
+  owner_id: string;
+  file_path: string;
+  created_at: string;
+  file_type: string;
+  category?: string;
+  shared?: boolean;
+  favorited?: boolean;
+  thumbnail?: string;
+  archived?: boolean;
+  starred?: boolean;
+}

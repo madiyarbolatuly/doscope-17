@@ -1,12 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser, refreshAccessToken } from '../services/authService';
-
-// Update User interface to match backend API
-export interface User {
-  id: string;
-  username: string;
-}
+import { User, UserRole } from '@/types/user';
 
 interface AuthContextType {
   token: string | null;
@@ -16,6 +10,7 @@ interface AuthContextType {
   login: (credentials: { username: string; password: string }) => Promise<void>;
   logout: () => void;
   error: string | null;
+  updateUserRole: (role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,7 +36,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (token) {
         try {
           const userData = await getCurrentUser();
-          setUser(userData);
+          // Convert backend user to our User type with default role and permissions
+          const fullUser: User = {
+            id: userData.id,
+            username: userData.username,
+            email: userData.email || `${userData.username}@company.com`,
+            role: 'admin', // Default to admin for now - this should come from backend
+            permissions: [],
+            departments: ['development'],
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
+          };
+          setUser(fullUser);
           setIsAuthenticated(true);
         } catch (err) {
           console.error("Failed to load user data", err);
@@ -51,7 +58,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const refreshResult = await refreshAccessToken();
             if (refreshResult) {
               const userData = await getCurrentUser();
-              setUser(userData);
+              const fullUser: User = {
+                id: userData.id,
+                username: userData.username,
+                email: userData.email || `${userData.username}@company.com`,
+                role: 'admin',
+                permissions: [],
+                departments: ['development'],
+                isActive: true,
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+              };
+              setUser(fullUser);
               setIsAuthenticated(true);
               setToken(refreshResult.access_token);
               return;
@@ -88,7 +106,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Fetch user data after successful login
       try {
         const userData = await getCurrentUser();
-        setUser(userData);
+        const fullUser: User = {
+          id: userData.id,
+          username: userData.username,
+          email: userData.email || `${userData.username}@company.com`,
+          role: 'admin', // Default to admin for now
+          permissions: [],
+          departments: ['development'],
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        };
+        setUser(fullUser);
       } catch (userErr) {
         console.error("Failed to fetch user data after login", userErr);
       }
@@ -105,6 +134,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsAuthenticated(false);
   };
 
+  const updateUserRole = (role: UserRole) => {
+    if (user) {
+      setUser({ ...user, role });
+    }
+  };
+
   const value: AuthContextType = {
     token,
     user,
@@ -112,7 +147,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isLoading,
     login,
     logout,
-    error
+    error,
+    updateUserRole
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -125,3 +161,10 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+// Keep the old User interface for backward compatibility with existing code
+export interface User {
+  id: string;
+  username: string;
+  email?: string;
+}
