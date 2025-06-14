@@ -21,9 +21,16 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('authToken');
+    } catch {
+      return null;
+    }
+  });
+  
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!token);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,8 +64,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setToken(null);
           setUser(null);
           setIsAuthenticated(false);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('refreshToken');
+          try {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('refreshToken');
+          } catch {
+            // Ignore localStorage errors
+          }
         }
       }
       setIsLoading(false);
@@ -94,7 +105,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsAuthenticated(false);
   };
 
-  const value = {
+  const value: AuthContextType = {
     token,
     user,
     isAuthenticated,
