@@ -1,17 +1,20 @@
-
 import React from "react";
 import { useDocuments, DocumentMeta } from "@/hooks/useDocuments";
-import { DocumentRow } from "./DocumentRow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { DocumentRow } from "./DocumentRow";
 
 interface DocumentListProps {
   category?: string;
   status?: string;
   onDocumentAction?: (action: string, document: DocumentMeta) => void;
+  onArchive?: (document: DocumentMeta) => void;
+  onUnArchive?: (document: DocumentMeta) => void;
+  onToggleStarred?: (document: DocumentMeta) => void;
 }
 
-export function DocumentList({ category, status, onDocumentAction }: DocumentListProps) {
+export function DocumentList({ category, status, onDocumentAction, onArchive, onUnArchive, onToggleStarred }: DocumentListProps) {
   const { docs, loading, error } = useDocuments(category, status);
 
   if (error) {
@@ -22,32 +25,47 @@ export function DocumentList({ category, status, onDocumentAction }: DocumentLis
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead><Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5 p-0 rounded-full bg-background/80 backdrop-blur-sm hover:bg-accent"
+                      
+                    >
+                      
+                    </Button></TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Size</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead>Owner</TableHead>
+          <TableHead>Date created</TableHead>
+          <TableHead>Author</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {loading ? (
           Array(5).fill(0).map((_, i) => (
             <TableRow key={i}>
-              <td colSpan={7} className="p-2">
+              <td colSpan={5} className="p-2">
                 <Skeleton className="h-12 w-full" />
               </td>
             </TableRow>
           ))
         ) : docs.length === 0 ? (
           <TableRow>
-            <td colSpan={7} className="text-center p-4 text-muted-foreground">
+            <td colSpan={5} className="text-center p-4 text-muted-foreground">
               No documents found
             </td>
           </TableRow>
         ) : (
-          docs.map(doc => <DocumentRow key={doc.id} doc={doc} onAction={onDocumentAction} />)
+          docs.map(doc => (
+            <DocumentRow
+              key={doc.id}
+              doc={doc as unknown as DocumentMeta}
+              onAction={onDocumentAction}
+              onArchive={onArchive}
+              onUnArchive={onUnArchive}
+              onToggleStarred={onToggleStarred}
+            />
+          ))
         )}
       </TableBody>
     </Table>

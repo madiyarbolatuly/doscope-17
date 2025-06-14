@@ -76,7 +76,7 @@ export function DocumentCard({
     >
       {/* Selection UI that appears on hover */}
       <div className={cn(
-        "absolute left-2 top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity",
+        "absolute  opacity-0 group-hover:opacity-100 transition-opacity",
         isSelected && "opacity-100"
       )}>
         <TooltipProvider>
@@ -133,7 +133,7 @@ export function DocumentCard({
         </DropdownMenu>
       </div>
 
-      {document.favorited && (
+      {(document.favorited || document.starred) && (
         <div className="absolute left-2 top-2">
           <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
         </div>

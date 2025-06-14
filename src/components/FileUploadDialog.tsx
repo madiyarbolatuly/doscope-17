@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -63,6 +62,10 @@ export function FileUploadDialog({
                 className="hidden"
                 multiple
                 onChange={handleFileChange}
+                // @ts-expect-error: webkitdirectory is not standard but needed for folder upload
+                webkitdirectory="true"
+                directory="true"
+                title="Выберите файлы или папку для загрузки"
               />
             </div>
 

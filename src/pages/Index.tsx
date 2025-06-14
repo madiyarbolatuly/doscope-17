@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
@@ -11,6 +11,8 @@ import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
 import { useShare } from '@/hooks/useShare';
 import { DocumentList } from "@/components/DocumentList";
+import { Plus } from "lucide-react";
+import { Button } from '@/components/ui/button';
 
 interface BackendDocument {
   owner_id: string;
@@ -25,6 +27,8 @@ interface BackendDocument {
   file_hash: string;
   access_to: string[] | null;
   id: string;
+  parent_id: string | null; // Assuming parent_id can be null
+
 }
 
 const Index = () => {
@@ -39,22 +43,19 @@ const Index = () => {
   const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [isDragging, setIsDragging] = useState(false);
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
 
-
-  // Auth token
   const token = localStorage.getItem('authToken')
 
   // Fetch documents
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/v2/metadata?limit=10&offset=0", {
+      const response = await fetch("http://localhost:8000/v2/metadata?limit=50&offset=0", {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -65,7 +66,6 @@ const Index = () => {
       }
 
       const data = await response.json();
-      // Transform backend documents to match our Document interface
       const docsKey = Object.keys(data).find(key => Array.isArray(data[key]));
 
       if (docsKey && Array.isArray(data[docsKey])) {
@@ -74,19 +74,22 @@ const Index = () => {
           name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
           type: doc.file_type ? (
             doc.file_type.includes('pdf') ? 'pdf' :
-              doc.file_type.includes('doc') ? 'doc' :
-                doc.file_type.includes('xls') ? 'xlsx' :
-                  doc.file_type.includes('ppt') ? 'ppt' :
-                    doc.file_type.includes('pptx') ? 'pptx' :
-                      doc.file_type.includes('png') ? 'png' :
-                        doc.file_type.includes('image') ? 'image' : 'file'
+          doc.file_type.includes('doc') ? 'doc' :
+          doc.file_type.includes('xls') ? 'xlsx' :
+          doc.file_type.includes('ppt') ? 'ppt' :
+          doc.file_type.includes('pptx') ? 'pptx' :
+          doc.file_type.includes('png') ? 'png' :
+          doc.file_type.includes('image') ? 'image' : 'file'
           ) : 'file',
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
           owner: doc.owner_id,
           category: doc.categories && doc.categories.length > 0 ? doc.categories[0] : 'uncategorized',
           path: doc.file_path,
-          tags: doc.tags || []
+          tags: doc.tags || [],
+          parent_id: doc.parent_id,
+          archived: doc.status === 'archived',
+          starred: false, // or set your own logic here if needed
         }));
         setDocuments(transformedDocuments);
       } else {
@@ -100,11 +103,10 @@ const Index = () => {
         description: "Failed to fetch documents",
         variant: "destructive"
       });
-      setDocuments([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]);
 
   const { createShareLink, shareWithUsers, loading: shareLoading, error: shareError } = useShare();
 
@@ -116,7 +118,7 @@ const Index = () => {
 
   useEffect(() => {
     fetchDocuments();
-  }, []);
+  }, [fetchDocuments]);
 
   // Preview document
   const handlePreviewFile = async (document: Document) => {
@@ -228,9 +230,11 @@ const Index = () => {
       }
     }
 
+    type FileWithRelativePath = File & { relativePath?: string };
     const formData = new FormData();
     files.forEach(file => {
-      formData.append('files', file, (file as any).relativePath || file.name);
+      const fileWithRelativePath = file as FileWithRelativePath;
+      formData.append('files', file, fileWithRelativePath.relativePath || file.name);
     });
 
     try {
@@ -312,7 +316,7 @@ const Index = () => {
 
       toast({
         title: "Success",
-        description: `Document moved to bin`,
+        description: `Document moved to archive`,
       });
 
       // Refresh document list
@@ -395,7 +399,7 @@ const Index = () => {
     if (successCount > 0) {
       toast({
         title: "Success",
-        description: `${successCount} document(s) moved to bin`,
+        description: `${successCount} document(s) moved to archive`,
       });
 
       // Refresh document list
@@ -534,8 +538,83 @@ const Index = () => {
     setIsDragging(false);
     await handleDropWithFolders(e);
   };
+
+  const archiveDocument = useCallback(async (fileName: string) => {
+    try {
+      const url = `/v2/metadata/archive/${encodeURIComponent(fileName)}`;
+      const response = await fetch(url, { method: 'POST' });
+      if (!response.ok) throw new Error('Archive failed');
+      await response.json();
+      toast({ title: 'Success', description: 'Document archived successfully', variant: 'default' });
+      fetchDocuments();
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Error', description: `Failed to archive document: ${error.message}`, variant: 'destructive' });
+    }
+  }, [fetchDocuments]);
+
+  const unarchiveDocument = useCallback(async (fileName: string) => {
+    try {
+      const url = `/v2/metadata/un-archive/${encodeURIComponent(fileName)}`;
+      const response = await fetch(url, { method: 'POST' });
+      if (!response.ok) throw new Error('Unarchive failed');
+      await response.json();
+      toast({ title: 'Success', description: 'Document unarchived successfully', variant: 'default' });
+      fetchDocuments();
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Error', description: `Failed to unarchive document: ${error.message}`, variant: 'destructive' });
+    }
+  }, [fetchDocuments]);
+
+  const toggleFavorite = useCallback(async (documentId: string) => {
+    // Find the document and its current starred state
+    const docIndex = documents.findIndex(doc => doc.id === documentId);
+    if (docIndex === -1) return;
+    const prevStarred = documents[docIndex].starred;
+
+    // Optimistically update UI
+    const updatedDocs = [...documents];
+    updatedDocs[docIndex] = {
+      ...updatedDocs[docIndex],
+      starred: !prevStarred,
+    };
+    setDocuments(updatedDocs);
+
+    try {
+      const url = `/v2/metadata/${documentId}/star`;
+      const response = await fetch(url, { method: 'PUT' });
+      if (!response.ok) throw new Error('Toggle favorite failed');
+      await response.json();
+      toast({ title: 'Success', description: 'Favorite status updated', variant: 'default' });
+      // Optionally refetch to sync with backend
+      fetchDocuments();
+    } catch (error) {
+      // Revert optimistic update
+      const revertedDocs = [...documents];
+      revertedDocs[docIndex] = {
+        ...revertedDocs[docIndex],
+        starred: prevStarred,
+      };
+      setDocuments(revertedDocs);
+      toast({ title: 'Error', description: `Failed to update favorite status: ${error.message}`, variant: 'destructive' });
+    }
+  }, [documents, fetchDocuments]);
+
   return (
     <div className="relative">
+      {/* Header with Upload Button */}
+      <div className="flex items-center justify-between mb-4">
+        <PageHeader
+          title={getCategoryTitle(category)}
+          categoryType={category}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+        />
+      </div>
+      {/* Drag-and-drop overlay */}
       <div
         className="fixed inset-0 z-50"
         style={{ pointerEvents: isDragging ? 'auto' : 'none', display: isDragging ? 'block' : 'none' }}
@@ -546,8 +625,7 @@ const Index = () => {
       >
         {isDragging && (
           <div className="absolute inset-0 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center">
-            <p className="text-lg font-semibold text-blue-600">Перетащите файлы для загрузки
-            </p>
+            <p className="text-lg font-semibold text-blue-600">Перетащите файлы для загрузки</p>
           </div>
         )}
       </div>
@@ -557,41 +635,32 @@ const Index = () => {
         onDragOver={handleDragOverArea}
         onDrop={handleDropArea}
       >
-        <PageHeader
-          title={getCategoryTitle(category)}
-          categoryType={category}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-        />
-        <div className="flex justify-between items-center mb-4">
-
-          <button
-            className=" flex items-center mt-5 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors"
-            onClick={() => setShowUploadDialog(true)}
-          ><svg height="24" width="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="Icon___StyledSvg-sc-1qxn6g3-0 huCDol" data-testid="cloudUpArrow" aria-label="облакоСтрелка вверх"><path d="M15.52,15.81A.78.78,0,0,1,15,16a.72.72,0,0,1-.55-.24l-1.71-1.85V19.6a.75.75,0,0,1-1.5,0V13.92L9.54,15.77a.76.76,0,0,1-1.06,0,.74.74,0,0,1,0-1.06l3-3.25a.76.76,0,0,1,.55-.24.77.77,0,0,1,.55.24l3,3.25A.76.76,0,0,1,15.52,15.81ZM14.79,3.44A7.94,7.94,0,0,0,7.27,8.8a5.81,5.81,0,0,0-.72-.05,5.3,5.3,0,0,0,0,10.6.75.75,0,1,0,0-1.5,3.8,3.8,0,1,1,1-7.48.65.65,0,0,0,.31,0,.75.75,0,0,0,.72-.57,6.46,6.46,0,1,1,8.21,7.74.77.77,0,0,0-.49.95A.75.75,0,0,0,17,19a.57.57,0,0,0,.22,0,8,8,0,0,0-2.4-15.54Z"></path></svg> Загрузить файлы
-          </button>
-        </div>
-        <div className="mt-4 animate-fade-in">
-          <DocumentGrid
-            documents={documents}
-            onDocumentClick={handleDocumentClick}
-            onDocumentPreview={handlePreviewFile}
-            viewMode={viewMode}
-            selectedDocument={selectedDocument}
-            onDocumentSelect={handleDocumentSelect}
-            multipleSelection={true}
-            selectionActions={{
-              selectedIds: selectedDocumentIds,
-              onSelectAll: handleSelectAll,
-              onClearSelection: handleClearSelection,
-              onDeleteSelected: handleDeleteSelected,
-              onDownloadSelected: handleDownloadSelected,
-              onShareSelected: handleShareSelected
-            }}
-          />
-        </div>
+        {viewMode === 'list' ? (
+          <DocumentList />
+        ) : (
+          <div className="mt-4 animate-fade-in">
+            <DocumentGrid
+              documents={documents}
+              onDocumentClick={handleDocumentClick}
+              onDocumentPreview={handlePreviewFile}
+              viewMode={viewMode}
+              selectedDocument={selectedDocument}
+              onDocumentSelect={handleDocumentSelect}
+              multipleSelection={true}
+              selectionActions={{
+                selectedIds: selectedDocumentIds,
+                onSelectAll: handleSelectAll,
+                onClearSelection: handleClearSelection,
+                onDeleteSelected: handleDeleteSelected,
+                onDownloadSelected: handleDownloadSelected,
+                onShareSelected: handleShareSelected
+              }}
+              onArchive={archiveDocument}
+              onUnarchive={unarchiveDocument}
+              toggleFavorite={toggleFavorite}
+            />
+          </div>
+        )}
       </div>
       {isShareOpen && shareDoc && (
         <ShareModal
@@ -599,7 +668,6 @@ const Index = () => {
           onClose={() => setIsShareOpen(false)}
         />
       )}
-
       {previewUrl && selectedDocument && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex flex-col items-center justify-center">
           <button
@@ -622,11 +690,17 @@ const Index = () => {
               className="max-h-[90vh] max-w-[90vw] rounded shadow-xl bg-white"
             />
           ) : (
-            <div className="text-white">Предпросмотр не доступен </div>
+            <div className="flex flex-col items-center">
+              <div className="text-white mb-4">Предпросмотр не доступен</div>
+              <iframe
+                src={previewUrl}
+                style={{ width: "100%", height: "90vh", border: "none" }}
+                allowFullScreen
+              />
+            </div>
           )}
         </div>
       )}
-
       {/* Metadata sidebar only if not previewing */}
       {!previewUrl && showSidebar && selectedDocument && (
         <div className="w-128 border bg-background fixed right-0 top-56 h-full z-40">
@@ -641,16 +715,18 @@ const Index = () => {
           />
         </div>
       )}
-
+      {/* File Upload Dialog */}
       <FileUploadDialog
         open={showUploadDialog}
-        onOpenChange={setShowUploadDialog}
+        onOpenChange={(open) => setShowUploadDialog(open)}
         onSelectDestination={handleSelectDestination}
         onCreateFolder={handleCreateFolder}
-        onUpload={(files) => { handleUploadToDestination(files); }}
+        onUpload={async (files) => {
+          await handleUploadToDestination(files);
+          setShowUploadDialog(false);
+          fetchDocuments();
+        }}
       />
-
-
     </div>
   );
 };

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { 
   FileText, File, FileSpreadsheet, 
   FileImage, Folder, MoreVertical, 
-  Star, Download, Trash,
+  Star, Download, Trash, 
   Share2, CheckCircle2, Check
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -85,7 +85,7 @@ export function DocumentListItem({
                       variant="ghost" 
                       size="icon" 
                       className="h-5 w-5 p-0 rounded-full bg-background/80 backdrop-blur-sm hover:bg-accent"
-                      onClick={(e) => {3
+                      onClick={(e) => {
                         e.stopPropagation();
                         onSelect();
                       }}
@@ -121,7 +121,7 @@ export function DocumentListItem({
               <h3 className="font-medium truncate flex-1" title={document.name}>
                 {document.name}
               </h3>
-              {document.favorited && (
+              {(document.favorited || document.starred) && (
                 <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 ml-2" />
               )}
             </div>

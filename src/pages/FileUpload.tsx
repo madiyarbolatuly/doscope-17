@@ -94,6 +94,11 @@ const FileUpload = () => {
     setShowUploadDialog(false);
   };
 
+  const handleDocumentPreview = (document: Document) => {
+    console.log('Preview document:', document.name);
+  };
+
+
   const uploadedDocuments: Document[] = uploadedFiles.map((file, index) => ({
     id: `temp-${index}`,
     name: file.name,
@@ -162,10 +167,10 @@ const FileUpload = () => {
                   <DocumentGrid
                     documents={uploadedDocuments}
                     onDocumentClick={() => {}}
+                    onDocumentPreview={handleDocumentPreview}
                     viewMode={viewMode}
                     selectedDocument={null}
                     onDocumentSelect={() => {}}
-                    onDocumentPreview={() => {}}
                   />
                 </div>
               )}

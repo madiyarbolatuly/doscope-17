@@ -133,14 +133,21 @@ export function FileUploader({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        <label htmlFor="file-upload-input" className="sr-only">
+          Выберите файлы для загрузки
+        </label>
         <input
+          id="file-upload-input"
           type="file"
           ref={fileInputRef}
           className="hidden"
           multiple
           accept={acceptedFileTypes}
           onChange={(e) => handleFileChange(e.target.files)}
-          aria-label="Выберите файлы для загрузки"
+          // @ts-expect-error: webkitdirectory is not standard but needed for folder upload
+          webkitdirectory="true"
+          directory="true"
+          title="Выберите файлы для загрузки"
         />
         
         <div className="flex flex-col items-center">

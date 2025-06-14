@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Index from './pages/Index';
@@ -17,6 +16,8 @@ import NotFound from './pages/NotFound';
 import DocumentDetails from './pages/DocumentDetails';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import Favorites from './pages/Favorites';
 
 function App() {
   return (
@@ -24,20 +25,21 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<AppLayout><Index /></AppLayout>} />
-          <Route path="/archived" element={<AppLayout><ArchivedPage /></AppLayout>} />
-          <Route path="/notifications" element={<AppLayout><NotificationsPage /></AppLayout>} />
-          <Route path="/fileupload" element={<AppLayout><FileUpload /></AppLayout>} />
-          <Route path="/usersmanagement" element={<AppLayout><UserManagement /></AppLayout>} />
-          <Route path="/approvals" element={<AppLayout><Approvals /></AppLayout>} />
-          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
-          <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
-          <Route path="/documentdetails" element={<AppLayout><DocumentDetails /></AppLayout>} />
-          <Route path="/trash" element={<AppLayout><TrashBin /></AppLayout>} />
-          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
-
-         
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<AppLayout><Index /></AppLayout>} />
+            <Route path="/archived" element={<AppLayout><TrashBin /></AppLayout>} />
+            <Route path="/notifications" element={<AppLayout><NotificationsPage /></AppLayout>} />
+            <Route path="/fileupload" element={<AppLayout><FileUpload /></AppLayout>} />
+            <Route path="/usersmanagement" element={<AppLayout><UserManagement /></AppLayout>} />
+            <Route path="/approvals" element={<AppLayout><Approvals /></AppLayout>} />
+            <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+            <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
+            <Route path="/documentdetails" element={<AppLayout><DocumentDetails /></AppLayout>} />
+            <Route path="/trash" element={<AppLayout><TrashBin /></AppLayout>} />
+            <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+            <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
+            <Route path="/favorites" element={<AppLayout><Favorites /></AppLayout>} />
+          </Route>
         </Routes>
         <Toaster />
       </Router>

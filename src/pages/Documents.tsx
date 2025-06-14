@@ -102,6 +102,14 @@ const Documents = () => {
     setShowUploadDialog(true);
   };
 
+  const handleDocumentPreview = (document: Document) => {
+    toast({
+      title: 'Preview',
+      description: `Previewing document: ${document.name}`,
+      duration: 3000
+    });
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
@@ -138,6 +146,7 @@ const Documents = () => {
           <DocumentGrid 
             documents={filteredDocuments} 
             onDocumentClick={handleDocumentClick}
+            onDocumentPreview={handleDocumentPreview}
             viewMode={viewMode}
             selectedDocument={selectedDocument}
             onDocumentSelect={handleDocumentSelect}

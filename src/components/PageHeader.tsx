@@ -75,7 +75,6 @@ export function PageHeader({
                   <Info size={16} className="text-gray-400 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>DocFlow EDMS v1.0.0</p>
                   <p className="text-xs text-gray-500">Electronic Document Management System</p>
                   <p className="text-xs text-gray-500">OpenAPI 3.1 Spec at /openapi.json</p>
                 </TooltipContent>

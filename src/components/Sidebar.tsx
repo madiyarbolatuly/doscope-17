@@ -31,11 +31,11 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
     { id: 'all', label: 'Все документы', icon: <FileText size={18} />, path: '/'  },
     { id: 'recent', label: 'Недавние', icon: <Clock size={18} /> },
     { id: 'shared', label: 'Общие', icon: <Users size={18} /> },
-    { id: 'favorites', label: 'Избранное', icon: <Star size={18} /> },
+    { id: 'favorites', label: 'Избранное', icon: <Star size={18} />, path: '/favorites' },
     { id: 'trash', label: 'Корзина', icon: <Trash2 size={18} />, path: '/trash' },
   ];
 
- /*  const categoryItems: SidebarItem[] = [
+ /*  const categoryItems: Sidebar!#!!!!!!@!Item[] = [
     { id: 'managers', label: 'Руководители', icon: <FolderOpen size={18} /> },
     { id: 'development', label: 'Отдел развития', icon: <FolderOpen size={18} /> },
     { id: 'procurement', label: 'Прокюрмент', icon: <FolderOpen size={18} /> },
@@ -50,6 +50,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
     { id: 'upload' as CategoryType, label: 'Загрузить', icon: <Upload size={18}/>, path: '/fileupload' },
     { id: 'archive' as CategoryType, label: 'Архив', icon: <Archive size={18} />, path: '/archived' },
     { id: 'notifications' as CategoryType, label: 'Уведомления', icon: <Bell size={18} />, badge: '3', path: '/notifications' },
+    { id: 'starred' as CategoryType, label: 'Избранное', icon: <Star size={18} />, path: '/favorites' }
   ];
 
   const handleItemClick = (item: SidebarItem) => {
@@ -72,7 +73,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
       <div className="p-5">
         <div className="flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary" />
-          <div className="text-lg font-semibold">DocFlow EDMS</div>
+          <div className="text-lg font-semibold">EDMS</div>
         </div>
         <button
           className="w-full flex items-center mt-5 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors"

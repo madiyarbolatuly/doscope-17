@@ -111,6 +111,8 @@ export function MetadataSidebar({
                 className="w-full h-[300px]"
                 title={document.name}
                 onError={handlePreviewError}
+                allowFullScreen
+
               />
             ) : (
               <img

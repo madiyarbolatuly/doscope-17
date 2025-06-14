@@ -165,6 +165,11 @@ const DocumentDetails = () => {
     }, 500);
   }, [id]);
 
+  const handleDocumentPreview = (document: Document) => {
+    console.log('Preview document:', document.name);
+  };
+
+
   const handleMetadataUpdate = (field: string, value: any) => {
     console.log('Updating metadata field:', field, value);
     // In a real application, you would save this to your backend
@@ -279,6 +284,7 @@ const DocumentDetails = () => {
                       <DocumentGrid 
                         documents={relatedDocuments} 
                         onDocumentClick={() => {}} 
+                        onDocumentPreview={handleDocumentPreview}
                         viewMode={viewMode}
                         selectedDocument={null}
                         onDocumentSelect={() => {}}

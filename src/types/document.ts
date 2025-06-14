@@ -14,6 +14,8 @@ export interface Document {
   engineer?: string;
   linkedAssets?: string[];
   tags?: string[];
+  archived?: boolean;
+  starred?: boolean;
 }
 
 export type DocumentType = 'pdf' | 'doc' | 'xlsx' | 'ppt' | 'image' | 'folder' | string;
@@ -39,6 +41,9 @@ export interface MultipleSelectionActions {
   onDeleteSelected?: () => void;
   onDownloadSelected?: () => void;
   onShareSelected?: () => void;
+onArchiveSelected?: () => void;
+  onFavoriteSelected?: () => void;
+  onUnfavoriteSelected?: () => void;
   onRestoreSelected?: () => void;
 }
 
@@ -78,4 +83,24 @@ export type CategoryType =
   | 'customer'
   | 'meetings'
   | string;
+
+export interface BackendDocument {
+  id: string;
+  name: string;
+  type: DocumentType;
+  size?: string;
+  modified: string;
+  owner: string;
+  category?: CategoryType;
+  shared?: boolean;
+  favorited?: boolean;
+  thumbnail?: string;
+  path?: string;
+  dueDate?: string;
+  engineer?: string;
+  linkedAssets?: string[];
+  tags?: string[];
+  archived?: boolean;
+  starred?: boolean;
+}
 
