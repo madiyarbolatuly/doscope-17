@@ -11,7 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { API_ROOT } from '@/config/api';
 import axios from 'axios';
 import { DocumentList } from '@/components/DocumentList';
-import { useDocuments, DocumentMeta } from '@/hooks/useDocuments';
+import { useDocuments } from '@/hooks/useDocuments';
+import { Document } from '@/types/document';
 
 const Approvals = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,13 +28,13 @@ const Approvals = () => {
     return doc.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  // Type guard helpers
-  const getStatus = (doc: any) => doc.status ?? "pending";
-  const getCreatedAt = (doc: any) => doc.created_at || doc.modified || '';
-  const getOwner = (doc: any) => doc.owner_id || doc.owner || "-";
+  // Type guard helpers for robust property accesses
+  const getStatus = (doc: Document) => doc.status ?? 'pending';
+  const getCreatedAt = (doc: Document) => (doc.created_at || doc.modified || '');
+  const getOwner = (doc: Document) => (doc.owner_id || doc.owner || '-');
 
-  const handleDocumentClick = (document: DocumentMeta) => {
-    // This expects an `id` to exist
+  const handleDocumentClick = (document: Document) => {
+    // Cast to any to allow navigation, as we don't know the meta type structure here
     navigate(`/document/${document.id}`);
   };
 
@@ -92,7 +93,7 @@ const Approvals = () => {
             <TabsTrigger value="pending">
               Ожидающие
               <Badge variant="secondary" className="ml-2">
-                {docs.filter(a => (a.status ?? 'pending') === "pending").length}
+                {docs.filter(a => !a.status || a.status === "pending").length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="approved">Утвержденные</TabsTrigger>
@@ -112,7 +113,7 @@ const Approvals = () => {
                   </div>
                 ) : filteredApprovals.length > 0 ? (
                   filteredApprovals
-                    .filter(doc => (doc.status ?? 'pending') === "pending")
+                    .filter(doc => !doc.status || doc.status === "pending")
                     .map(doc => (
                       <div key={doc.id} className="flex items-center justify-between p-4 border-b last:border-0">
                         <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
@@ -169,7 +170,7 @@ const Approvals = () => {
                 <CardDescription>Документы, которые вы утвердили</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* DocumentList expects props matching DocumentMeta structure */}
+                {/* By default, show DocumentList for approved status */}
                 <DocumentList status="approved" />
               </CardContent>
             </Card>
