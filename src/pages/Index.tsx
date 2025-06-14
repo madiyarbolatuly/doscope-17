@@ -655,8 +655,6 @@ const Index = () => {
                 onDownloadSelected: handleDownloadSelected,
                 onShareSelected: handleShareSelected
               }}
-              onArchive={archiveDocument}
-              onUnarchive={unarchiveDocument}
               toggleFavorite={toggleFavorite}
             />
           </div>

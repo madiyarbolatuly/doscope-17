@@ -3,8 +3,6 @@ import React from 'react';
 import { Document } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
 import { DocumentListItem } from './DocumentListItem';
-import { Button } from '@/components/ui/button';
-import { Grid, List } from 'lucide-react';
 
 interface DocumentGridProps {
   documents: Document[];
@@ -17,6 +15,8 @@ interface DocumentGridProps {
   multipleSelection?: boolean;
   selectionActions?: any;
   toggleFavorite?: (documentId: string) => Promise<void>;
+  onArchive?: (fileName: string) => void;
+  onUnarchive?: (fileName: string) => void;
 }
 
 export function DocumentGrid({ 
@@ -29,7 +29,9 @@ export function DocumentGrid({
   selectedDocument,
   multipleSelection = false,
   selectionActions,
-  toggleFavorite
+  toggleFavorite,
+  onArchive,
+  onUnarchive
 }: DocumentGridProps) {
   const handleToggleFavorite = (document: Document) => {
     if (onToggleFavorite) {

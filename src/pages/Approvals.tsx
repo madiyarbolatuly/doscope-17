@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -19,13 +20,20 @@ const Approvals = () => {
   const { toast } = useToast();
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>({});
   
+  // Get docs of appropriate status
   const { docs, loading, error, refetch } = useDocuments(undefined, activeTab === 'all' ? undefined : activeTab);
-  
+
   const filteredApprovals = docs.filter(doc => {
     return doc.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
+  // Type guard helpers
+  const getStatus = (doc: any) => doc.status ?? "pending";
+  const getCreatedAt = (doc: any) => doc.created_at || doc.modified || '';
+  const getOwner = (doc: any) => doc.owner_id || doc.owner || "-";
+
   const handleDocumentClick = (document: DocumentMeta) => {
+    // This expects an `id` to exist
     navigate(`/document/${document.id}`);
   };
 
@@ -69,10 +77,6 @@ const Approvals = () => {
     }
   };
 
-  const getStatus = (doc: any) => doc.status || "pending";
-  const getCreatedAt = (doc: any) => doc.created_at || doc.modified;
-  const getOwner = (doc: any) => doc.owner_id || doc.owner || "-";
-
   return (
     <div className="container mx-auto py-6 px-4 md:px-6">
       <div className="flex flex-col space-y-4">
@@ -88,7 +92,7 @@ const Approvals = () => {
             <TabsTrigger value="pending">
               Ожидающие
               <Badge variant="secondary" className="ml-2">
-                {docs.filter(a => getStatus(a) === "pending").length}
+                {docs.filter(a => (a.status ?? 'pending') === "pending").length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="approved">Утвержденные</TabsTrigger>
@@ -107,46 +111,48 @@ const Approvals = () => {
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredApprovals.length > 0 ? (
-                  filteredApprovals.map(doc => (
-                    <div key={doc.id} className="flex items-center justify-between p-4 border-b last:border-0">
-                      <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
-                        <h3 className="font-medium">{doc.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Запрошено: {new Date(getCreatedAt(doc)).toLocaleDateString()} от {getOwner(doc)}
-                        </p>
+                  filteredApprovals
+                    .filter(doc => (doc.status ?? 'pending') === "pending")
+                    .map(doc => (
+                      <div key={doc.id} className="flex items-center justify-between p-4 border-b last:border-0">
+                        <div className="flex-1 cursor-pointer" onClick={() => handleDocumentClick(doc)}>
+                          <h3 className="font-medium">{doc.name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Запрошено: {new Date(getCreatedAt(doc)).toLocaleDateString()} от {getOwner(doc)}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-green-600" 
+                            onClick={() => handleApprove(doc.id)}
+                            disabled={processingIds[doc.id]}
+                          >
+                            {processingIds[doc.id] ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Check className="h-4 w-4 mr-1" />
+                            )}
+                            Утвердить
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600" 
+                            onClick={() => handleReject(doc.id)}
+                            disabled={processingIds[doc.id]}
+                          >
+                            {processingIds[doc.id] ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <X className="h-4 w-4 mr-1" />
+                            )}
+                            Отклонить
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-green-600" 
-                          onClick={() => handleApprove(doc.id)}
-                          disabled={processingIds[doc.id]}
-                        >
-                          {processingIds[doc.id] ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <Check className="h-4 w-4 mr-1" />
-                          )}
-                          Утвердить
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-red-600" 
-                          onClick={() => handleReject(doc.id)}
-                          disabled={processingIds[doc.id]}
-                        >
-                          {processingIds[doc.id] ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4 mr-1" />
-                          )}
-                          Отклонить
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                    ))
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
                     {error ? `Error: ${error}` : "Нет ожидающих документов"}
@@ -163,6 +169,7 @@ const Approvals = () => {
                 <CardDescription>Документы, которые вы утвердили</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* DocumentList expects props matching DocumentMeta structure */}
                 <DocumentList status="approved" />
               </CardContent>
             </Card>
