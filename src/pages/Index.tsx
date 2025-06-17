@@ -13,6 +13,17 @@ import { useShare } from '@/hooks/useShare';
 import { DocumentList } from "@/components/DocumentList";
 import { Plus } from "lucide-react";
 import { Button } from '@/components/ui/button';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from 'lucide-react';
+import { format } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface BackendDocument {
   owner_id: string;
@@ -27,9 +38,108 @@ interface BackendDocument {
   file_hash: string;
   access_to: string[] | null;
   id: string;
-  parent_id: string | null; // Assuming parent_id can be null
-
+  parent_id: string | null;
 }
+
+// Mock documents for demonstration
+const mockDocuments: Document[] = [
+  {
+    id: 'mock-1',
+    name: 'Project Files',
+    type: 'folder',
+    size: '2.4 MB',
+    modified: '2025-06-17T10:30:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'projects',
+    path: '/projects/',
+    tags: ['project', 'folder'],
+    archived: false
+  },
+  {
+    id: 'mock-2',
+    name: 'Makefile',
+    type: 'file',
+    size: '373 B',
+    modified: '2025-06-17T11:22:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'development',
+    path: '/development/makefile',
+    tags: ['build', 'development'],
+    archived: false
+  },
+  {
+    id: 'mock-3',
+    name: 'DynamicMatrix.h',
+    type: 'file',
+    size: '871 B',
+    modified: '2025-06-17T11:22:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'development',
+    path: '/development/dynamicmatrix.h',
+    tags: ['header', 'cpp'],
+    archived: false
+  },
+  {
+    id: 'mock-4',
+    name: 'main.cpp',
+    type: 'file',
+    size: '403 B',
+    modified: '2025-06-17T11:22:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'development',
+    path: '/development/main.cpp',
+    tags: ['source', 'cpp'],
+    archived: false
+  },
+  {
+    id: 'mock-5',
+    name: 'Budget Report 2024.xlsx',
+    type: 'xlsx',
+    size: '1.8 MB',
+    modified: '2025-06-15T09:15:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'finance',
+    path: '/finance/budget-2024.xlsx',
+    tags: ['budget', 'finance', '2024'],
+    archived: false
+  },
+  {
+    id: 'mock-6',
+    name: 'Meeting Notes.docx',
+    type: 'doc',
+    size: '456 KB',
+    modified: '2025-06-14T11:20:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'meetings',
+    path: '/meetings/notes.docx',
+    tags: ['meeting', 'notes'],
+    archived: false
+  },
+  {
+    id: 'mock-7',
+    name: 'Project Images',
+    type: 'folder',
+    size: '45 MB',
+    modified: '2025-06-13T16:45:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'design',
+    path: '/design/images/',
+    tags: ['design', 'images'],
+    archived: false
+  },
+  {
+    id: 'mock-8',
+    name: 'Technical Specification.pdf',
+    type: 'pdf',
+    size: '5.2 MB',
+    modified: '2025-06-12T15:45:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'development',
+    path: '/docs/tech-spec.pdf',
+    tags: ['technical', 'specification'],
+    archived: false
+  }
+];
 
 const Index = () => {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -89,19 +199,20 @@ const Index = () => {
           tags: doc.tags || [],
           parent_id: doc.parent_id,
           archived: doc.status === 'archived',
-          starred: false, // or set your own logic here if needed
+          starred: false,
         }));
         setDocuments(transformedDocuments);
       } else {
-        console.error('No documents array found in response:', data);
-        setDocuments([]);
+        console.log('No real documents found, using mock data');
+        setDocuments(mockDocuments);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
+      console.log('Using mock data due to API error');
+      setDocuments(mockDocuments);
       toast({
-        title: "Error",
-        description: "Failed to fetch documents",
-        variant: "destructive"
+        title: "Info",
+        description: "Using mock data for demonstration",
       });
     } finally {
       setIsLoading(false);
@@ -351,7 +462,6 @@ const Index = () => {
       }
     } else {
       setSelectedDocumentIds([...selectedDocumentIds, document.id]);
-      // Do not open sidebar or set selectedDocument here
     }
   };
 
@@ -568,12 +678,10 @@ const Index = () => {
   }, [fetchDocuments]);
 
   const toggleFavorite = useCallback(async (documentId: string) => {
-    // Find the document and its current starred state
     const docIndex = documents.findIndex(doc => doc.id === documentId);
     if (docIndex === -1) return;
     const prevStarred = documents[docIndex].starred;
 
-    // Optimistically update UI
     const updatedDocs = [...documents];
     updatedDocs[docIndex] = {
       ...updatedDocs[docIndex],
@@ -587,10 +695,8 @@ const Index = () => {
       if (!response.ok) throw new Error('Toggle favorite failed');
       await response.json();
       toast({ title: 'Success', description: 'Favorite status updated', variant: 'default' });
-      // Optionally refetch to sync with backend
       fetchDocuments();
     } catch (error) {
-      // Revert optimistic update
       const revertedDocs = [...documents];
       revertedDocs[docIndex] = {
         ...revertedDocs[docIndex],
@@ -600,6 +706,27 @@ const Index = () => {
       toast({ title: 'Error', description: `Failed to update favorite status: ${error.message}`, variant: 'destructive' });
     }
   }, [documents, fetchDocuments]);
+
+  const renderIcon = (type: string) => {
+    switch (type) {
+      case 'pdf':
+        return <FileText className="h-5 w-5 text-red-500" />;
+      case 'doc':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'xlsx':
+        return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
+      case 'image':
+        return <FileImage className="h-5 w-5 text-purple-500" />;
+      case 'folder':
+        return <Folder className="h-5 w-5 text-yellow-500" />;
+      default:
+        return <File className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
+  const filteredDocuments = documents.filter(doc => 
+    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="relative">
@@ -636,11 +763,139 @@ const Index = () => {
         onDrop={handleDropArea}
       >
         {viewMode === 'list' ? (
-          <DocumentList />
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  checked={selectedDocumentIds.length === filteredDocuments.length && filteredDocuments.length > 0}
+                  onCheckedChange={handleSelectAll}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {selectedDocumentIds.length > 0 ? `${selectedDocumentIds.length} selected` : `Showing ${filteredDocuments.length} items`}
+                </span>
+              </div>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Upload files
+              </Button>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox 
+                      checked={selectedDocumentIds.length === filteredDocuments.length && filteredDocuments.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Last updated</TableHead>
+                  <TableHead>Updated by</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center p-4">
+                      Loading documents...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredDocuments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center p-4 text-muted-foreground">
+                      No documents found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredDocuments.map((document) => (
+                    <TableRow 
+                      key={document.id}
+                      className="hover:bg-accent/50 cursor-pointer"
+                      onClick={() => handleDocumentClick(document)}
+                    >
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedDocumentIds.includes(document.id)}
+                          onCheckedChange={() => handleDocumentSelect(document)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {renderIcon(document.type)}
+                          <span className="font-medium">{document.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">--</span>
+                      </TableCell>
+                      <TableCell>
+                        {document.type === 'folder' ? (
+                          <span className="text-muted-foreground">--</span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                            V1
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">{document.size}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">
+                          {format(new Date(document.modified), 'MMM d, yyyy HH:mm')}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-xs text-white font-medium">
+                            MS
+                          </div>
+                          <span className="text-sm">{document.owner}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-background border shadow-lg">
+                            <DropdownMenuItem onClick={() => handlePreviewFile(document)}>
+                              Просмотр
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownloadFile(document)}>
+                              Скачать
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openShare(document)}>
+                              Поделиться
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteDocument(document)}
+                            >
+                              Удалить
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         ) : (
           <div className="mt-4 animate-fade-in">
             <DocumentGrid
-              documents={documents}
+              documents={filteredDocuments}
               onDocumentClick={handleDocumentClick}
               onDocumentPreview={handlePreviewFile}
               viewMode={viewMode}
