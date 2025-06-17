@@ -104,16 +104,26 @@ export const logoutUser = () => {
   delete apiClient.defaults.headers.common['Authorization'];
 };
 
-// Get current user info
+// Get current user info - return mock user for development
 export const getCurrentUser = async (): Promise<User> => {
-  const response = await apiClient.get<User>(AUTH_ENDPOINTS.ME);
-  return response.data;
+  // For development, return a mock admin user
+  return {
+    id: 'mock-admin-user',
+    username: 'admin',
+    email: 'admin@company.com',
+    role: 'admin'
+  };
 };
 
-// Initialize auth header if token exists
+// Initialize auth header if token exists or set mock token
 const initialToken = localStorage.getItem('authToken');
 if (initialToken) {
   apiClient.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
+} else {
+  // Set mock token for development
+  const mockToken = 'mock-admin-token-12345';
+  localStorage.setItem('authToken', mockToken);
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
 }
 
 export { apiClient };

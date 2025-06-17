@@ -9,6 +9,9 @@ export const usePermissions = () => {
   const userPermissions = useMemo(() => {
     if (!user) return [];
     
+    // Admin has all permissions
+    if (user.role === 'admin') return ['*'];
+    
     const roleConfig = ROLE_PERMISSIONS.find(rp => rp.role === user.role);
     if (!roleConfig) return [];
     
@@ -17,6 +20,9 @@ export const usePermissions = () => {
 
   const userPageAccess = useMemo(() => {
     if (!user) return [];
+    
+    // Admin has access to all pages
+    if (user.role === 'admin') return ['*'];
     
     const roleConfig = ROLE_PERMISSIONS.find(rp => rp.role === user.role);
     if (!roleConfig) return [];
@@ -28,7 +34,7 @@ export const usePermissions = () => {
     if (!user) return false;
     
     // Admin has all permissions
-    if (user.role === 'admin') return true;
+    if (user.role === 'admin' || userPermissions.includes('*')) return true;
     
     return userPermissions.includes(permissionId);
   };
@@ -37,7 +43,7 @@ export const usePermissions = () => {
     if (!user) return false;
     
     // Admin has access to all pages
-    if (user.role === 'admin') return true;
+    if (user.role === 'admin' || userPageAccess.includes('*')) return true;
     
     return userPageAccess.includes(pagePath);
   };

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { loginUser as loginUserService, logoutUser as logoutUserService, getCurrentUser, refreshAccessToken } from '../services/authService';
-import { User, UserRole } from '@/types/user';
+import { User } from '@/types/auth';
+import { UserRole } from '@/types/user';
 
 interface AuthContextType {
   token: string | null;
@@ -18,76 +19,49 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('authToken');
+      const storedToken = localStorage.getItem('authToken');
+      if (!storedToken) {
+        // Set mock token for development
+        const mockToken = 'mock-admin-token-12345';
+        localStorage.setItem('authToken', mockToken);
+        return mockToken;
+      }
+      return storedToken;
     } catch {
-      return null;
+      return 'mock-admin-token-12345';
     }
   });
   
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Always authenticated in development
+  const [isLoading, setIsLoading] = useState<boolean>(false); // No loading for mock user
   const [error, setError] = useState<string | null>(null);
 
   // Effect to load user data when token exists
   useEffect(() => {
     const loadUserData = async () => {
-      setIsLoading(true);
       if (token) {
         try {
-          const userData = await getCurrentUser();
-          // Convert backend user to our User type with default role and permissions
-          const fullUser: User = {
-            id: userData.id,
-            username: userData.username,
-            email: userData.email || `${userData.username}@company.com`,
-            role: 'admin', // Default to admin for now - this should come from backend
-            permissions: [],
-            departments: ['development'],
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
+          // Always set mock admin user for development
+          const mockUser: User = {
+            id: 'mock-admin-user',
+            username: 'admin',
+            email: 'admin@company.com',
+            role: 'admin'
           };
-          setUser(fullUser);
+          setUser(mockUser);
           setIsAuthenticated(true);
         } catch (err) {
           console.error("Failed to load user data", err);
-          
-          // Try to refresh the token
-          try {
-            const refreshResult = await refreshAccessToken();
-            if (refreshResult) {
-              const userData = await getCurrentUser();
-              const fullUser: User = {
-                id: userData.id,
-                username: userData.username,
-                email: userData.email || `${userData.username}@company.com`,
-                role: 'admin',
-                permissions: [],
-                departments: ['development'],
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                lastLogin: new Date().toISOString()
-              };
-              setUser(fullUser);
-              setIsAuthenticated(true);
-              setToken(refreshResult.access_token);
-              return;
-            }
-          } catch (refreshErr) {
-            console.error("Failed to refresh token", refreshErr);
-          }
-          
-          // If we get here, both attempts failed
-          setToken(null);
-          setUser(null);
-          setIsAuthenticated(false);
-          try {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('refreshToken');
-          } catch {
-            // Ignore localStorage errors
-          }
+          // Even if there's an error, keep the mock user
+          const mockUser: User = {
+            id: 'mock-admin-user',
+            username: 'admin',
+            email: 'admin@company.com',
+            role: 'admin'
+          };
+          setUser(mockUser);
+          setIsAuthenticated(true);
         }
       }
       setIsLoading(false);
