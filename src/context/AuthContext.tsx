@@ -47,7 +47,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: 'mock-admin-user',
             username: 'admin',
             email: 'admin@company.com',
-            role: 'admin'
+            role: 'admin',
+            permissions: ['*'],
+            departments: ['development'],
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
           };
           setUser(mockUser);
           setIsAuthenticated(true);
@@ -58,7 +63,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             id: 'mock-admin-user',
             username: 'admin',
             email: 'admin@company.com',
-            role: 'admin'
+            role: 'admin',
+            permissions: ['*'],
+            departments: ['development'],
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString()
           };
           setUser(mockUser);
           setIsAuthenticated(true);
@@ -84,8 +94,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           id: userData.id,
           username: userData.username,
           email: userData.email || `${userData.username}@company.com`,
-          role: 'admin', // Default to admin for now
-          permissions: [],
+          role: 'admin',
+          permissions: ['*'],
           departments: ['development'],
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -135,3 +145,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+export type { User };

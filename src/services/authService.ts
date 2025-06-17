@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { AUTH_ENDPOINTS } from '@/config/api';
-import type { User } from '@/context/AuthContext';
+import type { User } from '@/types/auth';
 
 // Types to match our backend
 interface LoginCredentials {

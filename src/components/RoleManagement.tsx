@@ -18,7 +18,7 @@ import { Crown, Shield, User, Eye } from 'lucide-react';
 export const RoleManagement: React.FC = () => {
   const { user, updateUserRole } = useAuth();
   const { userPermissions, userPageAccess } = usePermissions();
-  const [selectedRole, setSelectedRole] = useState<UserRole>(user?.role || 'user');
+  const [selectedRole, setSelectedRole] = useState<UserRole>((user?.role as UserRole) || 'user');
 
   const roleIcons = {
     admin: <Crown className="h-4 w-4" />,
@@ -45,12 +45,14 @@ export const RoleManagement: React.FC = () => {
     return ROLE_PERMISSIONS.find(rp => rp.role === role);
   };
 
+  const currentRole = (user?.role as UserRole) || 'user';
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {user && roleIcons[user.role]}
+            {user && roleIcons[currentRole]}
             Управление ролями пользователя
           </CardTitle>
         </CardHeader>
@@ -59,8 +61,8 @@ export const RoleManagement: React.FC = () => {
             <div className="flex-1">
               <label className="text-sm font-medium">Текущая роль:</label>
               <div className="mt-1">
-                <Badge className={roleColors[user?.role || 'user']}>
-                  {user?.role?.toUpperCase()}
+                <Badge className={roleColors[currentRole]}>
+                  {currentRole?.toUpperCase()}
                 </Badge>
               </div>
             </div>
