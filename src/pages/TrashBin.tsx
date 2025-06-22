@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
-import { DocumentGrid } from '@/components/DocumentGrid';
+import { DocumentTable } from '@/components/DocumentTable';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Breadcrumb,
@@ -12,24 +13,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Document } from '@/types/document';
-import { ArchiveIcon, RotateCcw, Grid2X2, List } from 'lucide-react';
+import { Archive, RotateCcw, Grid2X2, List, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
-
-interface BackendDocument {
-  owner_id: string;
-  name: string;
-  file_path: string;
-  created_at: string;
-  size: number;
-  file_type: string;
-  tags: string[] | null;
-  categories: string[] | null;
-  status: string;
-  file_hash: string;
-  access_to: string[] | null;
-  id: string;
-}
 
 // Mock data for development
 const mockTrashedDocuments: Document[] = [
@@ -104,30 +90,6 @@ const mockTrashedDocuments: Document[] = [
     path: '/assets/logo-old.png',
     tags: ['logo', 'branding', 'old'],
     archived: true
-  },
-  {
-    id: 'mock-7',
-    name: 'Archived Contracts',
-    type: 'folder',
-    size: '120 MB',
-    modified: '2023-12-20T08:30:00Z',
-    owner: 'admin',
-    category: 'contracts',
-    path: '/contracts/archived/',
-    tags: ['contracts', 'legal', 'archived'],
-    archived: true
-  },
-  {
-    id: 'mock-8',
-    name: 'Technical Documentation v1.pdf',
-    type: 'pdf',
-    size: '5.2 MB',
-    modified: '2023-12-15T15:45:00Z',
-    owner: 'admin',
-    category: 'development',
-    path: '/docs/tech-docs-v1.pdf',
-    tags: ['technical', 'documentation', 'v1'],
-    archived: true
   }
 ];
 
@@ -135,12 +97,10 @@ const TrashBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
-  // Auth token
   const token = localStorage.getItem('authToken');
   
   // Fetch trashed documents
@@ -158,11 +118,10 @@ const TrashBin = () => {
       }
 
       const data = await response.json();
-      // Transform backend documents to match our Document interface
       const docsKey = Object.keys(data).find(key => Array.isArray(data[key]));
       
       if (docsKey && Array.isArray(data[docsKey]) && data[docsKey].length > 0) {
-        const transformedDocuments: Document[] = data[docsKey].map((doc: BackendDocument) => ({
+        const transformedDocuments: Document[] = data[docsKey].map((doc: any) => ({
           id: doc.id,
           name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
           type: doc.file_type ? (
@@ -181,12 +140,10 @@ const TrashBin = () => {
         }));
         setDocuments(transformedDocuments);
       } else {
-        console.log('No real documents found, using mock data');
         setDocuments(mockTrashedDocuments);
       }
     } catch (error) {
       console.error('Error fetching trashed documents:', error);
-      console.log('Using mock data due to API error');
       setDocuments(mockTrashedDocuments);
       toast({
         title: "Info",
@@ -205,96 +162,111 @@ const TrashBin = () => {
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleDocumentClick = (document: Document) => {
-    toast({
-      title: "Document selected",
-      description: `Selected: ${document.name}`,
-    });
-  };
-
   const handleDocumentSelect = (document: Document) => {
-    if (selectedDocuments.includes(document.id)) {
-      // If already selected, remove from selection
-      setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
-      
-      // Clear selected document if it's the one being deselected
-      if (selectedDocument?.id === document.id) {
-        setSelectedDocument(null);
-      }
-    } else {
-      // Add to selection
-      setSelectedDocuments([...selectedDocuments, document.id]);
-      
-      // If this is the first selection, set as selected document
-      if (selectedDocuments.length === 0) {
-        setSelectedDocument(document);
-      }
-    }
+    setSelectedDocuments(prev => 
+      prev.includes(document.id) 
+        ? prev.filter(id => id !== document.id)
+        : [...prev, document.id]
+    );
   };
 
   const handleSelectAll = () => {
-    if (selectedDocuments.length === filteredDocuments.length) {
-      // If all are already selected, clear selection
-      setSelectedDocuments([]);
-      setSelectedDocument(null);
-    } else {
-      // Select all documents
-      setSelectedDocuments(filteredDocuments.map(doc => doc.id));
-      
-      // If no document was previously selected, select the first one
-      if (!selectedDocument && filteredDocuments.length > 0) {
-        setSelectedDocument(filteredDocuments[0]);
+    setSelectedDocuments(
+      selectedDocuments.length === filteredDocuments.length 
+        ? [] 
+        : filteredDocuments.map(doc => doc.id)
+    );
+  };
+
+  const handleRestore = async (document: Document) => {
+    try {
+      if (document.id.startsWith('mock-')) {
+        toast({
+          title: "Success",
+          description: `Restored ${document.name} (simulated)`,
+        });
+        setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+        return;
       }
-    }
-  };
 
-  const handleClearSelection = () => {
-    setSelectedDocuments([]);
-    setSelectedDocument(null);
-  };
-
-  // Restore document(s) from bin
-  const handleRestoreSelected = async () => {
-    if (selectedDocuments.length === 0) {
+      const encodedFileName = encodeURIComponent(document.name);
+      await axios.post(`http://localhost:8000/v2/restore/${encodedFileName}`, {}, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Success",
+        description: `Restored ${document.name}`,
+      });
+      
+      fetchTrashedDocuments();
+    } catch (error) {
+      console.error(`Error restoring document ${document.name}:`, error);
       toast({
         title: "Error",
-        description: "No documents selected for restoration",
+        description: `Failed to restore ${document.name}`,
         variant: "destructive"
       });
-      return;
     }
+  };
 
+  const handlePermanentDelete = async (document: Document) => {
+    try {
+      if (document.id.startsWith('mock-')) {
+        toast({
+          title: "Success",
+          description: `Permanently deleted ${document.name} (simulated)`,
+        });
+        setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+        return;
+      }
+
+      const encodedFileName = encodeURIComponent(document.name);
+      await axios.delete(`http://localhost:8000/v2/trash/${encodedFileName}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      toast({
+        title: "Success",
+        description: `Permanently deleted ${document.name}`,
+      });
+      
+      fetchTrashedDocuments();
+    } catch (error) {
+      console.error(`Error permanently deleting document ${document.name}:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to delete ${document.name}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRestoreSelected = async () => {
+    if (selectedDocuments.length === 0) return;
+    
     const selectedDocs = documents.filter(doc => selectedDocuments.includes(doc.id));
     
-    // For mock documents, just simulate the action
     if (selectedDocs.some(doc => doc.id.startsWith('mock-'))) {
       toast({
         title: "Success",
         description: `Restored ${selectedDocuments.length} document(s) (simulated)`,
       });
-      
-      // Remove from trash (simulate)
-      setDocuments(documents.filter(doc => !selectedDocuments.includes(doc.id)));
+      setDocuments(prev => prev.filter(doc => !selectedDocuments.includes(doc.id)));
       setSelectedDocuments([]);
-      setSelectedDocument(null);
       return;
     }
 
     let successCount = 0;
-    let failCount = 0;
-
     for (const doc of selectedDocs) {
       try {
         const encodedFileName = encodeURIComponent(doc.name);
         await axios.post(`http://localhost:8000/v2/restore/${encodedFileName}`, {}, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+          headers: { "Authorization": `Bearer ${token}` }
         });
         successCount++;
       } catch (error) {
         console.error(`Error restoring document ${doc.name}:`, error);
-        failCount++;
       }
     }
 
@@ -303,63 +275,37 @@ const TrashBin = () => {
         title: "Success",
         description: `Restored ${successCount} document(s)`,
       });
-      fetchTrashedDocuments(); // Refresh the list
-    }
-
-    if (failCount > 0) {
-      toast({
-        title: "Error",
-        description: `Failed to restore ${failCount} document(s)`,
-        variant: "destructive"
-      });
+      fetchTrashedDocuments();
     }
 
     setSelectedDocuments([]);
-    setSelectedDocument(null);
   };
 
-  // Permanently delete document(s)
   const handleDeleteSelected = async () => {
-    if (selectedDocuments.length === 0) {
-      toast({
-        title: "Error",
-        description: "No documents selected for deletion",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    if (selectedDocuments.length === 0) return;
+    
     const selectedDocs = documents.filter(doc => selectedDocuments.includes(doc.id));
     
-    // For mock documents, just simulate the action
     if (selectedDocs.some(doc => doc.id.startsWith('mock-'))) {
       toast({
         title: "Success",
         description: `Permanently deleted ${selectedDocuments.length} document(s) (simulated)`,
       });
-      
-      // Remove from list (simulate)
-      setDocuments(documents.filter(doc => !selectedDocuments.includes(doc.id)));
+      setDocuments(prev => prev.filter(doc => !selectedDocuments.includes(doc.id)));
       setSelectedDocuments([]);
-      setSelectedDocument(null);
       return;
     }
 
     let successCount = 0;
-    let failCount = 0;
-
     for (const doc of selectedDocs) {
       try {
         const encodedFileName = encodeURIComponent(doc.name);
         await axios.delete(`http://localhost:8000/v2/trash/${encodedFileName}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+          headers: { "Authorization": `Bearer ${token}` }
         });
         successCount++;
       } catch (error) {
         console.error(`Error permanently deleting document ${doc.name}:`, error);
-        failCount++;
       }
     }
 
@@ -368,19 +314,10 @@ const TrashBin = () => {
         title: "Success",
         description: `Permanently deleted ${successCount} document(s)`,
       });
-      fetchTrashedDocuments(); // Refresh the list
-    }
-
-    if (failCount > 0) {
-      toast({
-        title: "Error",
-        description: `Failed to delete ${failCount} document(s)`,
-        variant: "destructive"
-      });
+      fetchTrashedDocuments();
     }
 
     setSelectedDocuments([]);
-    setSelectedDocument(null);
   };
 
   return (
@@ -393,16 +330,16 @@ const TrashBin = () => {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Архивированные документы</BreadcrumbPage>
+              <BreadcrumbPage>Корзина</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Архивированные документы</h1>
+        <h1 className="text-2xl font-bold mb-2">Корзина</h1>
         <p className="text-muted-foreground">
-          Документы, которые вы архивировали, будут отображаться здесь.
+          Удаленные документы будут отображаться здесь в течение 30 дней.
         </p>
       </div>
 
@@ -425,38 +362,41 @@ const TrashBin = () => {
         </div>
       </div>
 
+      {selectedDocuments.length > 0 && (
+        <div className="flex items-center gap-2 mb-4 p-3 bg-muted rounded-lg">
+          <span className="text-sm text-muted-foreground">
+            {selectedDocuments.length} document(s) selected
+          </span>
+          <Button size="sm" onClick={handleRestoreSelected}>
+            <RotateCcw className="h-4 w-4 mr-1" />
+            Restore
+          </Button>
+          <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete permanently
+          </Button>
+        </div>
+      )}
+
       {filteredDocuments.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-lg border">
           <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <ArchiveIcon className="h-8 w-8 text-muted-foreground" />
+            <Archive className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-1">Архив пуста</h3>
-            <p className="text-muted-foreground text-sm max-w-md">
-            В архиве нет документов или по вашему запросу ничего не найдено.
-            </p>
+          <h3 className="text-lg font-medium mb-1">Корзина пуста</h3>
+          <p className="text-muted-foreground text-sm max-w-md">
+            В корзине нет документов или по вашему запросу ничего не найдено.
+          </p>
         </div>
       ) : (
-        <DocumentGrid
+        <DocumentTable
           documents={filteredDocuments}
-          onDocumentClick={handleDocumentClick}
-          viewMode={viewMode}
-          selectedDocument={selectedDocument}
+          selectedDocuments={selectedDocuments}
           onDocumentSelect={handleDocumentSelect}
-          multipleSelection={true}
-          selectionActions={{
-            selectedIds: selectedDocuments,
-            onSelectAll: handleSelectAll,
-            onClearSelection: handleClearSelection,
-            onDeleteSelected: handleDeleteSelected,
-            onRestoreSelected: handleRestoreSelected
-          }}
-          onDocumentPreview={(document) => {
-            // You can customize this handler as needed
-            toast({
-              title: "Preview not implemented",
-              description: `Preview for: ${document.name}`,
-            });
-          }}
+          onSelectAll={handleSelectAll}
+          isTrashMode={true}
+          onRestore={handleRestore}
+          onPermanentDelete={handlePermanentDelete}
         />
       )}
     </div>
