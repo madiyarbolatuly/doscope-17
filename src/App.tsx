@@ -19,6 +19,7 @@ import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import { PermissionGuard } from './components/PermissionGuard';
 import Favorites from './pages/Favorites';
+import SharedDocuments from './pages/SharedDocuments';
 
 // Removed <ProtectedRoute /> so users are never redirected to login
 function App() {
@@ -31,6 +32,13 @@ function App() {
             <AppLayout>
               <PermissionGuard pagePath="/">
                 <Index />
+              </PermissionGuard>
+            </AppLayout>
+          } />
+          <Route path="/shared" element={
+            <AppLayout>
+              <PermissionGuard pagePath="/shared">
+                <SharedDocuments />
               </PermissionGuard>
             </AppLayout>
           } />
@@ -107,4 +115,3 @@ function App() {
 }
 
 export default App;
-
