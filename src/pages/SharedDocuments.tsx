@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Breadcrumb,
@@ -14,18 +13,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Document } from '@/types/document';
-import { Share2, Download, Clock, FileText, File, FileImage, Folder, Eye, Timer } from 'lucide-react';
+import { Share2, Download, FileText, File, FileImage, Folder, Eye, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SharedDocument extends Document {
   sharedBy: string;
   shareExpiration: string;
-  accessCount: number;
-  maxAccess: number;
   previewUrl?: string;
 }
 
-// Mock shared documents
+// Mock shared documents - только не истекшие
 const mockSharedDocuments: SharedDocument[] = [
   {
     id: 'shared-1',
@@ -37,8 +34,6 @@ const mockSharedDocuments: SharedDocument[] = [
     sharedBy: 'Sarah Johnson',
     category: 'reports',
     shareExpiration: '2024-12-25T23:59:59Z',
-    accessCount: 3,
-    maxAccess: 10,
     previewUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop'
   },
   {
@@ -50,9 +45,7 @@ const mockSharedDocuments: SharedDocument[] = [
     owner: 'Mike Chen',
     sharedBy: 'Mike Chen',
     category: 'projects',
-    shareExpiration: '2024-12-30T23:59:59Z',
-    accessCount: 1,
-    maxAccess: 5
+    shareExpiration: '2024-12-30T23:59:59Z'
   },
   {
     id: 'shared-3',
@@ -63,9 +56,7 @@ const mockSharedDocuments: SharedDocument[] = [
     owner: 'Emma Davis',
     sharedBy: 'Emma Davis',
     category: 'marketing',
-    shareExpiration: '2024-12-20T23:59:59Z',
-    accessCount: 7,
-    maxAccess: 15,
+    shareExpiration: '2025-01-20T23:59:59Z',
     previewUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop'
   },
   {
@@ -77,9 +68,7 @@ const mockSharedDocuments: SharedDocument[] = [
     owner: 'Lisa Wang',
     sharedBy: 'Lisa Wang',
     category: 'design',
-    shareExpiration: '2024-12-22T23:59:59Z',
-    accessCount: 2,
-    maxAccess: 8,
+    shareExpiration: '2025-01-22T23:59:59Z',
     previewUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop'
   }
 ];
@@ -90,7 +79,13 @@ const SharedDocuments = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    setDocuments(mockSharedDocuments);
+    // Фильтруем только не истекшие документы
+    const now = new Date();
+    const activeDocuments = mockSharedDocuments.filter(doc => {
+      const expirationDate = new Date(doc.shareExpiration);
+      return expirationDate > now;
+    });
+    setDocuments(activeDocuments);
   }, []);
 
   const filteredDocuments = documents.filter(doc => 
@@ -112,20 +107,15 @@ const SharedDocuments = () => {
     }
   };
 
-  const getTimeRemaining = (expiration: string) => {
-    const now = new Date();
+  const formatExpirationDate = (expiration: string) => {
     const expirationDate = new Date(expiration);
-    const diffMs = expirationDate.getTime() - now.getTime();
-    
-    if (diffMs <= 0) return { text: 'Истёк', expired: true };
-    
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (days > 0) return { text: `${days}д ${hours}ч`, expired: false };
-    if (hours > 0) return { text: `${hours}ч ${minutes}м`, expired: false };
-    return { text: `${minutes}м`, expired: false };
+    return expirationDate.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const handleDownload = (document: SharedDocument) => {
@@ -198,8 +188,6 @@ const SharedDocuments = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {filteredDocuments.map((doc) => {
-              const timeRemaining = getTimeRemaining(doc.shareExpiration);
-              
               return (
                 <Card 
                   key={doc.id} 
@@ -232,16 +220,6 @@ const SharedDocuments = () => {
                           Предпросмотр
                         </Button>
                       </div>
-
-                      {/* Access Counter */}
-                      <div className="absolute top-4 right-4">
-                        <Badge 
-                          variant="secondary" 
-                          className="bg-white/90 text-gray-700 font-medium px-3 py-1 rounded-full shadow-sm"
-                        >
-                          {doc.accessCount}/{doc.maxAccess} просмотров
-                        </Badge>
-                      </div>
                     </div>
 
                     {/* Content Section */}
@@ -268,15 +246,15 @@ const SharedDocuments = () => {
                         </div>
                       </div>
 
-                      {/* Timer */}
-                      <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200">
-                        <Timer className={`h-5 w-5 ${timeRemaining.expired ? 'text-red-500' : 'text-orange-500'}`} />
+                      {/* Expiration Date */}
+                      <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
+                        <Calendar className="h-5 w-5 text-green-600" />
                         <div className="text-center">
                           <p className="text-xs text-gray-600 mb-1">
-                            {timeRemaining.expired ? 'Срок истёк' : 'Осталось времени'}
+                            Действует до
                           </p>
-                          <p className={`font-bold text-lg ${timeRemaining.expired ? 'text-red-600' : 'text-orange-600'}`}>
-                            {timeRemaining.text}
+                          <p className="font-bold text-sm text-green-700">
+                            {formatExpirationDate(doc.shareExpiration)}
                           </p>
                         </div>
                       </div>
@@ -285,10 +263,9 @@ const SharedDocuments = () => {
                       <Button 
                         className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                         onClick={() => handleDownload(doc)}
-                        disabled={timeRemaining.expired}
                       >
                         <Download className="h-5 w-5 mr-2" />
-                        {timeRemaining.expired ? 'Ссылка истекла' : 'Скачать файл'}
+                        Скачать файл
                       </Button>
                     </div>
                   </CardContent>
