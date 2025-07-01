@@ -13,7 +13,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Document } from '@/types/document';
-import { Share2, Download, FileText, File, FileImage, Folder, Eye, Calendar } from 'lucide-react';
+import { Share2, Download, FileText, File, FileImage, Folder, Eye, Calendar, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SharedDocument extends Document {
@@ -34,7 +34,8 @@ const mockSharedDocuments: SharedDocument[] = [
     sharedBy: 'Sarah Johnson',
     category: 'reports',
     shareExpiration: '2024-12-25T23:59:59Z',
-    previewUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop'
+    previewUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop',
+    favorited: false
   },
   {
     id: 'shared-2',
@@ -45,7 +46,8 @@ const mockSharedDocuments: SharedDocument[] = [
     owner: 'Mike Chen',
     sharedBy: 'Mike Chen',
     category: 'projects',
-    shareExpiration: '2024-12-30T23:59:59Z'
+    shareExpiration: '2024-12-30T23:59:59Z',
+    favorited: true
   },
   {
     id: 'shared-3',
@@ -57,7 +59,8 @@ const mockSharedDocuments: SharedDocument[] = [
     sharedBy: 'Emma Davis',
     category: 'marketing',
     shareExpiration: '2025-01-20T23:59:59Z',
-    previewUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop'
+    previewUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
+    favorited: false
   },
   {
     id: 'shared-4',
@@ -69,7 +72,8 @@ const mockSharedDocuments: SharedDocument[] = [
     sharedBy: 'Lisa Wang',
     category: 'design',
     shareExpiration: '2025-01-22T23:59:59Z',
-    previewUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop'
+    previewUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop',
+    favorited: false
   }
 ];
 
@@ -123,6 +127,7 @@ const SharedDocuments = () => {
       title: "Загрузка начата",
       description: `Скачивание ${document.name}`,
     });
+    console.log('Downloading document:', document.name);
   };
 
   const handlePreview = (document: SharedDocument) => {
@@ -130,6 +135,24 @@ const SharedDocuments = () => {
       title: "Открытие предварительного просмотра",
       description: `Открытие ${document.name}`,
     });
+    console.log('Opening preview for document:', document.name);
+  };
+
+  const handleToggleFavorite = (document: SharedDocument) => {
+    setDocuments(prevDocs => 
+      prevDocs.map(doc => 
+        doc.id === document.id 
+          ? { ...doc, favorited: !doc.favorited }
+          : doc
+      )
+    );
+    
+    const isFavorited = !document.favorited;
+    toast({
+      title: isFavorited ? "Добавлено в избранное" : "Удалено из избранного",
+      description: `${document.name} ${isFavorited ? 'добавлен в' : 'удален из'} избранное`,
+    });
+    console.log('Toggled favorite for document:', document.name, 'favorited:', isFavorited);
   };
 
   return (
@@ -207,6 +230,20 @@ const SharedDocuments = () => {
                           {getFileIcon(doc.type)}
                         </div>
                       )}
+                      
+                      {/* Favorite Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleToggleFavorite(doc)}
+                        className={`absolute top-3 right-3 w-10 h-10 rounded-full shadow-lg transition-all duration-300 ${
+                          doc.favorited 
+                            ? 'bg-red-500 hover:bg-red-600 text-white' 
+                            : 'bg-white/80 hover:bg-white text-gray-600 hover:text-red-500'
+                        }`}
+                      >
+                        <Heart className={`h-5 w-5 ${doc.favorited ? 'fill-current' : ''}`} />
+                      </Button>
                       
                       {/* Preview Overlay */}
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
