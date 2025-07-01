@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '@/components/SearchBar';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +14,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Document } from '@/types/document';
-import { Share2, Grid2X2, List, Download, Clock, FileText, File, FileImage, Folder, Eye } from 'lucide-react';
+import { Share2, Download, Clock, FileText, File, FileImage, Folder, Eye, Timer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface SharedDocument extends Document {
@@ -40,11 +39,11 @@ const mockSharedDocuments: SharedDocument[] = [
     shareExpiration: '2024-12-25T23:59:59Z',
     accessCount: 3,
     maxAccess: 10,
-    previewUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=300&h=200&fit=crop'
+    previewUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop'
   },
   {
     id: 'shared-2',
-    name: 'Project Assets',
+    name: 'Project Assets Folder',
     type: 'folder',
     size: '45 MB',
     modified: '2024-12-10T14:15:00Z',
@@ -67,11 +66,11 @@ const mockSharedDocuments: SharedDocument[] = [
     shareExpiration: '2024-12-20T23:59:59Z',
     accessCount: 7,
     maxAccess: 15,
-    previewUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=200&fit=crop'
+    previewUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop'
   },
   {
     id: 'shared-4',
-    name: 'Design Mockups',
+    name: 'Design Mockups Collection',
     type: 'image',
     size: '12.7 MB',
     modified: '2024-12-08T09:20:00Z',
@@ -81,13 +80,12 @@ const mockSharedDocuments: SharedDocument[] = [
     shareExpiration: '2024-12-22T23:59:59Z',
     accessCount: 2,
     maxAccess: 8,
-    previewUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=300&h=200&fit=crop'
+    previewUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop'
   }
 ];
 
 const SharedDocuments = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [documents, setDocuments] = useState<SharedDocument[]>([]);
   const { toast } = useToast();
 
@@ -102,15 +100,15 @@ const SharedDocuments = () => {
   const getFileIcon = (type: string) => {
     switch (type) {
       case 'pdf':
-        return <FileText className="h-6 w-6 text-red-500" />;
+        return <FileText className="h-8 w-8 text-red-500" />;
       case 'ppt':
-        return <FileText className="h-6 w-6 text-orange-500" />;
+        return <FileText className="h-8 w-8 text-orange-500" />;
       case 'image':
-        return <FileImage className="h-6 w-6 text-purple-500" />;
+        return <FileImage className="h-8 w-8 text-purple-500" />;
       case 'folder':
-        return <Folder className="h-6 w-6 text-yellow-500" />;
+        return <Folder className="h-8 w-8 text-yellow-500" />;
       default:
-        return <File className="h-6 w-6 text-gray-500" />;
+        return <File className="h-8 w-8 text-gray-500" />;
     }
   };
 
@@ -119,13 +117,15 @@ const SharedDocuments = () => {
     const expirationDate = new Date(expiration);
     const diffMs = expirationDate.getTime() - now.getTime();
     
-    if (diffMs <= 0) return 'Expired';
+    if (diffMs <= 0) return { text: 'Истёк', expired: true };
     
     const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
     
-    if (days > 0) return `${days}d ${hours}h`;
-    return `${hours}h`;
+    if (days > 0) return { text: `${days}д ${hours}ч`, expired: false };
+    if (hours > 0) return { text: `${hours}ч ${minutes}м`, expired: false };
+    return { text: `${minutes}м`, expired: false };
   };
 
   const handleDownload = (document: SharedDocument) => {
@@ -143,163 +143,161 @@ const SharedDocuments = () => {
   };
 
   return (
-    <div className="container px-4 ml-0 mr-0 w-full md:px-6" style={{ maxWidth: "none" }}>
-      <div className="mb-6">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Документы</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Поделенные документы</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink href="/" className="text-blue-600 hover:text-blue-800">
+                  Документы
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-gray-700">Поделенные документы</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Поделенные документы</h1>
-        <p className="text-muted-foreground">
-          Документы и папки, которыми с вами поделились
-        </p>
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-        <SearchBar 
-          query={searchQuery} 
-          setQuery={setSearchQuery} 
-          placeholder="Поиск поделенных документов..." 
-        />
-        
-        <div className="flex items-center gap-4">
-          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
-            <ToggleGroupItem value="grid" aria-label="Grid view">
-              <Grid2X2 className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List view">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </div>
-
-      {filteredDocuments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-lg border">
-          <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <Share2 className="h-8 w-8 text-muted-foreground" />
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-3">
+              Поделенные файлы
+            </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Безопасно загружайте файлы, которыми с вами поделились
+            </p>
           </div>
-          <h3 className="text-lg font-medium mb-1">Нет поделенных документов</h3>
-          <p className="text-muted-foreground text-sm max-w-md">
-            Документы, которыми с вами поделились, будут отображаться здесь
-          </p>
+
+          <div className="max-w-2xl mx-auto">
+            <SearchBar 
+              query={searchQuery} 
+              setQuery={setSearchQuery} 
+              placeholder="Поиск файлов..." 
+              showFilterButton={false}
+            />
+          </div>
         </div>
-      ) : (
-        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-2'}>
-          {filteredDocuments.map((doc) => (
-            <Card key={doc.id} className="group hover:shadow-md transition-all">
-              <CardContent className="p-4">
-                {viewMode === 'grid' ? (
-                  <div className="space-y-4">
-                    {/* Preview */}
-                    <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+
+        {/* Files Grid */}
+        {filteredDocuments.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Share2 className="h-10 w-10 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+                Файлы не найдены
+              </h3>
+              <p className="text-gray-600">
+                Поделенные с вами файлы будут отображаться здесь
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {filteredDocuments.map((doc) => {
+              const timeRemaining = getTimeRemaining(doc.shareExpiration);
+              
+              return (
+                <Card 
+                  key={doc.id} 
+                  className="group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-white border-0 shadow-lg overflow-hidden"
+                >
+                  <CardContent className="p-0">
+                    {/* Preview Section */}
+                    <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                       {doc.previewUrl ? (
                         <img 
                           src={doc.previewUrl} 
                           alt={doc.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                         />
                       ) : (
-                        <div className="flex items-center justify-center h-full">
+                        <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
                           {getFileIcon(doc.type)}
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      
+                      {/* Preview Overlay */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
                         <Button
                           variant="secondary"
-                          size="sm"
+                          size="lg"
                           onClick={() => handlePreview(doc)}
+                          className="bg-white/90 hover:bg-white text-gray-900 font-semibold px-6 py-3 rounded-full shadow-lg"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Просмотр
+                          <Eye className="h-5 w-5 mr-2" />
+                          Предпросмотр
                         </Button>
                       </div>
-                    </div>
 
-                    {/* File info */}
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-medium text-sm line-clamp-2" title={doc.name}>
-                          {doc.name}
-                        </h3>
-                        {getFileIcon(doc.type)}
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={`https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`} />
-                          <AvatarFallback className="text-xs">
-                            {doc.sharedBy.split(' ').map(n => n[0]).join('').toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{doc.sharedBy}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{doc.size}</span>
-                        <Badge variant="outline" className="text-xs">
+                      {/* Access Counter */}
+                      <div className="absolute top-4 right-4">
+                        <Badge 
+                          variant="secondary" 
+                          className="bg-white/90 text-gray-700 font-medium px-3 py-1 rounded-full shadow-sm"
+                        >
                           {doc.accessCount}/{doc.maxAccess} просмотров
                         </Badge>
                       </div>
+                    </div>
 
-                      {/* Timer */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>Истекает через: {getTimeRemaining(doc.shareExpiration)}</span>
+                    {/* Content Section */}
+                    <div className="p-6 space-y-4">
+                      {/* File Name */}
+                      <div>
+                        <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2" title={doc.name}>
+                          {doc.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 font-medium">{doc.size}</p>
                       </div>
 
-                      {/* Download button */}
-                      <Button 
-                        className="w-full" 
-                        size="sm"
-                        onClick={() => handleDownload(doc)}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Скачать
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="flex-shrink-0">
-                      {getFileIcon(doc.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{doc.name}</h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Поделился: {doc.sharedBy}</span>
-                        <span>{doc.size}</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{getTimeRemaining(doc.shareExpiration)}</span>
+                      {/* Shared By */}
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={`https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`} />
+                          <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+                            {doc.sharedBy.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm text-gray-600">Поделился</p>
+                          <p className="text-sm font-semibold text-gray-900">{doc.sharedBy}</p>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {doc.accessCount}/{doc.maxAccess}
-                      </Badge>
-                      <Button size="sm" onClick={() => handleDownload(doc)}>
-                        <Download className="h-4 w-4" />
+
+                      {/* Timer */}
+                      <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200">
+                        <Timer className={`h-5 w-5 ${timeRemaining.expired ? 'text-red-500' : 'text-orange-500'}`} />
+                        <div className="text-center">
+                          <p className="text-xs text-gray-600 mb-1">
+                            {timeRemaining.expired ? 'Срок истёк' : 'Осталось времени'}
+                          </p>
+                          <p className={`font-bold text-lg ${timeRemaining.expired ? 'text-red-600' : 'text-orange-600'}`}>
+                            {timeRemaining.text}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Download Button */}
+                      <Button 
+                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                        onClick={() => handleDownload(doc)}
+                        disabled={timeRemaining.expired}
+                      >
+                        <Download className="h-5 w-5 mr-2" />
+                        {timeRemaining.expired ? 'Ссылка истекла' : 'Скачать файл'}
                       </Button>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
