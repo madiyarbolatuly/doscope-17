@@ -1,0 +1,75 @@
+{
+  "tenants": [
+    { "id": "8e3a93b6-d49d-4e8d-a8af-84eb0a86637a", "name": "Acme Corporation", "created_at": "2023-01-15T10:00:00Z" },
+    { "id": "cfbf2881-ec82-4a37-a643-44a8d252cbaf", "name": "Globex Corporation", "created_at": "2023-06-01T09:30:00Z" },
+    { "id": "24a6a5f3-f755-44fb-9789-378a8890e5ed", "name": "BetaTech Ltd.", "created_at": "2024-01-10T16:45:00Z" }
+  ],
+
+  "departments": [
+    { "id": "2d9fb531-0d9c-446f-8b2d-77e4065a529b", "tenant_id": "8e3a93b6-d49d-4e8d-a8af-84eb0a86637a", "name": "Engineering", "created_at": "2023-01-20T10:00:00Z" },
+    { "id": "b6bffac6-8c44-419a-8759-60e94f1bdc75", "tenant_id": "8e3a93b6-d49d-4e8d-a8af-84eb0a86637a", "name": "HR",          "created_at": "2023-01-20T12:00:00Z" },
+    { "id": "b86c8930-1a9a-4dcf-a27b-85fca9c305d4", "tenant_id": "cfbf2881-ec82-4a37-a643-44a8d252cbaf", "name": "Sales",      "created_at": "2023-06-06T09:30:00Z" },
+    { "id": "103d71d7-7f5b-4740-8168-8c59a1318ee2", "tenant_id": "cfbf2881-ec82-4a37-a643-44a8d252cbaf", "name": "Support",    "created_at": "2023-06-06T11:30:00Z" },
+    { "id": "a9147863-44e0-4bbc-a103-f3f4c54ce59d", "tenant_id": "24a6a5f3-f755-44fb-9789-378a8890e5ed", "name": "Research",   "created_at": "2024-01-15T16:45:00Z" },
+    { "id": "fd1cb521-2f35-4b8a-852a-b8e5ba152005", "tenant_id": "24a6a5f3-f755-44fb-9789-378a8890e5ed", "name": "Finance",    "created_at": "2024-01-15T18:45:00Z" }
+  ],
+
+  "users": [
+    { "id": "4a5c6fe0-5ed8-4de7-b3c3-769c235ba733", "tenant_id":"8e3a93b6-d49d-4e8d-a8af-84eb0a86637a", "department_id":"2d9fb531-0d9c-446f-8b2d-77e4065a529b", "username":"asmith","name":"Alice Smith","email":"alice@acme.com","role":"admin","is_active":true,"created_at":"2023-02-10T13:01:00Z" },
+    { "id": "fe3b3a83-8d63-4987-852d-2727ecf53629", "tenant_id":"8e3a93b6-d49d-4e8d-a8af-84eb0a86637a", "department_id":"2d9fb531-0d9c-446f-8b2d-77e4065a529b", "username":"bjohnson","name":"Bob Johnson","email":"bob@acme.com","role":"editor","is_active":true,"created_at":"2023-02-13T18:15:00Z" },
+    { "id": "d6100ba2-3403-49da-ba32-61f9a5cdf2d1", "tenant_id":"8e3a93b6-d49d-4e8d-a8af-84eb0a86637a", "department_id":"2d9fb531-0d9c-446f-8b2d-77e4065a529b", "username":"cbrown","name":"Charlie Brown","email":"charlie@acme.com","role":"viewer","is_active":true,"created_at":"2023-01-28T14:47:00Z" }
+  ],
+
+  "documents": [
+    {
+      "id": "e9605499-4a89-4b55-9c43-50034dc9b4d1",
+      "tenant_id": "8e3a93b6-d49d-4e8d-a8af-84eb0a86637a",
+      "department_id": "2d9fb531-0d9c-446f-8b2d-77e4065a529b",
+      "owner_id": "4a5c6fe0-5ed8-4de7-b3c3-769c235ba733",
+      "name": "Project Plan.docx",
+      "file_type": "docx",
+      "status": "private",
+      "parent_id": null,
+      "created_at": "2023-09-04T13:01:00Z"
+    },
+    {
+      "id": "6c43d0a9-378f-497b-853b-cab83c5239d6",
+      "tenant_id": "8e3a93b6-d49d-4e8d-a8af-84eb0a86637a",
+      "department_id": "b6bffac6-8c44-419a-8759-60e94f1bdc75",
+      "owner_id": "38bf5a8d-6264-4095-8fad-aefe01fcfdfe",
+      "name": "HR Policies",
+      "file_type": "folder",
+      "status": "public",
+      "parent_id": null,
+      "created_at": "2023-03-18T09:47:00Z"
+    },
+    {
+      "id": "90950ce0-27ab-4ed3-a40b-5cc270e82fe8",
+      "tenant_id": "8e3a93b6-d49d-4e8d-a8af-84eb0a86637a",
+      "department_id": "b6bffac6-8c44-419a-8759-60e94f1bdc75",
+      "owner_id": "7d19d1da-9511-45e3-ba44-6d176e369f74",
+      "name": "Employee Handbook.pdf",
+      "file_type": "pdf",
+      "status": "public",
+      "parent_id": "6c43d0a9-378f-497b-853b-cab83c5239d6",
+      "created_at": "2023-03-26T17:47:00Z"
+    }
+  ],
+
+  "document_versions": [
+    {
+      "id": "59e6d436-69cb-402c-bdd1-a2f84e7c8443",
+      "document_id": "e9605499-4a89-4b55-9c43-50034dc9b4d1",
+      "version_number": 1,
+      "file_path": "acme/eng/uploads/Project Plan_v1.docx",
+      "created_at": "2023-09-04T13:01:00Z"
+    },
+    {
+      "id": "34dc1d7d-0fe3-40ed-90eb-0e1c5b05e427",
+      "document_id": "e9605499-4a89-4b55-9c43-50034dc9b4d1",
+      "version_number": 2,
+      "file_path": "acme/eng/uploads/Project Plan_v2.docx",
+      "created_at": "2023-09-19T22:01:00Z"
+    }
+  ]
+}

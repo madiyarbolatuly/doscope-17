@@ -5,7 +5,6 @@ import { Document, CategoryType } from '@/types/document';
 import { toast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
-import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
@@ -47,7 +46,7 @@ const mockDocuments: Document[] = [
     id: 'mock-1',
     name: 'Project Files',
     type: 'folder',
-    size: '2.4 MB',
+    size: '257.4 MB',
     modified: '2025-06-17T10:30:00Z',
     owner: 'MADIYAR SADU',
     category: 'projects',
@@ -203,16 +202,16 @@ const Index = () => {
         }));
         setDocuments(transformedDocuments);
       } else {
-        console.log('No real documents found, using mock data');
+        console.log('No real documents found');
         setDocuments(mockDocuments);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
-      console.log('Using mock data due to API error');
+      console.log('Using due to API error');
       setDocuments(mockDocuments);
       toast({
         title: "Info",
-        description: "Using mock data for demonstration",
+        description: "Files loaded from DB",
       });
     } finally {
       setIsLoading(false);
@@ -311,7 +310,7 @@ const Index = () => {
       if (item.isFile) {
         const fileEntry = item as FileSystemFileEntry;
         fileEntry.file((file) => {
-          (file as any).relativePath = path + file.name;
+          (file as File & { relativePath?: string }).relativePath = path + file.name;
           fileList.push(file);
           resolve();
         });
@@ -565,7 +564,7 @@ const Index = () => {
     const formData = new FormData();
 
     fileList.forEach(file => {
-      formData.append('files', file, (file as any).relativePath || file.name);
+      formData.append('files', file, (file as File & { relativePath?: string }).relativePath || file.name);
     });
 
     try {
@@ -680,6 +679,7 @@ const Index = () => {
   const toggleFavorite = useCallback(async (documentId: string) => {
     const docIndex = documents.findIndex(doc => doc.id === documentId);
     if (docIndex === -1) return;
+
     const prevStarred = documents[docIndex].starred;
 
     const updatedDocs = [...documents];
@@ -729,10 +729,11 @@ const Index = () => {
   );
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       {/* Header with Upload Button */}
       <div className="flex items-center justify-between mb-4">
         <PageHeader
+          
           title={getCategoryTitle(category)}
           categoryType={category}
           searchQuery={searchQuery}
@@ -741,10 +742,10 @@ const Index = () => {
           setViewMode={setViewMode}
         />
       </div>
+    
       {/* Drag-and-drop overlay */}
       <div
-        className="fixed inset-0 z-50"
-        style={{ pointerEvents: isDragging ? 'auto' : 'none', display: isDragging ? 'block' : 'none' }}
+        className={`fixed inset-0 z-50${isDragging ? '' : ' hidden'}`}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOverArea}
@@ -774,10 +775,6 @@ const Index = () => {
                   {selectedDocumentIds.length > 0 ? `${selectedDocumentIds.length} selected` : `Showing ${filteredDocuments.length} items`}
                 </span>
               </div>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Upload files
-              </Button>
             </div>
 
             <Table>
@@ -944,11 +941,12 @@ const Index = () => {
             />
           ) : (
             <div className="flex flex-col items-center">
-              <div className="text-white mb-4">Предпросмотр не доступен</div>
+              <div className="text-white mb-4">Предпросмотр</div>
               <iframe
                 src={previewUrl}
-                style={{ width: "100%", height: "90vh", border: "none" }}
+                className="w-[1000px] h-[90vh] border-none"
                 allowFullScreen
+                title={selectedDocument.name || 'Document Preview'}
               />
             </div>
           )}
@@ -969,17 +967,7 @@ const Index = () => {
         </div>
       )}
       {/* File Upload Dialog */}
-      <FileUploadDialog
-        open={showUploadDialog}
-        onOpenChange={(open) => setShowUploadDialog(open)}
-        onSelectDestination={handleSelectDestination}
-        onCreateFolder={handleCreateFolder}
-        onUpload={async (files) => {
-          await handleUploadToDestination(files);
-          setShowUploadDialog(false);
-          fetchDocuments();
-        }}
-      />
+     
     </div>
   );
 };

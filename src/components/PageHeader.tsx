@@ -49,7 +49,7 @@ export function PageHeader({
     }
   };
 
-  // Если children предоставлен, просто отображаем их вместо стандартных кнопок
+
   const renderActions = () => {
     if (children) {
       return children;
