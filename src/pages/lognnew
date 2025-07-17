@@ -3,19 +3,11 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import {
-  Building2,
-  HardHat,
-  Check,
-  ShieldCheck
-} from "lucide-react";
-
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay } from "swiper/modules";
 import "swiper/css";
 const Login = () => {
   const [username, setUsername] = useState('string');
@@ -61,11 +53,11 @@ const Login = () => {
         <div className="p-10 flex flex-col">
           <div className="text-center">
             <img
-              src="public/gq-contract.png"     /* замените логотип */
+              src="/logo-gq.svg"     /* замените логотип */
               alt="GQ Contract"
-              className="mb-2 h-30 w-52 mx-auto"
+              className="mx-auto mb-6 w-40"
             />
-            <h4 className="mb-8 text-xl font-semibold text-gray-800">
+            <h4 className="mb-8 text-xl font-semibold text-blue-700">
               Система управления электронными документами
               
             </h4>
@@ -111,81 +103,53 @@ const Login = () => {
 
         {/* ====== ПРАВАЯ ПАНЕЛЬ: карусель ====== */}
         <div className="hidden md:block">
-          <Swiper
-              modules={[Autoplay]}
-              autoplay={{ delay: 3000, disableOnInteraction: false }}
-              loop
-              className="h-full"
-            >
+          <Swiper autoplay={{ delay: 5000 }} loop className="h-full">
             {/* Слайд 1 */}
-           <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-800">
-  <div className="w-full h-full flex flex-col items-center justify-center gap-6 
-                  bg-white/10 backdrop-blur-md p-10 md:p-16
-                  shadow-lg ring-1 ring-white/20 text-center">
-    <Building2 className="h-12 w-12 text-white/90" />
-    <h3 className="text-3xl font-semibold tracking-tight text-white/90">
+            <SwiperSlide className="h-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-800 p-10 text-white">
+              <div className="max-w-xs">
+                <h3 className="mb-3 text-2xl font-semibold">GQ Contract</h3>
+                <p className="text-sm leading-relaxed">
                   Проектирование электрических и слаботочных систем
-                </h3>
+                </p>
               </div>
             </SwiperSlide>
 
-           
-    {/* ---------- СЛАЙД 2 ---------- */}
-    <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-800 to-blue-600">
-      <div className="w-full h-full flex flex-col items-center justify-center gap-6
-                      bg-white/10 backdrop-blur-md p-10 md:p-16
-                      shadow-lg ring-1 ring-white/20 text-center">
-        <HardHat className="h-12 w-12 text-white/90" />
-        <h3 className="text-3xl font-semibold tracking-tight text-white/90">
-          EPC‑проектный бизнес
-        </h3>
-        <p className="max-w-2xl text-lg leading-relaxed text-white/80">
-          Управляем проектами любой сложности — от концепции до ввода в эксплуатацию.
-        </p>
-      </div>
-    </SwiperSlide>
+            {/* Слайд 2 */}
+            <SwiperSlide className="h-full flex items-center justify-center bg-gradient-to-r from-blue-800 to-blue-600 p-10 text-white">
+              <div className="max-w-xs">
+                <h3 className="mb-3 text-2xl font-semibold">EPC Проектный бизнес</h3>
+                
+                  <p className="text-sm leading-relaxed">
+                  Комплексное проектирование и управление проектами любой сложности ―
+                  от концепции до ввода в эксплуатацию.
+                </p>
+              </div>
+            </SwiperSlide>
 
-    {/* ---------- СЛАЙД 3 ---------- */}
-    <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-800">
-      <div className="w-full h-full flex flex-col items-center justify-center gap-6
-                      bg-white/10 backdrop-blur-md p-10 md:p-16
-                      shadow-lg ring-1 ring-white/20 text-center">
-        <ShieldCheck className="h-12 w-12 text-white/90" />
-        <h3 className="text-3xl font-semibold tracking-tight text-white/90">
-          Преимущества
-        </h3>
-        <ul className="space-y-4 text-lg font-medium text-white/80">
-          {[
-            "Индивидуальный подход",
-            "BIM‑моделирование",
-            "Быстрые сроки",
-            "Гарантия качества",
-          ].map((text) => (
-            <li key={text} className="flex items-start gap-3">
-              <Check className="h-6 w-6 flex-shrink-0 text-emerald-300" />
-              <span>{text}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </SwiperSlide>
+            {/* Слайд 3 */}
+            <SwiperSlide className="h-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-800 p-10 text-white">
+              <div className="max-w-xs">
+                <h3 className="mb-3 text-2xl font-semibold">Преимущества</h3>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  <li>Индивидуальный подход</li>
+                  <li>BIM моделирование</li>
+                  <li>Быстрые сроки</li>
+                  <li>Гарантия качества</li>
+                </ul>
+              </div>
+            </SwiperSlide>
 
-    {/* ---------- СЛАЙД 4 ---------- */}
-    <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-800 to-blue-600">
-      <div className="w-full h-full flex flex-col items-center justify-center gap-6
-                      bg-white/10 backdrop-blur-md p-10 md:p-16
-                      shadow-lg ring-1 ring-white/20 text-center">
-        <ShieldCheck className="h-12 w-12 text-white/90" />
-        <h3 className="text-3xl font-semibold tracking-tight text-white/90">
-          Точность и качество
-        </h3>
-        <p className="max-w-2xl text-lg leading-relaxed text-white/80">
-          С 2018 года проектируем жилые, общественные и промышленные объекты, строго
-          соблюдая международные стандарты.
-        </p>
-      </div>
-    </SwiperSlide>
-  </Swiper>
+            {/* Слайд 4 */}
+            <SwiperSlide className="h-full flex items-center justify-center bg-gradient-to-r from-blue-800 to-blue-600 p-10 text-white">
+              <div className="max-w-xs">
+                <h3 className="mb-3 text-2xl font-semibold">Точность и качество</h3>
+                <p className="text-sm leading-relaxed">
+                  С 2018 года проектируем жилые, общественные и промышленные объекты,
+                  строго соблюдая международные стандарты.
+                </p>
+              </div>
+            </SwiperSlide>
+          </Swiper>
         </div>
       </div>
     </div>

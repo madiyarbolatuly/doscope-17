@@ -4,7 +4,7 @@ import {
   FileText, Clock, Users, Star, Trash2,
   Settings, PlusCircle,
   HardDrive, FolderOpen,
-  Archive, Bell, Upload, Search
+  Archive, Bell, Upload, Search, ClipboardList, Send, AlertCircle
 } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 import { Badge } from '@/components/ui/badge';
@@ -29,29 +29,19 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
 
   const mainNavItems: SidebarItem[] = [
     { id: 'all', label: 'Все документы', icon: <FileText size={18} />, path: '/'  },
-    { id: 'recent', label: 'Недавние', icon: <Clock size={18} /> },
     { id: 'shared', label: 'Общие', icon: <Users size={18} /> },
     { id: 'favorites', label: 'Избранное', icon: <Star size={18} />, path: '/favorites' },
+    { id: 'archive' as CategoryType, label: 'Архив', icon: <Archive size={18} />, path: '/archived' },
     { id: 'trash', label: 'Корзина', icon: <Trash2 size={18} />, path: '/trash' },
+ 
   ];
 
- /*  const categoryItems: Sidebar!#!!!!!!@!Item[] = [
-    { id: 'managers', label: 'Руководители', icon: <FolderOpen size={18} /> },
-    { id: 'development', label: 'Отдел развития', icon: <FolderOpen size={18} /> },
-    { id: 'procurement', label: 'Прокюрмент', icon: <FolderOpen size={18} /> },
-    { id: 'electrical', label: 'Электрические сети', icon: <FolderOpen size={18} /> },
-    { id: 'weakening', label: 'Слаботочные системы', icon: <FolderOpen size={18} /> },
-    { id: 'interface', label: 'Отдел интерфейс', icon: <FolderOpen size={18} /> },
-    { id: 'pse', label: 'PSE DCC', icon: <FolderOpen size={18} /> },
-  ];
- */
 
   const toolItems: SidebarItem[] = [
-    { id: 'upload' as CategoryType, label: 'Загрузить', icon: <Upload size={18}/>, path: '/fileupload' },
-    { id: 'archive' as CategoryType, label: 'Архив', icon: <Archive size={18} />, path: '/archived' },
-    { id: 'notifications' as CategoryType, label: 'Уведомления', icon: <Bell size={18} />, badge: '3', path: '/notifications' },
-    { id: 'starred' as CategoryType, label: 'Избранное', icon: <Star size={18} />, path: '/favorites' }
-  ];
+    { id: 'review', label: 'Ревью', icon: <ClipboardList size={18} />, path: '/review' },
+    { id: 'transmittals', label: 'Трансмиталлы', icon: <Send size={18} />, path: '/transmittals' },
+    { id: 'issues', label: 'Замечания', icon: <AlertCircle size={18} />, path: '/issues' },
+    ];
 
   const handleItemClick = (item: SidebarItem) => {
     if (item.path) {
@@ -73,7 +63,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
       <div className="p-5">
         <div className="flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary" />
-          <div className="text-lg font-semibold">EDMS</div>
+          <div className="text-lg font-semibold">GQ Contract</div>
         </div>
         <button
           className="w-full flex items-center mt-5 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors"
@@ -98,28 +88,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
             </button>
           ))}
         </nav>
-{/* 
-        <div className="mt-8 mb-2">
-          <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
-            Категории
-          </h2>
-          <nav className="space-y-1">
-            {categoryItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleItemClick(item)}
-                className={cn(
-                  "sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm",
-                  isActive(item) ? "active bg-gray-100 dark:bg-gray-800" : ""
-                )}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
- */}
+
         <div className="mt-8 mb-2">
           <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
             Инструменты

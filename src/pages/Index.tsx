@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
@@ -8,6 +8,8 @@ import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
+import { buildTree, TreeNode } from '@/utils/buildTree';
+import { FolderTree } from '@/components/FolderTree';
 import { useShare } from '@/hooks/useShare';
 import { DocumentList } from "@/components/DocumentList";
 import { Plus } from "lucide-react";
@@ -39,20 +41,21 @@ interface BackendDocument {
   id: string;
   parent_id: string | null;
 }
-
-// Mock documents for demonstration
 const mockDocuments: Document[] = [
+  // ─── Root level ─────────────────────────────────────────────────────────────
   {
     id: 'mock-1',
     name: 'Project Files',
     type: 'folder',
-    size: '257.4 MB',
+    size: '--',
     modified: '2025-06-17T10:30:00Z',
     owner: 'MADIYAR SADU',
     category: 'projects',
     path: '/projects/',
-    tags: ['project', 'folder'],
-    archived: false
+    tags: ['project'],
+    archived: false,
+    starred: false,
+    parent_id: null,
   },
   {
     id: 'mock-2',
@@ -62,10 +65,130 @@ const mockDocuments: Document[] = [
     modified: '2025-06-17T11:22:00Z',
     owner: 'MADIYAR SADU',
     category: 'development',
-    path: '/development/makefile',
-    tags: ['build', 'development'],
-    archived: false
+    path: '/makefile',
+    tags: ['build'],
+    archived: false,
+    starred: false,
+    parent_id: null,
   },
+  {
+    id: 'mock-7',
+    name: 'Project Images',
+    type: 'folder',
+    size: '45 MB',
+    modified: '2025-06-13T16:45:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'design',
+    path: '/images/',
+    tags: ['design'],
+    archived: false,
+    starred: false,
+    parent_id: null,
+  },
+
+  // ─── Under “Project Files” (mock-1) ─────────────────────────────────────────
+  {
+    id: 'mock-9',
+    name: 'Specs',
+    type: 'folder',
+    size: '--',
+    modified: '2025-06-18T09:00:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'projects',
+    path: '/projects/Specs/',
+    tags: [],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-1',
+  },
+  {
+    id: 'mock-10',
+    name: 'Requirements.docx',
+    type: 'doc',
+    size: '24 KB',
+    modified: '2025-06-18T09:15:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'projects',
+    path: '/projects/Specs/Requirements.docx',
+    tags: ['requirements'],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-9',
+  },
+  {
+    id: 'mock-11',
+    name: 'Design.pdf',
+    type: 'pdf',
+    size: '1.1 MB',
+    modified: '2025-06-18T09:30:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'projects',
+    path: '/projects/Specs/Design.pdf',
+    tags: ['design'],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-9',
+  },
+  {
+    id: 'mock-12',
+    name: 'TeamGoals.xlsx',
+    type: 'xlsx',
+    size: '512 KB',
+    modified: '2025-06-17T12:00:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'projects',
+    path: '/projects/TeamGoals.xlsx',
+    tags: ['team', 'goals'],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-1',
+  },
+
+  // ─── Under “Project Images” (mock-7) ────────────────────────────────────────
+  {
+    id: 'mock-13',
+    name: 'Screenshots',
+    type: 'folder',
+    size: '--',
+    modified: '2025-06-13T16:50:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'design',
+    path: '/images/Screenshots/',
+    tags: [],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-7',
+  },
+  {
+    id: 'mock-14',
+    name: 'homepage.png',
+    type: 'image',
+    size: '1.2 MB',
+    modified: '2025-06-13T17:00:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'design',
+    path: '/images/Screenshots/homepage.png',
+    tags: ['ui', 'screenshot'],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-13',
+  },
+  {
+    id: 'mock-15',
+    name: 'dashboard.jpg',
+    type: 'image',
+    size: '890 KB',
+    modified: '2025-06-13T17:05:00Z',
+    owner: 'MADIYAR SADU',
+    category: 'design',
+    path: '/images/Screenshots/dashboard.jpg',
+    tags: ['ui', 'dashboard'],
+    archived: false,
+    starred: false,
+    parent_id: 'mock-13',
+  },
+
+  // ─── Other flat files ────────────────────────────────────────────────────────
   {
     id: 'mock-3',
     name: 'DynamicMatrix.h',
@@ -74,9 +197,11 @@ const mockDocuments: Document[] = [
     modified: '2025-06-17T11:22:00Z',
     owner: 'MADIYAR SADU',
     category: 'development',
-    path: '/development/dynamicmatrix.h',
-    tags: ['header', 'cpp'],
-    archived: false
+    path: '/dynamicmatrix.h',
+    tags: ['header'],
+    archived: false,
+    starred: false,
+    parent_id: null,
   },
   {
     id: 'mock-4',
@@ -86,9 +211,11 @@ const mockDocuments: Document[] = [
     modified: '2025-06-17T11:22:00Z',
     owner: 'MADIYAR SADU',
     category: 'development',
-    path: '/development/main.cpp',
-    tags: ['source', 'cpp'],
-    archived: false
+    path: '/main.cpp',
+    tags: ['source'],
+    archived: false,
+    starred: false,
+    parent_id: null,
   },
   {
     id: 'mock-5',
@@ -99,8 +226,10 @@ const mockDocuments: Document[] = [
     owner: 'MADIYAR SADU',
     category: 'finance',
     path: '/finance/budget-2024.xlsx',
-    tags: ['budget', 'finance', '2024'],
-    archived: false
+    tags: ['budget'],
+    archived: false,
+    starred: false,
+    parent_id: null,
   },
   {
     id: 'mock-6',
@@ -111,20 +240,10 @@ const mockDocuments: Document[] = [
     owner: 'MADIYAR SADU',
     category: 'meetings',
     path: '/meetings/notes.docx',
-    tags: ['meeting', 'notes'],
-    archived: false
-  },
-  {
-    id: 'mock-7',
-    name: 'Project Images',
-    type: 'folder',
-    size: '45 MB',
-    modified: '2025-06-13T16:45:00Z',
-    owner: 'MADIYAR SADU',
-    category: 'design',
-    path: '/design/images/',
-    tags: ['design', 'images'],
-    archived: false
+    tags: ['notes'],
+    archived: false,
+    starred: false,
+    parent_id: null,
   },
   {
     id: 'mock-8',
@@ -135,10 +254,13 @@ const mockDocuments: Document[] = [
     owner: 'MADIYAR SADU',
     category: 'development',
     path: '/docs/tech-spec.pdf',
-    tags: ['technical', 'specification'],
-    archived: false
-  }
+    tags: ['technical'],
+    archived: false,
+    starred: false,
+    parent_id: null,
+  },
 ];
+
 
 const Index = () => {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
@@ -157,8 +279,25 @@ const Index = () => {
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
+  const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const [folderId, setFolderId] = useState<string | null>(null);
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
 
   const token = localStorage.getItem('authToken')
+
+ 
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
@@ -298,7 +437,7 @@ const Index = () => {
     }
   };
 
-
+  
 
   // Upload document
   const traverseFileTree = async (
@@ -446,6 +585,9 @@ const Index = () => {
       });
     }
   };
+  const Caret = ({ direction }: { direction: 'asc' | 'desc' }) => (
+    <span className="text-xs">{direction === 'asc' ? '▲' : '▼'}</span>
+  );
 
   const handleDocumentClick = (document: Document) => {
     setSelectedDocument(document);
@@ -635,6 +777,17 @@ const Index = () => {
     });
   };
 
+/** visible in the table / grid */
+const visibleDocuments = React.useMemo(() => {
+  if (folderId === null) {
+    // root view
+    return documents.filter(d => d.parent_id === null);
+  }
+  // inside a folder
+  return documents.filter(d => d.parent_id === folderId);
+}, [documents, folderId]);
+
+
   const handleDragOverArea = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -724,14 +877,79 @@ const Index = () => {
     }
   };
 
-  const filteredDocuments = documents.filter(doc => 
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const searchableKeys = ['name', 'type', 'owner', 'modified',];
+
+const searchDocuments = (documents: DocumentType[], query: string) => {
+  return documents.filter(doc =>
+    searchableKeys.some(key => {
+      const value = doc[key as keyof typeof doc];
+      if (Array.isArray(value)) {
+        return value.some(val => val.toLowerCase().includes(query));
+      }
+      return typeof value === 'string' && value.toLowerCase().includes(query);
+    })
   );
+};
+
+ // 🔄 replace your existing filteredDocuments declaration with this
+const filteredDocuments = React.useMemo(() => {
+  const q = searchQuery.trim().toLowerCase();
+
+  // ── 1) no query  →  just show the current folder view
+  if (q === '') return visibleDocuments;
+
+  // ── 2) with query →  search in *all* docs, not only the visible ones
+  return documents.filter(doc =>
+    searchableKeys.some(key => {
+      const val = doc[key as keyof Document];
+      if (Array.isArray(val)) {
+        return val.some(v => v.toLowerCase().includes(q));
+      }
+      return typeof val === 'string' && val.toLowerCase().includes(q);
+    })
+  );
+}, [documents, visibleDocuments, searchQuery]);
+
+
+const toBytes = (size: string): number => {
+  const [num, unit = 'B'] = size.split(' ');
+  const n = parseFloat(num);
+  switch (unit) {
+    case 'MB': return n * 1_048_576;
+    case 'KB': return n * 1_024;
+    default:   return isNaN(n) ? 0 : n; // «B» или «--»
+  }
+};
+
+ const sortedDocuments = React.useMemo(() => {
+  return [...filteredDocuments].sort((a, b) => {
+    let valA: string | number = a[sortBy] as any;
+    let valB: string | number = b[sortBy] as any;
+
+    // особый случай — размер
+    if (sortBy === 'size') {
+      valA = toBytes(a.size);
+      valB = toBytes(b.size);
+    }
+
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return sortOrder === 'asc'
+        ? valA.localeCompare(valB)
+        : valB.localeCompare(valA);
+    }
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      return sortOrder === 'asc' ? valA - valB : valB - valA;
+    }
+    return 0;
+  });
+}, [filteredDocuments, sortBy, sortOrder]);
+
 
   return (
-    <div className="relative w-full">
-      {/* Header with Upload Button */}
-      <div className="flex items-center justify-between mb-4">
+  <div className="flex flex-col h-screen">
+    <div className="px-4 py-2 border-b shrink-0">
+
+        {/*</div><div className="flex items-center justify-between mb-4">*/}
         <PageHeader
           
           title={getCategoryTitle(category)}
@@ -740,8 +958,27 @@ const Index = () => {
           setSearchQuery={setSearchQuery}
           viewMode={viewMode}
           setViewMode={setViewMode}
+          
         />
       </div>
+  {/* left pane: folder tree  <nav className="w-64 overflow-auto h-screen p-2">*/
+  }
+  
+
+ <div className="flex flex-1 overflow-hidden">
+      {/* FolderTree */}
+      <nav className="w-64 overflow-y-auto border-r p-2">
+     <FolderTree
+        data={treeData}
+        selectedId={folderId}
+        onSelect={(id) => {
+      // если кликнули по той же папке ─ снимаем выбор
+      setFolderId(prev => (prev === id ? null : id));
+    }}  />
+  </nav>
+      <div className="flex-1 p-4 overflow-y-auto relative">
+      {/* Header with Upload Button */}
+      
     
       {/* Drag-and-drop overlay */}
       <div
@@ -770,9 +1007,13 @@ const Index = () => {
                 <Checkbox 
                   checked={selectedDocumentIds.length === filteredDocuments.length && filteredDocuments.length > 0}
                   onCheckedChange={handleSelectAll}
+                  
                 />
-                <span className="text-sm text-muted-foreground">
-                  {selectedDocumentIds.length > 0 ? `${selectedDocumentIds.length} selected` : `Showing ${filteredDocuments.length} items`}
+                   <span className="text-sm text-muted-foreground">
+    {selectedDocumentIds.length > 0
+      ? `${selectedDocumentIds.length} selected`
+      : `Showing ${filteredDocuments.length} items`}
+  
                 </span>
               </div>
             </div>
@@ -786,12 +1027,24 @@ const Index = () => {
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Last updated</TableHead>
-                  <TableHead>Updated by</TableHead>
+                  <TableHead onClick={() => handleSort('name')} className="cursor-pointer">
+                    Name {sortBy === 'name' && <Caret direction={sortOrder} />}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('description')} className="cursor-pointer">
+                    Description {sortBy === 'description' && <Caret direction={sortOrder} />}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('version')} className="cursor-pointer">
+                    Version {sortBy === 'version' && <Caret direction={sortOrder} />}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('size')} className="cursor-pointer">
+                    Size {sortBy === 'size' && <Caret direction={sortOrder} />}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('modified')} className="cursor-pointer">
+                    Last updated {sortBy === 'modified' && <Caret direction={sortOrder} />}
+                  </TableHead>
+                  <TableHead onClick={() => handleSort('owner')} className="cursor-pointer">
+                    Updated by {sortBy === 'owner' && <Caret direction={sortOrder} />}
+                  </TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -809,7 +1062,7 @@ const Index = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredDocuments.map((document) => (
+                  sortedDocuments.map((document) => (
                     <TableRow 
                       key={document.id}
                       className="hover:bg-accent/50 cursor-pointer"
@@ -889,6 +1142,7 @@ const Index = () => {
               </TableBody>
             </Table>
           </div>
+          
         ) : (
           <div className="mt-4 animate-fade-in">
             <DocumentGrid
@@ -911,7 +1165,8 @@ const Index = () => {
             />
           </div>
         )}
-      </div>
+      </div>          </div>
+
       {isShareOpen && shareDoc && (
         <ShareModal
           document={shareDoc}
@@ -965,8 +1220,9 @@ const Index = () => {
             token={token}
           />
         </div>
+        
       )}
-      {/* File Upload Dialog */}
+      </div>
      
     </div>
   );

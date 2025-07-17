@@ -20,6 +20,8 @@ export interface Document {
   archived?: boolean;
   starred?: boolean;
   created_at?: string;
+  parent_id?: string;
+  version?: string;
   file_type?: string;
   status?: 'pending' | 'approved' | 'rejected' | 'draft';
 }
