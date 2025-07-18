@@ -12,7 +12,7 @@ import { buildTree, TreeNode } from '@/utils/buildTree';
 import { FolderTree } from '@/components/FolderTree';
 import { useShare } from '@/hooks/useShare';
 import { DocumentList } from "@/components/DocumentList";
-import { Plus } from "lucide-react";
+import { Plus, Share } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -86,7 +86,7 @@ const mockDocuments: Document[] = [
     parent_id: null,
   },
 
-  // ─── Under “Project Files” (mock-1) ─────────────────────────────────────────
+  // ─── Under "Project Files" (mock-1) ─────────────────────────────────────────
   {
     id: 'mock-9',
     name: 'Specs',
@@ -144,7 +144,7 @@ const mockDocuments: Document[] = [
     parent_id: 'mock-1',
   },
 
-  // ─── Under “Project Images” (mock-7) ────────────────────────────────────────
+  // ─── Under "Project Images" (mock-7) ────────────────────────────────────────
   {
     id: 'mock-13',
     name: 'Screenshots',
@@ -359,10 +359,15 @@ const Index = () => {
 
   const { createShareLink, shareWithUsers, loading: shareLoading, error: shareError } = useShare();
 
-  // Handler that you’ll pass down to your grid/item “Share” button:
+  // Handler that you'll pass down to your grid/item "Share" button:
   const openShare = (doc: Document) => {
     setShareDoc(doc);
     setIsShareOpen(true);
+  };
+
+  const closeShareModal = () => {
+    setShareDoc(null);
+    setIsShareOpen(false);
   };
 
   useEffect(() => {
@@ -1016,6 +1021,17 @@ const toBytes = (size: string): number => {
   
                 </span>
               </div>
+              {selectedDocumentIds.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShareSelected}
+                  className="flex items-center gap-2"
+                >
+                  <Share className="h-4 w-4" />
+                  Share Selected
+                </Button>
+              )}
             </div>
 
             <Table>
@@ -1030,12 +1046,8 @@ const toBytes = (size: string): number => {
                   <TableHead onClick={() => handleSort('name')} className="cursor-pointer">
                     Name {sortBy === 'name' && <Caret direction={sortOrder} />}
                   </TableHead>
-                  <TableHead onClick={() => handleSort('description')} className="cursor-pointer">
-                    Description {sortBy === 'description' && <Caret direction={sortOrder} />}
-                  </TableHead>
-                  <TableHead onClick={() => handleSort('version')} className="cursor-pointer">
-                    Version {sortBy === 'version' && <Caret direction={sortOrder} />}
-                  </TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Version</TableHead>
                   <TableHead onClick={() => handleSort('size')} className="cursor-pointer">
                     Size {sortBy === 'size' && <Caret direction={sortOrder} />}
                   </TableHead>
@@ -1110,31 +1122,44 @@ const toBytes = (size: string): number => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background border shadow-lg">
-                            <DropdownMenuItem onClick={() => handlePreviewFile(document)}>
-                              Просмотр
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadFile(document)}>
-                              Скачать
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openShare(document)}>
-                              Поделиться
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteDocument(document)}
-                            >
-                              Удалить
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openShare(document);
+                            }}
+                            className="h-8 w-8"
+                          >
+                            <Share className="h-4 w-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background border shadow-lg">
+                              <DropdownMenuItem onClick={() => handlePreviewFile(document)}>
+                                Просмотр
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadFile(document)}>
+                                Скачать
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openShare(document)}>
+                                Поделиться
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => handleDeleteDocument(document)}
+                              >
+                                Удалить
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -1167,10 +1192,11 @@ const toBytes = (size: string): number => {
         )}
       </div>          </div>
 
+      {/* Share Modal */}
       {isShareOpen && shareDoc && (
         <ShareModal
           document={shareDoc}
-          onClose={() => setIsShareOpen(false)}
+          onClose={closeShareModal}
         />
       )}
       {previewUrl && selectedDocument && (
