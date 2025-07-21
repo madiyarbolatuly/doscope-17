@@ -56,7 +56,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
       <div className="bg-white rounded-lg w-[500px] max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Share "{document.name}"</h2>
+          <h2 className="text-lg font-semibold">Поделиться "{document.name}"</h2>
           <Button
             variant="ghost"
             size="icon"
@@ -81,7 +81,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
               )}
             >
               <Mail className="h-4 w-4 inline mr-2" />
-              Email
+              Электронная почта
             </button>
             <button
               onClick={() => setActiveTab('link')}
@@ -93,7 +93,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
               )}
             >
               <Link className="h-4 w-4 inline mr-2" />
-              Links
+              Ссылки
             </button>
           </div>
 
@@ -101,25 +101,25 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <Users className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-700">Project members with view permission or above for the shared items</span>
+              <span className="text-sm text-gray-700">Участники проекта с правами просмотра или выше для общих элементов</span>
             </div>
 
             {/* Email Recipients */}
             <div>
-              <Label htmlFor="recipients" className="text-sm font-medium">Recipients *</Label>
+              <Label htmlFor="recipients" className="text-sm font-medium">Получатели *</Label>
               <Input
                 id="recipients"
                 type="text"
                 value={emails}
                 onChange={(e) => setEmails(e.target.value)}
-                placeholder="Enter member names, roles, companies or email addresses"
+                placeholder="Введите имена участников, роли, компании или адреса электронной почты"
                 className="mt-1"
               />
             </div>
 
             {/* Expiry Date */}
             <div>
-              <Label className="text-sm font-medium">Access expires on</Label>
+              <Label className="text-sm font-medium">Доступ истекает</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -130,7 +130,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {expiryDate ? format(expiryDate, "PPP") : "Select expiry date"}
+                    {expiryDate ? format(expiryDate, "PPP") : "Выберите дату истечения"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -147,12 +147,12 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
 
             {/* Note */}
             <div>
-              <Label htmlFor="note" className="text-sm font-medium">Note</Label>
+              <Label htmlFor="note" className="text-sm font-medium">Заметка</Label>
               <Textarea
                 id="note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Enter a note to include in the email"
+                placeholder="Введите заметку для включения в письмо"
                 className="mt-1 min-h-[80px]"
               />
             </div>
@@ -160,7 +160,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
             {/* Generated Links */}
             {linkUrl && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Personal Link</Label>
+                <Label className="text-sm font-medium">Персональная ссылка</Label>
                 <div className="p-2 bg-gray-50 rounded border">
                   <a
                     href={linkUrl}
@@ -176,7 +176,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
 
             {shareLink && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Shareable Link</Label>
+                <Label className="text-sm font-medium">Ссылка для общего доступа</Label>
                 <div className="p-2 bg-gray-50 rounded border">
                   <a
                     href={shareLink}
@@ -192,7 +192,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
 
             {error && (
               <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                Error: {error}
+                Ошибка: {error}
               </div>
             )}
           </div>
@@ -205,7 +205,7 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
             onClick={onClose}
             disabled={loading}
           >
-            Cancel
+            Отмена
           </Button>
           <div className="flex space-x-2">
             <Button
@@ -213,13 +213,13 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
               disabled={loading}
               variant="outline"
             >
-              Generate Link
+              Создать ссылку
             </Button>
             <Button
               onClick={handleShareUsers}
               disabled={loading || !emails.trim()}
             >
-              {loading ? 'Sharing...' : 'Send'}
+              {loading ? 'Отправка...' : 'Отправить'}
             </Button>
           </div>
         </div>

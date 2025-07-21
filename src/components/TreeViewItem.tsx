@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Folder, FolderPlus, Edit3, Share, Move, Trash2, Upload, Download, FileText, MoreVertical, Star, Archive } from 'lucide-react';
 import { Button } from './ui/button';
@@ -183,44 +184,44 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
           <DropdownMenuContent align="end" className="w-48 bg-background border shadow-lg z-50">
             <DropdownMenuItem onClick={(e) => handleAction('add-subfolder', e)}>
               <FolderPlus className="h-4 w-4 mr-2" />
-              Add Subfolder
+              Добавить подпапку
             </DropdownMenuItem>
             <DropdownMenuItem onClick={(e) => handleAction('upload', e)}>
               <Upload className="h-4 w-4 mr-2" />
-              Upload Files
+              Загрузить файлы
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             
             <DropdownMenuItem onClick={(e) => handleAction('rename', e)}>
               <Edit3 className="h-4 w-4 mr-2" />
-              Rename
+              Переименовать
             </DropdownMenuItem>
             
             <DropdownMenuItem onClick={(e) => handleAction('share', e)}>
               <Share className="h-4 w-4 mr-2" />
-              Share
+              Поделиться
             </DropdownMenuItem>
             
             <DropdownMenuItem onClick={(e) => handleAction('favorite', e)}>
               <Star className="h-4 w-4 mr-2" />
-              Add to Favorites
+              Добавить в избранное
             </DropdownMenuItem>
             
             <DropdownMenuItem onClick={(e) => handleAction('move', e)}>
               <Move className="h-4 w-4 mr-2" />
-              Move
+              Переместить
             </DropdownMenuItem>
             
             <DropdownMenuItem onClick={(e) => handleAction('download', e)}>
               <Download className="h-4 w-4 mr-2" />
-              Download
+              Скачать
             </DropdownMenuItem>
             
             <DropdownMenuSeparator />
             
             <DropdownMenuItem onClick={(e) => handleAction('archive', e)}>
               <Archive className="h-4 w-4 mr-2" />
-              Archive
+              Архивировать
             </DropdownMenuItem>
             
             <DropdownMenuItem 
@@ -228,7 +229,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               className="text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              Delete
+              Удалить
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -257,15 +258,15 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename {isFolder ? 'Folder' : 'File'}</DialogTitle>
+            <DialogTitle>Переименовать {isFolder ? 'папку' : 'файл'}</DialogTitle>
             <DialogDescription>
-              Enter a new name for "{node.name}"
+              Введите новое имя для "{node.name}"
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="name" className="text-right">
-                Name
+                Имя
               </Label>
               <Input
                 id="name"
@@ -277,10 +278,10 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
-              Cancel
+              Отмена
             </Button>
             <Button onClick={handleRename}>
-              Rename
+              Переименовать
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -290,22 +291,22 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
       <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Move {isFolder ? 'Folder' : 'File'}</DialogTitle>
+            <DialogTitle>Переместить {isFolder ? 'папку' : 'файл'}</DialogTitle>
             <DialogDescription>
-              Select the target folder for "{node.name}"
+              Выберите папку назначения для "{node.name}"
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="target" className="text-right">
-                Target Folder
+                Папка назначения
               </Label>
               <Select value={selectedTargetFolder} onValueChange={setSelectedTargetFolder}>
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select target folder" />
+                  <SelectValue placeholder="Выберите папку назначения" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="root">Root Folder</SelectItem>
+                  <SelectItem value="root">Корневая папка</SelectItem>
                   {renderFolderOptions(getFolderOptions(node.id))}
                 </SelectContent>
               </Select>
@@ -313,10 +314,10 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
-              Cancel
+              Отмена
             </Button>
             <Button onClick={handleMove} disabled={!selectedTargetFolder}>
-              Move
+              Переместить
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -45,15 +45,15 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
     switch (action) {
       case 'add-subfolder':
         toast({
-          title: 'Add Subfolder',
-          description: `Adding subfolder to ${nodeId}`,
+          title: 'Добавить подпапку',
+          description: `Добавление подпапки в ${nodeId}`,
         });
         break;
       
       case 'rename':
         toast({
-          title: 'Rename',
-          description: `Renaming ${nodeId} to ${data?.newName}`,
+          title: 'Переименовать',
+          description: `Переименование ${nodeId} в ${data?.newName}`,
         });
         break;
       
@@ -62,8 +62,8 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           onShare(nodeId);
         } else {
           toast({
-            title: 'Share',
-            description: `Sharing ${nodeId}`,
+            title: 'Поделиться',
+            description: `Поделиться ${nodeId}`,
           });
         }
         break;
@@ -73,8 +73,8 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           onArchive(nodeId);
         } else {
           toast({
-            title: 'Archive',
-            description: `Archiving ${nodeId}`,
+            title: 'Архивировать',
+            description: `Архивирование ${nodeId}`,
           });
         }
         break;
@@ -84,16 +84,16 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           onFavorite(nodeId);
         } else {
           toast({
-            title: 'Favorite',
-            description: `Adding ${nodeId} to favorites`,
+            title: 'Избранное',
+            description: `Добавление ${nodeId} в избранное`,
           });
         }
         break;
       
       case 'move':
         toast({
-          title: 'Move',
-          description: `Moving ${nodeId} to ${data?.targetFolderId}`,
+          title: 'Переместить',
+          description: `Перемещение ${nodeId} в ${data?.targetFolderId}`,
         });
         break;
       
@@ -102,8 +102,8 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           onDelete(nodeId);
         } else {
           toast({
-            title: 'Delete',
-            description: `Deleting ${nodeId}`,
+            title: 'Удалить',
+            description: `Удаление ${nodeId}`,
             variant: 'destructive',
           });
         }
@@ -124,15 +124,15 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
       
       case 'download':
         toast({
-          title: 'Download',
-          description: `Downloading ${nodeId}`,
+          title: 'Скачать',
+          description: `Скачивание ${nodeId}`,
         });
         break;
       
       default:
         toast({
-          title: 'Action',
-          description: `Performing ${action} on ${nodeId}`,
+          title: 'Действие',
+          description: `Выполнение ${action} для ${nodeId}`,
         });
     }
   };
@@ -152,8 +152,8 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
 
   const handleCreateRootFolder = () => {
     toast({
-      title: 'Create Folder',
-      description: 'Creating new folder in root',
+      title: 'Создать папку',
+      description: 'Создание новой папки в корне',
     });
   };
 
@@ -168,7 +168,7 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           className="flex items-center gap-2"
         >
           <FolderPlus className="h-4 w-4" />
-          New Folder
+          Новая папка
         </Button>
         <Button
           variant="outline"
@@ -177,18 +177,18 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           className="flex items-center gap-2"
         >
           <Upload className="h-4 w-4" />
-          Upload
+          Загрузить
         </Button>
       </div>
 
       {/* Tree View */}
       <div className="space-y-1">
         <div className="font-medium text-sm text-muted-foreground px-2 py-1">
-          Folders
+          Папки
         </div>
         {data.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No folders
+            Нет папок
           </div>
         ) : (
           <div className="group">
