@@ -1,6 +1,16 @@
+
 import { useState } from 'react';
 import { useShare } from '../hooks/useShare';
 import { Document } from '@/types/document';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Calendar } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { CalendarIcon, X, Users, Link, Mail } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface ShareModalProps {
   document: Document;
@@ -11,14 +21,17 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
   const { createShareLink, shareWithUsers, loading, error } = useShare();
   const [visits, setVisits] = useState(1);
   const [emails, setEmails] = useState('');
+  const [note, setNote] = useState('');
+  const [expiryDate, setExpiryDate] = useState<Date | undefined>();
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'email' | 'link'>('email');
 
   const handleGenerateLink = async () => {
     try {
       const { personal_url, share_this } = await createShareLink(document.id!, {
         visits,
-        share_to: emails.split(',').map(e => e.trim()),
+        share_to: emails.split(',').map(e => e.trim()).filter(e => e),
       });
       setLinkUrl(personal_url);
       setShareLink(typeof share_this === 'string' ? share_this : share_this?.shareable_link || null);
@@ -30,100 +43,186 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
   const handleShareUsers = async () => {
     try {
       await shareWithUsers(document.id!, {
-        share_to: emails.split(',').map(e => e.trim()),
+        share_to: emails.split(',').map(e => e.trim()).filter(e => e),
       });
-      alert('Shared with users successfully');
+      onClose();
     } catch {
       // error state is in hook.error
     }
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center"
-      onClick={e => e.currentTarget === e.target && onClose()}
-    >
-      <div className="bg-white rounded p-6 w-96">
-        <h2 className="text-lg font-semibold mb-4">Поделиться “{document.name}”</h2>
-
-        {/* Input: recipient emails */}
-        <label className="block text-sm font-medium">Emails </label>
-        <input
-          type="text"
-          value={emails}
-          onChange={e => setEmails(e.target.value)}
-          className="mt-1 mb-4 w-full border rounded px-2 py-1"
-          placeholder="user1@mail.com, user2@mail.com"
-        />
-
-        {/* Time Limit */}
-        <label className="block text-sm font-medium">Таймер (в час)</label>
-        <input
-          type="number"
-          min={1}
-          value={visits}
-          onChange={e => setVisits(Number(e.target.value))}
-          className="mt-1 mb-4 w-24 border rounded px-2 py-1"
-          placeholder="e.g. 24"
-        />
-
-        {/* Actions */}
-        <div className="flex justify-between">
-          <button
-            onClick={handleGenerateLink}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg w-[500px] max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Share "{document.name}"</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8"
           >
-            Создать ссылку  
-          </button>
-          <button
-            onClick={handleShareUsers}
-            disabled={loading}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-          >
-            Поделиться 
-            </button>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
-        {/* Show generated link */}
-        {linkUrl && (
-          <div className="mt-4">
-            <p className="text-sm">Персональная ссылка:</p>
-            <a
-              href={linkUrl}
-              target="_blank"
-              rel="noopener"
-              className="text-blue-600 underline break-all"
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Tab Navigation */}
+          <div className="flex border-b">
+            <button
+              onClick={() => setActiveTab('email')}
+              className={cn(
+                "flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors",
+                activeTab === 'email' 
+                  ? "border-blue-500 text-blue-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              )}
             >
-              {linkUrl}
-            </a>
-          </div>
-        )}
-        {shareLink && (
-          <div className="mt-2">
-            <p className="text-sm">Общая ссылка для доступа:</p>
-            <a
-              href={shareLink}
-              target="_blank"
-              rel="noopener"
-              className="text-blue-600 underline break-all"
+              <Mail className="h-4 w-4 inline mr-2" />
+              Email
+            </button>
+            <button
+              onClick={() => setActiveTab('link')}
+              className={cn(
+                "flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors",
+                activeTab === 'link' 
+                  ? "border-blue-500 text-blue-600" 
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              )}
             >
-              {shareLink}
-            </a>
+              <Link className="h-4 w-4 inline mr-2" />
+              Links
+            </button>
           </div>
-        )}
 
-        {error && (
-          <p className="mt-4 text-sm text-red-600">Error: {error}</p>
-        )}
+          {/* Share Options */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Users className="h-4 w-4 text-gray-500" />
+              <span className="text-sm text-gray-700">Project members with view permission or above for the shared items</span>
+            </div>
 
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-        >
-          &times;
-        </button>
+            {/* Email Recipients */}
+            <div>
+              <Label htmlFor="recipients" className="text-sm font-medium">Recipients *</Label>
+              <Input
+                id="recipients"
+                type="text"
+                value={emails}
+                onChange={(e) => setEmails(e.target.value)}
+                placeholder="Enter member names, roles, companies or email addresses"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Expiry Date */}
+            <div>
+              <Label className="text-sm font-medium">Access expires on</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-1",
+                      !expiryDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {expiryDate ? format(expiryDate, "PPP") : "Select expiry date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={expiryDate}
+                    onSelect={setExpiryDate}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Note */}
+            <div>
+              <Label htmlFor="note" className="text-sm font-medium">Note</Label>
+              <Textarea
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Enter a note to include in the email"
+                className="mt-1 min-h-[80px]"
+              />
+            </div>
+
+            {/* Generated Links */}
+            {linkUrl && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Personal Link</Label>
+                <div className="p-2 bg-gray-50 rounded border">
+                  <a
+                    href={linkUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="text-blue-600 underline text-sm break-all"
+                  >
+                    {linkUrl}
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {shareLink && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Shareable Link</Label>
+                <div className="p-2 bg-gray-50 rounded border">
+                  <a
+                    href={shareLink}
+                    target="_blank"
+                    rel="noopener"
+                    className="text-blue-600 underline text-sm break-all"
+                  >
+                    {shareLink}
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                Error: {error}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-between items-center p-4 border-t bg-gray-50">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <div className="flex space-x-2">
+            <Button
+              onClick={handleGenerateLink}
+              disabled={loading}
+              variant="outline"
+            >
+              Generate Link
+            </Button>
+            <Button
+              onClick={handleShareUsers}
+              disabled={loading || !emails.trim()}
+            >
+              {loading ? 'Sharing...' : 'Send'}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

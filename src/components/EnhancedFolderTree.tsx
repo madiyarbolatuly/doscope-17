@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { TreeNode } from '@/utils/buildTree';
 import { TreeViewItem } from './TreeViewItem';
 import { Button } from './ui/button';
-import { FolderPlus, Upload } from 'lucide-react';
+import { FolderPlus, Upload, Archive, Star } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface EnhancedFolderTreeProps {
@@ -12,6 +12,9 @@ interface EnhancedFolderTreeProps {
   onSelect: (id: string) => void;
   onFileUpload?: (files: File[], folderId?: string) => void;
   onShare?: (nodeId: string) => void;
+  onArchive?: (nodeId: string) => void;
+  onFavorite?: (nodeId: string) => void;
+  onDelete?: (nodeId: string) => void;
 }
 
 export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
@@ -19,7 +22,10 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
   selectedId,
   onSelect,
   onFileUpload,
-  onShare
+  onShare,
+  onArchive,
+  onFavorite,
+  onDelete
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -62,6 +68,28 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
         }
         break;
       
+      case 'archive':
+        if (onArchive) {
+          onArchive(nodeId);
+        } else {
+          toast({
+            title: 'Archive',
+            description: `Archiving ${nodeId}`,
+          });
+        }
+        break;
+      
+      case 'favorite':
+        if (onFavorite) {
+          onFavorite(nodeId);
+        } else {
+          toast({
+            title: 'Favorite',
+            description: `Adding ${nodeId} to favorites`,
+          });
+        }
+        break;
+      
       case 'move':
         toast({
           title: 'Move',
@@ -70,11 +98,15 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
         break;
       
       case 'delete':
-        toast({
-          title: 'Delete',
-          description: `Deleting ${nodeId}`,
-          variant: 'destructive',
-        });
+        if (onDelete) {
+          onDelete(nodeId);
+        } else {
+          toast({
+            title: 'Delete',
+            description: `Deleting ${nodeId}`,
+            variant: 'destructive',
+          });
+        }
         break;
       
       case 'upload':
@@ -94,13 +126,6 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
         toast({
           title: 'Download',
           description: `Downloading ${nodeId}`,
-        });
-        break;
-      
-      case 'view-source':
-        toast({
-          title: 'View Source',
-          description: `Opening source for ${nodeId}`,
         });
         break;
       
@@ -159,11 +184,11 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
       {/* Tree View */}
       <div className="space-y-1">
         <div className="font-medium text-sm text-muted-foreground px-2 py-1">
-          Project Files
+          Folders
         </div>
         {data.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No files or folders
+            No folders
           </div>
         ) : (
           <div className="group">

@@ -362,6 +362,43 @@ const Index = () => {
     fetchDocuments();
   }, [fetchDocuments]);
 
+  const handleFileUpload = async (files: File[], folderId?: string) => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file, file.name);
+    });
+
+    try {
+      const response = await axios.post("http://localhost:8000/v2/upload", formData, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
+      });
+
+      toast({
+        title: "Success",
+        description: `Uploaded ${files.length} file(s) successfully`,
+      });
+
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload files",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleShareNode = (nodeId: string) => {
+    const doc = documents.find(d => d.id === nodeId);
+    if (doc) {
+      openShare(doc);
+    }
+  };
+
   const handlePreviewFile = async (document: Document) => {
     try {
       const encoded = encodeURIComponent(document.name);
@@ -909,6 +946,11 @@ const Index = () => {
     });
   }, [filteredDocuments, sortBy, sortOrder]);
 
+  const folderTreeData: TreeNode[] = React.useMemo(() => {
+    const folders = documents.filter(doc => doc.type === 'folder');
+    return buildTree(folders);
+  }, [documents]);
+
   return (
     <div className="flex flex-col h-screen">
       <div className="px-4 py-2 border-b shrink-0">
@@ -924,13 +966,13 @@ const Index = () => {
       <div className="flex flex-1 overflow-hidden">
         <nav className="w-64 overflow-y-auto border-r p-2">
           <EnhancedFolderTree
-            data={treeData}
+            data={folderTreeData}
             selectedId={folderId}
             onSelect={(id) => {
               setFolderId(prev => (prev === id ? null : id));
             }}
-            onFileUpload={handleUploadToDestination}
-            onShare={openShare}
+            onFileUpload={handleFileUpload}
+            onShare={handleShareNode}
           />
         </nav>
         <div className="flex-1 p-4 overflow-y-auto relative">

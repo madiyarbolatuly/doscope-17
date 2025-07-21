@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Folder, FolderPlus, Edit3, Share, Move, Trash2, Upload, Download, FileText, MoreVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder, FolderPlus, Edit3, Share, Move, Trash2, Upload, Download, FileText, MoreVertical, Star, Archive } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -74,6 +73,12 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
       case 'share':
         onAction('share', node.id);
         break;
+      case 'archive':
+        onAction('archive', node.id);
+        break;
+      case 'favorite':
+        onAction('favorite', node.id);
+        break;
       case 'delete':
         onAction('delete', node.id);
         break;
@@ -130,7 +135,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   return (
     <>
       <div
-        className={`flex items-center gap-1 py-1 px-2 rounded cursor-pointer hover:bg-accent/50 ${
+        className={`flex items-center gap-1 py-1 px-2 rounded cursor-pointer hover:bg-accent/50 group ${
           isSelected ? 'bg-accent' : ''
         }`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
@@ -158,11 +163,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
         {!isFolder && <div className="w-4" />}
 
         {/* Icon */}
-        {isFolder ? (
-          <Folder className="h-4 w-4 text-yellow-600" />
-        ) : (
-          <FileText className="h-4 w-4 text-blue-600" />
-        )}
+        <Folder className="h-4 w-4 text-yellow-600" />
 
         {/* Node Name */}
         <span className="flex-1 text-sm truncate">{node.name}</span>
@@ -179,20 +180,16 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            {isFolder && (
-              <>
-                <DropdownMenuItem onClick={(e) => handleAction('add-subfolder', e)}>
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                  Add Subfolder
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => handleAction('upload', e)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Files
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
+          <DropdownMenuContent align="end" className="w-48 bg-background border shadow-lg z-50">
+            <DropdownMenuItem onClick={(e) => handleAction('add-subfolder', e)}>
+              <FolderPlus className="h-4 w-4 mr-2" />
+              Add Subfolder
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => handleAction('upload', e)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Files
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             
             <DropdownMenuItem onClick={(e) => handleAction('rename', e)}>
               <Edit3 className="h-4 w-4 mr-2" />
@@ -202,6 +199,11 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
             <DropdownMenuItem onClick={(e) => handleAction('share', e)}>
               <Share className="h-4 w-4 mr-2" />
               Share
+            </DropdownMenuItem>
+            
+            <DropdownMenuItem onClick={(e) => handleAction('favorite', e)}>
+              <Star className="h-4 w-4 mr-2" />
+              Add to Favorites
             </DropdownMenuItem>
             
             <DropdownMenuItem onClick={(e) => handleAction('move', e)}>
@@ -214,14 +216,12 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               Download
             </DropdownMenuItem>
             
-            {!isFolder && (
-              <DropdownMenuItem onClick={(e) => handleAction('view-source', e)}>
-                <FileText className="h-4 w-4 mr-2" />
-                View Source
-              </DropdownMenuItem>
-            )}
-            
             <DropdownMenuSeparator />
+            
+            <DropdownMenuItem onClick={(e) => handleAction('archive', e)}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archive
+            </DropdownMenuItem>
             
             <DropdownMenuItem 
               onClick={(e) => handleAction('delete', e)}
