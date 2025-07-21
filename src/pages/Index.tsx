@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { EnhancedFolderTree } from '@/components/EnhancedFolderTree';
 
 interface BackendDocument {
   owner_id: string;
@@ -42,7 +43,6 @@ interface BackendDocument {
   parent_id: string | null;
 }
 const mockDocuments: Document[] = [
-  // ─── Root level ─────────────────────────────────────────────────────────────
   {
     id: 'mock-1',
     name: 'Project Files',
@@ -85,8 +85,6 @@ const mockDocuments: Document[] = [
     starred: false,
     parent_id: null,
   },
-
-  // ─── Under "Project Files" (mock-1) ─────────────────────────────────────────
   {
     id: 'mock-9',
     name: 'Specs',
@@ -143,8 +141,6 @@ const mockDocuments: Document[] = [
     starred: false,
     parent_id: 'mock-1',
   },
-
-  // ─── Under "Project Images" (mock-7) ────────────────────────────────────────
   {
     id: 'mock-13',
     name: 'Screenshots',
@@ -187,8 +183,6 @@ const mockDocuments: Document[] = [
     starred: false,
     parent_id: 'mock-13',
   },
-
-  // ─── Other flat files ────────────────────────────────────────────────────────
   {
     id: 'mock-3',
     name: 'DynamicMatrix.h',
@@ -261,7 +255,6 @@ const mockDocuments: Document[] = [
   },
 ];
 
-
 const Index = () => {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [category, setCategory] = useState<CategoryType>('all');
@@ -294,12 +287,8 @@ const Index = () => {
     }
   };
 
+  const token = localStorage.getItem('authToken');
 
-  const token = localStorage.getItem('authToken')
-
- 
-
-  // Fetch documents
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -322,12 +311,12 @@ const Index = () => {
           name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
           type: doc.file_type ? (
             doc.file_type.includes('pdf') ? 'pdf' :
-          doc.file_type.includes('doc') ? 'doc' :
-          doc.file_type.includes('xls') ? 'xlsx' :
-          doc.file_type.includes('ppt') ? 'ppt' :
-          doc.file_type.includes('pptx') ? 'pptx' :
-          doc.file_type.includes('png') ? 'png' :
-          doc.file_type.includes('image') ? 'image' : 'file'
+            doc.file_type.includes('doc') ? 'doc' :
+            doc.file_type.includes('xls') ? 'xlsx' :
+            doc.file_type.includes('ppt') ? 'ppt' :
+            doc.file_type.includes('pptx') ? 'pptx' :
+            doc.file_type.includes('png') ? 'png' :
+            doc.file_type.includes('image') ? 'image' : 'file'
           ) : 'file',
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
@@ -359,7 +348,6 @@ const Index = () => {
 
   const { createShareLink, shareWithUsers, loading: shareLoading, error: shareError } = useShare();
 
-  // Handler that you'll pass down to your grid/item "Share" button:
   const openShare = (doc: Document) => {
     setShareDoc(doc);
     setIsShareOpen(true);
@@ -374,20 +362,15 @@ const Index = () => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  // Preview document
   const handlePreviewFile = async (document: Document) => {
     try {
       const encoded = encodeURIComponent(document.name);
-      // 1) Fetch with auth header
       const res = await fetch(`http://localhost:8000/v2/preview/${encoded}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Preview fetch failed');
 
-      // 2) Read it as a Blob
       const blob = await res.blob();
-
-      // 3) Create an object URL so the browser can render it
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
 
@@ -403,7 +386,6 @@ const Index = () => {
     }
   };
 
-  // Download document
   const handleDownloadFile = async (doc: Document) => {
     try {
       const encodedFileName = encodeURIComponent(doc.name);
@@ -442,9 +424,6 @@ const Index = () => {
     }
   };
 
-  
-
-  // Upload document
   const traverseFileTree = async (
     item: FileSystemEntry,
     path = '',
@@ -515,8 +494,6 @@ const Index = () => {
     }
   };
 
-
-  // Rename/update document metadata
   const handleUpdateMetadata = async (documentId: string, newName: string, tags?: string[], categories?: string[]) => {
     try {
       const response = await axios.put(`http://localhost:8000/v2/metadata/${documentId}`, {
@@ -535,10 +512,8 @@ const Index = () => {
         description: `Document updated successfully`,
       });
 
-      // Refresh document list
       fetchDocuments();
 
-      // If this is the selected document, update it
       if (selectedDocument && selectedDocument.id === documentId) {
         setSelectedDocument({
           ...selectedDocument,
@@ -557,10 +532,8 @@ const Index = () => {
     }
   };
 
-  // Delete document (move to bin)
   const handleDeleteDocument = async (document: Document) => {
     try {
-      // Encode the file name properly for the URL
       const encodedFileName = encodeURIComponent(document.name);
       await axios.delete(`http://localhost:8000/v2/${encodedFileName}`, {
         headers: {
@@ -573,10 +546,8 @@ const Index = () => {
         description: `Document moved to archive`,
       });
 
-      // Refresh document list
       fetchDocuments();
 
-      // If this document was selected, clear selection
       if (selectedDocument && selectedDocument.id === document.id) {
         setSelectedDocument(null);
         setShowSidebar(false);
@@ -658,7 +629,6 @@ const Index = () => {
         description: `${successCount} document(s) moved to archive`,
       });
 
-      // Refresh document list
       fetchDocuments();
     }
 
@@ -761,7 +731,6 @@ const Index = () => {
     }
   };
 
-  // Drag and drop handlers for a dedicated drop area
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -782,16 +751,12 @@ const Index = () => {
     });
   };
 
-/** visible in the table / grid */
-const visibleDocuments = React.useMemo(() => {
-  if (folderId === null) {
-    // root view
-    return documents.filter(d => d.parent_id === null);
-  }
-  // inside a folder
-  return documents.filter(d => d.parent_id === folderId);
-}, [documents, folderId]);
-
+  const visibleDocuments = React.useMemo(() => {
+    if (folderId === null) {
+      return documents.filter(d => d.parent_id === null);
+    }
+    return documents.filter(d => d.parent_id === folderId);
+  }, [documents, folderId]);
 
   const handleDragOverArea = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -884,141 +849,102 @@ const visibleDocuments = React.useMemo(() => {
 
   const searchableKeys = ['name', 'type', 'owner', 'modified',];
 
-const searchDocuments = (documents: DocumentType[], query: string) => {
-  return documents.filter(doc =>
-    searchableKeys.some(key => {
-      const value = doc[key as keyof typeof doc];
-      if (Array.isArray(value)) {
-        return value.some(val => val.toLowerCase().includes(query));
+  const searchDocuments = (documents: DocumentType[], query: string) => {
+    return documents.filter(doc =>
+      searchableKeys.some(key => {
+        const value = doc[key as keyof typeof doc];
+        if (Array.isArray(value)) {
+          return value.some(val => val.toLowerCase().includes(query));
+        }
+        return typeof value === 'string' && value.toLowerCase().includes(query);
+      })
+    );
+  };
+
+  const filteredDocuments = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    if (q === '') return visibleDocuments;
+
+    return documents.filter(doc =>
+      searchableKeys.some(key => {
+        const val = doc[key as keyof Document];
+        if (Array.isArray(val)) {
+          return val.some(v => v.toLowerCase().includes(q));
+        }
+        return typeof val === 'string' && val.toLowerCase().includes(q);
+      })
+    );
+  }, [documents, visibleDocuments, searchQuery]);
+
+  const toBytes = (size: string): number => {
+    const [num, unit = 'B'] = size.split(' ');
+    const n = parseFloat(num);
+    switch (unit) {
+      case 'MB': return n * 1_048_576;
+      case 'KB': return n * 1_024;
+      default:   return isNaN(n) ? 0 : n;
+    }
+  };
+
+  const sortedDocuments = React.useMemo(() => {
+    return [...filteredDocuments].sort((a, b) => {
+      let valA: string | number = a[sortBy] as any;
+      let valB: string | number = b[sortBy] as any;
+
+      if (sortBy === 'size') {
+        valA = toBytes(a.size);
+        valB = toBytes(b.size);
       }
-      return typeof value === 'string' && value.toLowerCase().includes(query);
-    })
-  );
-};
 
- // 🔄 replace your existing filteredDocuments declaration with this
-const filteredDocuments = React.useMemo(() => {
-  const q = searchQuery.trim().toLowerCase();
-
-  // ── 1) no query  →  just show the current folder view
-  if (q === '') return visibleDocuments;
-
-  // ── 2) with query →  search in *all* docs, not only the visible ones
-  return documents.filter(doc =>
-    searchableKeys.some(key => {
-      const val = doc[key as keyof Document];
-      if (Array.isArray(val)) {
-        return val.some(v => v.toLowerCase().includes(q));
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        return sortOrder === 'asc'
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
       }
-      return typeof val === 'string' && val.toLowerCase().includes(q);
-    })
-  );
-}, [documents, visibleDocuments, searchQuery]);
-
-
-const toBytes = (size: string): number => {
-  const [num, unit = 'B'] = size.split(' ');
-  const n = parseFloat(num);
-  switch (unit) {
-    case 'MB': return n * 1_048_576;
-    case 'KB': return n * 1_024;
-    default:   return isNaN(n) ? 0 : n; // «B» или «--»
-  }
-};
-
- const sortedDocuments = React.useMemo(() => {
-  return [...filteredDocuments].sort((a, b) => {
-    let valA: string | number = a[sortBy] as any;
-    let valB: string | number = b[sortBy] as any;
-
-    // особый случай — размер
-    if (sortBy === 'size') {
-      valA = toBytes(a.size);
-      valB = toBytes(b.size);
-    }
-
-    if (typeof valA === 'string' && typeof valB === 'string') {
-      return sortOrder === 'asc'
-        ? valA.localeCompare(valB)
-        : valB.localeCompare(valA);
-    }
-    if (typeof valA === 'number' && typeof valB === 'number') {
-      return sortOrder === 'asc' ? valA - valB : valB - valA;
-    }
-    return 0;
-  });
-}, [filteredDocuments, sortBy, sortOrder]);
-
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+      return 0;
+    });
+  }, [filteredDocuments, sortBy, sortOrder]);
 
   return (
-  <div className="flex flex-col h-screen">
-    <div className="px-4 py-2 border-b shrink-0">
-
-        {/*</div><div className="flex items-center justify-between mb-4">*/}
+    <div className="flex flex-col h-screen">
+      <div className="px-4 py-2 border-b shrink-0">
         <PageHeader
-          
           title={getCategoryTitle(category)}
           categoryType={category}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           viewMode={viewMode}
           setViewMode={setViewMode}
-          
         />
       </div>
-  {/* left pane: folder tree  <nav className="w-64 overflow-auto h-screen p-2">*/
-  }
-  
-
- <div className="flex flex-1 overflow-hidden">
-      {/* FolderTree */}
-      <nav className="w-64 overflow-y-auto border-r p-2">
-     <FolderTree
-        data={treeData}
-        selectedId={folderId}
-        onSelect={(id) => {
-      // если кликнули по той же папке ─ снимаем выбор
-      setFolderId(prev => (prev === id ? null : id));
-    }}  />
-  </nav>
-      <div className="flex-1 p-4 overflow-y-auto relative">
-      {/* Header with Upload Button */}
-      
-    
-      {/* Drag-and-drop overlay */}
-      <div
-        className={`fixed inset-0 z-50${isDragging ? '' : ' hidden'}`}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOverArea}
-        onDrop={handleDropArea}
-      >
-        {isDragging && (
-          <div className="absolute inset-0 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center">
-            <p className="text-lg font-semibold text-blue-600">Перетащите файлы для загрузки</p>
-          </div>
-        )}
-      </div>
-      <div
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOverArea}
-        onDrop={handleDropArea}
-      >
-        {viewMode === 'list' ? (
+      <div className="flex flex-1 overflow-hidden">
+        <nav className="w-64 overflow-y-auto border-r p-2">
+          <EnhancedFolderTree
+            data={treeData}
+            selectedId={folderId}
+            onSelect={(id) => {
+              setFolderId(prev => (prev === id ? null : id));
+            }}
+            onFileUpload={handleUploadToDestination}
+            onShare={openShare}
+          />
+        </nav>
+        <div className="flex-1 p-4 overflow-y-auto relative">
           <div className="mt-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Checkbox 
                   checked={selectedDocumentIds.length === filteredDocuments.length && filteredDocuments.length > 0}
                   onCheckedChange={handleSelectAll}
-                  
                 />
-                   <span className="text-sm text-muted-foreground">
-    {selectedDocumentIds.length > 0
-      ? `${selectedDocumentIds.length} selected`
-      : `Showing ${filteredDocuments.length} items`}
-  
+                <span className="text-sm text-muted-foreground">
+                  {selectedDocumentIds.length > 0
+                    ? `${selectedDocumentIds.length} selected`
+                    : `Showing ${filteredDocuments.length} items`}
                 </span>
               </div>
               {selectedDocumentIds.length > 0 && (
@@ -1167,32 +1093,8 @@ const toBytes = (size: string): number => {
               </TableBody>
             </Table>
           </div>
-          
-        ) : (
-          <div className="mt-4 animate-fade-in">
-            <DocumentGrid
-              documents={filteredDocuments}
-              onDocumentClick={handleDocumentClick}
-              onDocumentPreview={handlePreviewFile}
-              viewMode={viewMode}
-              selectedDocument={selectedDocument}
-              onDocumentSelect={handleDocumentSelect}
-              multipleSelection={true}
-              selectionActions={{
-                selectedIds: selectedDocumentIds,
-                onSelectAll: handleSelectAll,
-                onClearSelection: handleClearSelection,
-                onDeleteSelected: handleDeleteSelected,
-                onDownloadSelected: handleDownloadSelected,
-                onShareSelected: handleShareSelected
-              }}
-              toggleFavorite={toggleFavorite}
-            />
-          </div>
-        )}
-      </div>          </div>
-
-      {/* Share Modal */}
+        </div>
+      </div>
       {isShareOpen && shareDoc && (
         <ShareModal
           document={shareDoc}
@@ -1233,7 +1135,6 @@ const toBytes = (size: string): number => {
           )}
         </div>
       )}
-      {/* Metadata sidebar only if not previewing */}
       {!previewUrl && showSidebar && selectedDocument && (
         <div className="w-128 border bg-background fixed right-0 top-56 h-full z-40">
           <MetadataSidebar
@@ -1246,10 +1147,7 @@ const toBytes = (size: string): number => {
             token={token}
           />
         </div>
-        
       )}
-      </div>
-     
     </div>
   );
 };
