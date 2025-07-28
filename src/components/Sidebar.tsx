@@ -59,71 +59,78 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
   };
 
   return (
-    <div className="w-64 flex-shrink-0 h-full bg-sidebar border-r border-sidebar-border hidden md:block">
-      <div className="p-5">
-        <div className="flex items-center gap-2">
-          <FileText className="h-6 w-6 text-primary" />
-          <div className="text-lg font-semibold">GQ Contract</div>
-        </div>
-        <button
-          className="w-full flex items-center mt-5 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-2 px-3 rounded-md mb-6 transition-colors"
-          onClick={() => navigate('/fileupload')}
-        >
-          <PlusCircle size={18} />
-          <span>Новый документ</span>
-        </button>
+  <div className="w-64 flex-shrink-0 h-full bg-gradient-to-b from-blue-50 via-white to-blue-100 border-r border-blue-200 hidden md:block shadow-lg">
+    <div className="p-5">
+      <div className="flex items-center gap-2">
+        <img src="public/gq-contract.png" alt="GQ Contract" className="h-10 ml-2" />
+      </div>
 
+      <button
+        className="w-full flex items-center mt-6 gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg mb-6 shadow transition-colors duration-200"
+        onClick={() => navigate('/fileupload')}
+      >
+        <PlusCircle size={18} />
+        <span>Новый документ</span>
+      </button>
+
+      <nav className="space-y-1">
+        {mainNavItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => handleItemClick(item)}
+            className={cn(
+              "sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all",
+              isActive(item)
+                ? "bg-blue-100 text-blue-700 font-semibold"
+                : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+            )}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="mt-8 mb-2">
+        <h2 className="text-xs uppercase tracking-wider text-blue-400 font-semibold px-3 mb-2">
+          Инструменты
+        </h2>
         <nav className="space-y-1">
-          {mainNavItems.map((item) => (
+          {toolItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleItemClick(item)}
               className={cn(
-                "sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm",
-                isActive(item) ? "active bg-gray-100 dark:bg-gray-800" : ""
+                "sidebar-item w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-all",
+                isActive(item)
+                  ? "bg-blue-100 text-blue-700 font-semibold"
+                  : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
               )}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <div className="flex items-center gap-3">
+                {item.icon}
+                <span>{item.label}</span>
+              </div>
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto bg-blue-200 text-blue-800">
+                  {item.badge}
+                </Badge>
+              )}
             </button>
           ))}
+          
         </nav>
-
-        <div className="mt-8 mb-2">
-          <h2 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold px-3 mb-2">
-            Инструменты
-          </h2>
-          <nav className="space-y-1">
-            {toolItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleItemClick(item)}
-                className={cn(
-                  "sidebar-item w-full flex items-center justify-between px-3 py-2 rounded-md text-sm",
-                  isActive(item) ? "active bg-gray-100 dark:bg-gray-800" : ""
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {item.icon}
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && (
-                  <Badge variant="secondary" className="ml-auto">
-                    {item.badge}
-                  </Badge>
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div> 
-
-      <div className="absolute bottom-0 w-64 p-4 border-t border-sidebar-border">
-        <button className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-sidebar-accent rounded-md transition-colors">
-          <Settings size={18} />
-          <span>Настройки</span>
-        </button>
+        
       </div>
+      
     </div>
-  );
+          <div className="absolute to-blue-100 bottom-0 w-64 p-4 border-t">
+      <button className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-colors">
+        <Settings size={18} />
+        <span>Настройки</span>
+      </button>
+    </div>
+    
+  </div>
+);
 }

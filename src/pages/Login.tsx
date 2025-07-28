@@ -61,7 +61,7 @@ const Login = () => {
         <div className="p-10 flex flex-col">
           <div className="text-center">
             <img
-              src="public/gq-contract.png"     /* замените логотип */
+              src="gq-contract.png"     /* замените логотип */
               alt="GQ Contract"
               className="mb-2 h-30 w-52 mx-auto"
             />
@@ -119,9 +119,18 @@ const Login = () => {
             >
             {/* Слайд 1 */}
            <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-800">
-  <div className="w-full h-full flex flex-col items-center justify-center gap-6 
-                  bg-white/10 backdrop-blur-md p-10 md:p-16
+   <div
+    className="absolute inset-0 w-full h-full bg-[url('/gq-contract-promo-bg.jpg')] bg-cover bg-center bg-no-repeat"
+    aria-hidden="true"
+  />
+
+  
+
+  {/* Контент */}
+  <div className="relative z-10 w-full h-full flex flex-col items-center justify-center gap-6
+                  bg-white/10 p-10 md:p-16
                   shadow-lg ring-1 ring-white/20 text-center">
+    
     <Building2 className="h-12 w-12 text-white/90" />
     <h3 className="text-3xl font-semibold tracking-tight text-white/90">
                   Проектирование электрических и слаботочных систем
@@ -132,24 +141,40 @@ const Login = () => {
            
     {/* ---------- СЛАЙД 2 ---------- */}
     <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-800 to-blue-600">
-      <div className="w-full h-full flex flex-col items-center justify-center gap-6
-                      bg-white/10 backdrop-blur-md p-10 md:p-16
-                      shadow-lg ring-1 ring-white/20 text-center">
+    <div
+    className="absolute inset-0 w-full h-full bg-[url('/bossman4.jpg')] bg-cover bg-center bg-no-repeat"
+    aria-hidden="true"
+  />
+
+  
+
+  {/* Контент */}
+  <div className="relative z-10 w-full h-full flex flex-col items-center justify-center gap-6
+                  bg-white/10 p-10 md:p-16
+                  shadow-lg ring-1 ring-white/20 text-center">
         <HardHat className="h-12 w-12 text-white/90" />
         <h3 className="text-3xl font-semibold tracking-tight text-white/90">
           EPC‑проектный бизнес
         </h3>
         <p className="max-w-2xl text-lg leading-relaxed text-white/80">
-          Управляем проектами любой сложности — от концепции до ввода в эксплуатацию.
+          Управляем проектами любой сложности — от концепции до ввода в эксплуатацию.
         </p>
       </div>
     </SwiperSlide>
 
     {/* ---------- СЛАЙД 3 ---------- */}
     <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-800">
-      <div className="w-full h-full flex flex-col items-center justify-center gap-6
-                      bg-white/10 backdrop-blur-md p-10 md:p-16
-                      shadow-lg ring-1 ring-white/20 text-center">
+       <div
+    className="absolute inset-0 w-full h-full bg-[url('/gq.jpg')] bg-cover bg-center bg-no-repeat"
+    aria-hidden="true"
+  />
+
+  
+
+  {/* Контент */}
+  <div className="relative z-10 w-full h-full flex flex-col items-center justify-center gap-6
+                  bg-white/10 p-10 md:p-16
+                  shadow-lg ring-1 ring-white/20 text-center">
         <ShieldCheck className="h-12 w-12 text-white/90" />
         <h3 className="text-3xl font-semibold tracking-tight text-white/90">
           Преимущества
@@ -172,9 +197,17 @@ const Login = () => {
 
     {/* ---------- СЛАЙД 4 ---------- */}
     <SwiperSlide className="h-full w-full flex items-center justify-center bg-gradient-to-r from-blue-800 to-blue-600">
-      <div className="w-full h-full flex flex-col items-center justify-center gap-6
-                      bg-white/10 backdrop-blur-md p-10 md:p-16
-                      shadow-lg ring-1 ring-white/20 text-center">
+      <div
+    className="absolute inset-0 w-full h-full bg-[url('/images.jpeg')] bg-cover bg-center bg-no-repeat"
+    aria-hidden="true"
+  />
+
+  
+
+  {/* Контент */}
+  <div className="relative z-10 w-full h-full flex flex-col items-center justify-center gap-6
+                  bg-white/10 p-10 md:p-16
+                  shadow-lg ring-1 ring-white/20 text-center">
         <ShieldCheck className="h-12 w-12 text-white/90" />
         <h3 className="text-3xl font-semibold tracking-tight text-white/90">
           Точность и качество

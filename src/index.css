@@ -117,3 +117,12 @@
   color: hsl(var(--sidebar-accent-foreground));
   font-weight: 500;
 }
+
+@layer utilities {
+  .bg-dots {
+    background-image: radial-gradient(circle,
+                       theme('colors.gray.100') 1px,      /* ← кавычки! */
+                       transparent 1px);
+    background-size: 4px 4px;            /* шаг сетки */
+  }
+}

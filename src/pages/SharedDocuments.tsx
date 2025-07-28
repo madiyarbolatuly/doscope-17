@@ -24,55 +24,16 @@ interface SharedDocument extends Document {
 
 // Mock shared documents - только не истекшие
 const mockSharedDocuments: SharedDocument[] = [
-  {
-    id: 'shared-1',
-    name: 'Quarterly Report Q4 2024.pdf',
-    type: 'pdf',
-    size: '2.1 MB',
-    modified: '2024-12-15T10:30:00Z',
-    owner: 'Sarah Johnson',
-    sharedBy: 'Sarah Johnson',
-    category: 'reports',
-    shareExpiration: '2024-12-25T23:59:59Z',
-    previewUrl: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop',
-    favorited: false
-  },
-  {
-    id: 'shared-2',
-    name: 'Project Assets Folder',
+ {
+    id: 'shared-5',
+    name: 'Спецификация до 31 августа 2025',
     type: 'folder',
-    size: '45 MB',
-    modified: '2024-12-10T14:15:00Z',
-    owner: 'Mike Chen',
-    sharedBy: 'Mike Chen',
-    category: 'projects',
-    shareExpiration: '2024-12-30T23:59:59Z',
-    favorited: true
-  },
-  {
-    id: 'shared-3',
-    name: 'Marketing Presentation.pptx',
-    type: 'ppt',
-    size: '8.3 MB',
-    modified: '2024-12-12T16:45:00Z',
-    owner: 'Emma Davis',
-    sharedBy: 'Emma Davis',
-    category: 'marketing',
-    shareExpiration: '2025-01-20T23:59:59Z',
-    previewUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
-    favorited: false
-  },
-  {
-    id: 'shared-4',
-    name: 'Design Mockups Collection',
-    type: 'image',
-    size: '12.7 MB',
-    modified: '2024-12-08T09:20:00Z',
-    owner: 'Lisa Wang',
-    sharedBy: 'Lisa Wang',
-    category: 'design',
-    shareExpiration: '2025-01-22T23:59:59Z',
-    previewUrl: 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=400&h=300&fit=crop',
+    size: '18.6 MB',
+    modified: '2025-07-20T11:00:00Z',
+    owner: 'Madiyar Saduakas',
+    sharedBy: 'Madiyar Saduakas',
+    category: 'спецификации',
+    shareExpiration: '2025-08-31T18:59:59Z',
     favorited: false
   }
 ];

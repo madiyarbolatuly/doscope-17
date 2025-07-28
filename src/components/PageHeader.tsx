@@ -64,45 +64,58 @@ export function PageHeader({
   };
 
   return (
-    <div className="pb-4 border-b">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{title}</h1>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info size={16} className="text-gray-400 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs text-gray-500">Electronic Document Management System</p>
-                  <p className="text-xs text-gray-500">OpenAPI 3.1 Spec at /openapi.json</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <p className="text-muted-foreground">{description || getCategoryDescription(categoryType)}</p>
+  <div className="pb-4 border-b border-blue-200 bg-blue-50 px-6 pt-4 shadow-sm rounded-b-md">
+    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+      <div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-blue-800">{title}</h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info size={16} className="text-blue-400 hover:text-blue-500 cursor-help transition-colors" />
+              </TooltipTrigger>
+              <TooltipContent className="bg-white border border-blue-100 shadow-md">
+                <p className="text-xs text-blue-600">Electronic Document Management System</p>
+                <p className="text-xs text-blue-600">OpenAPI 3.1 Spec at /openapi.json</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-        {renderActions()}
+        <p className="text-sm text-blue-600">{description || getCategoryDescription(categoryType)}</p>
       </div>
-
-      {(searchQuery !== undefined && setSearchQuery && viewMode !== undefined && setViewMode) && (
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-          <SearchBar query={searchQuery} setQuery={setSearchQuery} />
-          <div className="flex items-center gap-4">
-            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
-              <ToggleGroupItem value="grid" aria-label="Сетка">
-                <Grid2X2 className="h-4 w-4 mr-1" />
-                <span>Сетка</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="list" aria-label="Список">
-                <List className="h-4 w-4 mr-1" />
-                <span>Список</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        </div>
-      )}
+      {renderActions()}
     </div>
-  );
+
+    {(searchQuery !== undefined && setSearchQuery && viewMode !== undefined && setViewMode) && (
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+        <SearchBar query={searchQuery} setQuery={setSearchQuery} />
+        <div className="flex items-center gap-4">
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}
+          >
+            <ToggleGroupItem
+              value="grid"
+              aria-label="Сетка"
+              className="text-blue-700 hover:bg-blue-100 data-[state=on]:bg-blue-200 data-[state=on]:text-blue-900"
+            >
+              <Grid2X2 className="h-4 w-4 mr-1" />
+              <span>Сетка</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="list"
+              aria-label="Список"
+              className="text-blue-700 hover:bg-blue-100 data-[state=on]:bg-blue-200 data-[state=on]:text-blue-900"
+            >
+              <List className="h-4 w-4 mr-1" />
+              <span>Список</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 }
