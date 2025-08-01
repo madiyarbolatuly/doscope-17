@@ -25,20 +25,26 @@ const Index = () => {
           id: `project-${selectedProjectId}-folder-1`,
           name: 'Проектная документация',
           type: 'folder',
-          parentId: null,
+          parent_id: null,
+          modified: new Date().toISOString(),
+          owner: 'Система',
           children: [
             {
               id: `project-${selectedProjectId}-folder-1-1`,
               name: 'Архитектурные чертежи',
               type: 'folder',
-              parentId: `project-${selectedProjectId}-folder-1`,
+              parent_id: `project-${selectedProjectId}-folder-1`,
+              modified: new Date().toISOString(),
+              owner: 'Система',
               children: []
             },
             {
               id: `project-${selectedProjectId}-folder-1-2`,
               name: 'Конструктивные решения',
               type: 'folder',
-              parentId: `project-${selectedProjectId}-folder-1`,
+              parent_id: `project-${selectedProjectId}-folder-1`,
+              modified: new Date().toISOString(),
+              owner: 'Система',
               children: []
             }
           ]
@@ -47,20 +53,26 @@ const Index = () => {
           id: `project-${selectedProjectId}-folder-2`,
           name: 'Договоры и согласования',
           type: 'folder',
-          parentId: null,
+          parent_id: null,
+          modified: new Date().toISOString(),
+          owner: 'Система',
           children: []
         },
         {
           id: `project-${selectedProjectId}-folder-3`,
           name: 'Техническая документация',
           type: 'folder',
-          parentId: null,
+          parent_id: null,
+          modified: new Date().toISOString(),
+          owner: 'Система',
           children: [
             {
               id: `project-${selectedProjectId}-folder-3-1`,
               name: 'Спецификации',
               type: 'folder',
-              parentId: `project-${selectedProjectId}-folder-3`,
+              parent_id: `project-${selectedProjectId}-folder-3`,
+              modified: new Date().toISOString(),
+              owner: 'Система',
               children: []
             }
           ]
@@ -121,7 +133,9 @@ const Index = () => {
       id: `folder-${Date.now()}`,
       name: folderName,
       type: 'folder',
-      parentId: parentId || null,
+      parent_id: parentId || null,
+      modified: new Date().toISOString(),
+      owner: 'Пользователь',
       children: []
     };
 
@@ -189,6 +203,20 @@ const Index = () => {
     });
   };
 
+  // Find the selected node for ShareModal
+  const findNodeById = (nodes: TreeNode[], id: string): TreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findNodeById(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const shareNode = shareNodeId ? findNodeById(folderTreeData, shareNodeId) : null;
+
   if (!selectedProjectId) {
     return <ProjectsGrid onProjectSelect={handleProjectSelect} />;
   }
@@ -225,12 +253,12 @@ const Index = () => {
       </div>
 
       {/* Share Modal */}
-      <ShareModal
-        open={showShareModal}
-        onOpenChange={setShowShareModal}
-        nodeId={shareNodeId}
-        nodeName={shareNodeId ? folderTreeData.find(n => n.id === shareNodeId)?.name || 'Папка' : 'Папка'}
-      />
+      {shareNode && (
+        <ShareModal
+          document={shareNode}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 };
