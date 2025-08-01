@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useShare } from '../hooks/useShare';
 import { Document } from '@/types/document';
