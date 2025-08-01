@@ -37,6 +37,7 @@ interface TreeViewItemProps {
   selectedId: string | null;
   allNodes: TreeNode[];
   onAction: (action: string, nodeId: string, data?: any) => void;
+  expandedNodes: Set<string>;
 }
 
 export const TreeViewItem: React.FC<TreeViewItemProps> = ({
@@ -47,11 +48,14 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   onSelect,
   selectedId,
   allNodes,
-  onAction
+  onAction,
+  expandedNodes
 }) => {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [newName, setNewName] = useState(node.name);
+  const [newFolderName, setNewFolderName] = useState('');
   const [selectedTargetFolder, setSelectedTargetFolder] = useState<string>('');
 
   const isSelected = selectedId === node.id;
@@ -69,7 +73,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
         setShowMoveDialog(true);
         break;
       case 'add-subfolder':
-        onAction('add-subfolder', node.id);
+        setShowCreateFolderDialog(true);
         break;
       case 'share':
         onAction('share', node.id);
@@ -110,6 +114,14 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
     }
     setShowMoveDialog(false);
     setSelectedTargetFolder('');
+  };
+
+  const handleCreateFolder = () => {
+    if (newFolderName.trim()) {
+      onAction('create-subfolder', node.id, { folderName: newFolderName.trim() });
+    }
+    setShowCreateFolderDialog(false);
+    setNewFolderName('');
   };
 
   const getFolderOptions = (excludeId: string): TreeNode[] => {
@@ -243,12 +255,13 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               key={child.id}
               node={child}
               level={level + 1}
-              isExpanded={false}
+              isExpanded={expandedNodes.has(child.id)}
               onToggle={onToggle}
               onSelect={onSelect}
               selectedId={selectedId}
               allNodes={allNodes}
               onAction={onAction}
+              expandedNodes={expandedNodes}
             />
           ))}
         </div>
@@ -282,6 +295,40 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
             </Button>
             <Button onClick={handleRename}>
               Переименовать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Folder Dialog */}
+      <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Создать новую папку</DialogTitle>
+            <DialogDescription>
+              Введите имя для новой подпапки в "{node.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="folderName" className="text-right">
+                Имя папки
+              </Label>
+              <Input
+                id="folderName"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                className="col-span-3"
+                placeholder="Имя новой папки"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
+              Создать
             </Button>
           </DialogFooter>
         </DialogContent>

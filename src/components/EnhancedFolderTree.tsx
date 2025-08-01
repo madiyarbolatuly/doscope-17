@@ -1,9 +1,20 @@
+
 import React, { useState, useEffect } from 'react';
 import { TreeNode } from '@/utils/buildTree';
 import { TreeViewItem } from './TreeViewItem';
 import { Button } from './ui/button';
-import { Upload } from 'lucide-react';
+import { FolderPlus, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 interface EnhancedFolderTreeProps {
   data: TreeNode[];
@@ -14,6 +25,9 @@ interface EnhancedFolderTreeProps {
   onArchive?: (nodeId: string) => void;
   onFavorite?: (nodeId: string) => void;
   onDelete?: (nodeId: string) => void;
+  onCreateFolder?: (folderName: string, parentId?: string) => void;
+  onMoveNode?: (nodeId: string, targetFolderId: string) => void;
+  onRenameNode?: (nodeId: string, newName: string) => void;
 }
 
 export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
@@ -24,36 +38,49 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
   onShare,
   onArchive,
   onFavorite,
-  onDelete
+  onDelete,
+  onCreateFolder,
+  onMoveNode,
+  onRenameNode
 }) => {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   useEffect(() => {
-    const expandAll = (nodes: TreeNode[], expanded: Set<string>) => {
-      for (const node of nodes) {
-        expanded.add(node.id);
-        if (node.children) expandAll(node.children, expanded);
-      }
-      return expanded;
-    };
-    setExpandedNodes(expandAll(data, new Set()));
+    // Start with all root nodes expanded
+    const rootNodes = new Set(data.map(node => node.id));
+    setExpandedNodes(rootNodes);
   }, [data]);
 
   const toggleNode = (id: string) => {
     setExpandedNodes(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) newSet.delete(id);
-      else newSet.add(id);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
       return newSet;
     });
   };
 
   const handleAction = (action: string, nodeId: string, data?: any) => {
     switch (action) {
-      case 'share': return onShare?.(nodeId);
-      case 'archive': return onArchive?.(nodeId);
-      case 'favorite': return onFavorite?.(nodeId);
-      case 'delete': return onDelete?.(nodeId);
+      case 'share': 
+        return onShare?.(nodeId);
+      case 'archive': 
+        return onArchive?.(nodeId);
+      case 'favorite': 
+        return onFavorite?.(nodeId);
+      case 'delete': 
+        return onDelete?.(nodeId);
+      case 'rename':
+        return onRenameNode?.(nodeId, data?.newName);
+      case 'move':
+        return onMoveNode?.(nodeId, data?.targetFolderId);
+      case 'create-subfolder':
+        return onCreateFolder?.(data?.folderName, nodeId);
       case 'upload': {
         const input = document.createElement('input');
         input.type = 'file';
@@ -85,9 +112,26 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
     input.click();
   };
 
+  const handleCreateRootFolder = () => {
+    if (newFolderName.trim() && onCreateFolder) {
+      onCreateFolder(newFolderName.trim());
+      setNewFolderName('');
+      setShowCreateFolderDialog(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex gap-2 p-2 border-b">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setShowCreateFolderDialog(true)}
+          className="flex items-center gap-2"
+        >
+          <FolderPlus className="h-4 w-4" />
+          Новая папка
+        </Button>
         <Button variant="outline" size="sm" onClick={handleRootUpload} className="flex items-center gap-2">
           <Upload className="h-4 w-4" />
           Загрузить
@@ -111,11 +155,46 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
                 selectedId={selectedId}
                 allNodes={data}
                 onAction={handleAction}
+                expandedNodes={expandedNodes}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Create Root Folder Dialog */}
+      <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Создать новую папку</DialogTitle>
+            <DialogDescription>
+              Введите имя для новой папки в корневом каталоге
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="rootFolderName" className="text-right">
+                Имя папки
+              </Label>
+              <Input
+                id="rootFolderName"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                className="col-span-3"
+                placeholder="Имя новой папки"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleCreateRootFolder} disabled={!newFolderName.trim()}>
+              Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

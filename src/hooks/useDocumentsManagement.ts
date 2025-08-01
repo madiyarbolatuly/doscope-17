@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Document, CategoryType } from '@/types/document';
 import { mockApi, MockDocument } from '@/services/mockApi';
@@ -102,6 +103,72 @@ export function useDocumentsManagement({
     }
   }, [currentFolderId, loadDocuments, toast]);
 
+  const handleToggleFavorite = useCallback(async (documentId: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8000/v2/metadata/${documentId}/star?repo_cls=document`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle favorite');
+      }
+
+      await loadDocuments();
+      toast({
+        title: 'Успешно',
+        description: 'Статус избранного изменен',
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось изменить статус избранного',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [loadDocuments, toast]);
+
+  const handleArchiveDocument = useCallback(async (fileName: string) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:8000/v2/metadata/archive/${encodeURIComponent(fileName)}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to archive document');
+      }
+
+      await loadDocuments();
+      toast({
+        title: 'Успешно',
+        description: 'Документ архивирован',
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error archiving document:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось архивировать документ',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [loadDocuments, toast]);
+
   return {
     documents,
     loading,
@@ -112,6 +179,8 @@ export function useDocumentsManagement({
     setSortOrder,
     setSearchQuery,
     loadDocuments,
-    handleFileUpload
+    handleFileUpload,
+    handleToggleFavorite,
+    handleArchiveDocument
   };
 }
