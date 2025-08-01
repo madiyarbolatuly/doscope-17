@@ -1,3 +1,4 @@
+
 import { Document } from '@/types/document';
 
 export interface TreeNode extends Document {
@@ -5,7 +6,8 @@ export interface TreeNode extends Document {
 }
 
 // 1. Build a lookup of nodes, each with an empty children array.
-// 2. For each node, if it has a parent_id, push it into its parent’s children.
+// 2. For each node, if it has a parent_id, push it into its parent's children.
+// 3. Wrap everything in a "Pepsico" root folder
 export function buildTree(docs: Document[]): TreeNode[] {
   const nodes: Record<string, TreeNode> = {};
   docs.forEach(d => {
@@ -27,5 +29,15 @@ export function buildTree(docs: Document[]): TreeNode[] {
     }
   });
 
-  return roots;
+  // Create the Pepsico root folder that wraps everything
+  const pepsicoRoot: TreeNode = {
+    id: 'pepsico-root',
+    name: 'Pepsico',
+    type: 'folder',
+    modified: new Date().toISOString(),
+    owner: 'System',
+    children: roots
+  };
+
+  return [pepsicoRoot];
 }
