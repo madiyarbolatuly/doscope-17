@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CategoryType, Document } from '@/types/document';
@@ -6,6 +5,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { Sidebar } from '@/components/Sidebar';
 import { FolderNavigation } from '@/components/FolderNavigation';
 import { BreadcrumbNavigation } from '@/components/BreadcrumbNavigation';
+import { RootFolderAccess } from '@/components/RootFolderAccess';
 import { FileUploadDialog } from '@/components/FileUploadDialog';
 import { DocumentControls } from '@/components/features/documents/DocumentControls';
 import { useDocumentsManagement } from '@/hooks/useDocumentsManagement';
@@ -80,17 +80,29 @@ const Documents = () => {
     setShowUploadDialog(true);
   };
 
+  const handleNavigateToRoot = () => {
+    setCurrentFolderId(undefined);
+    clearSelection();
+    updateBreadcrumbs(undefined);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar activeCategory={activeCategory} onCategoryChange={setActiveCategory} />
       
       <div className="flex-1 overflow-auto">
         <div className="p-6">
-          {/* Breadcrumb Navigation */}
-          <BreadcrumbNavigation 
-            items={breadcrumbs}
-            onNavigate={handleBreadcrumbNavigateLocal}
-          />
+          {/* Root Folder Access and Breadcrumb Navigation */}
+          <div className="flex items-center gap-2 mb-4">
+            <RootFolderAccess 
+              currentFolderId={currentFolderId}
+              onNavigateToRoot={handleNavigateToRoot}
+            />
+            <BreadcrumbNavigation 
+              items={breadcrumbs}
+              onNavigate={handleBreadcrumbNavigateLocal}
+            />
+          </div>
 
           <PageHeader 
             title="Документы"
