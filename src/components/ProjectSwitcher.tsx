@@ -25,11 +25,11 @@ interface Project {
 
 // Mock projects data - replace with your actual data source
 const mockProjects: Project[] = [
-  { id: '1', name: 'Pepsico Marketing Campaign', userEmail: 'john.doe@pepsico.com' },
-  { id: '2', name: 'Product Launch Documentation', userEmail: 'jane.smith@pepsico.com' },
-  { id: '3', name: 'Q4 Financial Reports', userEmail: 'mike.johnson@pepsico.com' },
-  { id: '4', name: 'Brand Guidelines Update', userEmail: 'sarah.wilson@pepsico.com' },
-  { id: '5', name: 'Market Research Analysis', userEmail: 'david.brown@pepsico.com' },
+  { id: '1', name: 'Pepsico', userEmail: 'smth@pepsico.com' },
+  { id: '2', name: 'ПГУ Туркестан', userEmail: 'snk@samruk.kz' },
+  { id: '3', name: 'Жем', userEmail: 'srv@skbs.com' },
+  { id: '4', name: 'Караганда AБЗ', userEmail: 'snk@samruk.kz' },
+  { id: '5', name: 'Кызылорда Стадион', userEmail: 'snk@samruk.kz' },
 ];
 
 interface ProjectSwitcherProps {
@@ -82,16 +82,15 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
         <PopoverContent className="w-[280px] p-0" align="start">
           <Command>
             <div className="flex items-center border-b px-3">
-              <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <CommandInput
-                placeholder="Search projects..."
+                placeholder="Найти проекты..."
                 value={searchQuery}
                 onValueChange={setSearchQuery}
                 className="border-0 bg-transparent focus:ring-0"
               />
             </div>
             <CommandList>
-              <CommandEmpty>No projects found.</CommandEmpty>
+              <CommandEmpty>Ничего не найдено.</CommandEmpty>
               <CommandGroup>
                 {filteredProjects.map((project) => (
                   <CommandItem

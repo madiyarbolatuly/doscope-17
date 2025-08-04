@@ -44,6 +44,19 @@ interface BackendDocument {
 }
 const mockDocuments: Document[] = [
   {
+    "id": "6ac608f5-1217-44a5-ac50-51340597e317",
+    "name": "PepsiCo",
+    "type": "folder",
+    "size": "882.91 MB",
+    "modified": "2025-07-18T05:16:21.383081Z",
+    "owner": "MADIYAR SADU",
+    "category": "general",
+    "path": "/",
+    "tags": [],
+    "archived": false,
+    "starred": false
+  },
+  {
     "id": "d1ab4a7f-c7c2-4fa2-8d97-00e57f0fcbb7",
     "name": "Топология для СКС, СВН, СКУД.pdf",
     "type": "file",
@@ -67,7 +80,7 @@ const mockDocuments: Document[] = [
     "path": "Вендор лист Завод Пепси (1).pdf",
     "tags": [],
     "archived": false,
-    "starred": false
+    "starred": true
   },
   {
     "id": "29ccdadc-ecff-4483-b65c-d28ef10d95b6",
@@ -93,7 +106,7 @@ const mockDocuments: Document[] = [
     "path": "PepsiCO Полученные разделы.xlsx",
     "tags": [],
     "archived": false,
-    "starred": false
+    "starred": true
   },
   {
     "id": "dbf1ce82-1afc-4342-9360-5fb2dda3338f",
@@ -119,7 +132,8 @@ const mockDocuments: Document[] = [
     "path": "Пояснительная_записка_PepsiCo/",
     "tags": [],
     "archived": false,
-    "starred": false
+    "starred": false,
+    "parent_id":  "6ac608f5-1217-44a5-ac50-51340597e317"
   },
   {
     "id": "89d0b4f0-b770-4c60-bc9b-afa088cf7f63",
@@ -174,7 +188,9 @@ const mockDocuments: Document[] = [
     "path": "1.Исх данные/",
     "tags": [],
     "archived": false,
-    "starred": false
+    "starred": false,
+    "parent_id":  "6ac608f5-1217-44a5-ac50-51340597e317"
+
   },
   {
     "id": "d973f816-89de-415a-829f-74d63f03a2de",
@@ -9679,7 +9695,9 @@ const mockDocuments: Document[] = [
     "path": "4. Procurement/",
     "tags": [],
     "archived": false,
-    "starred": false
+    "starred": false,
+    "parent_id":  "6ac608f5-1217-44a5-ac50-51340597e317"
+
   },
   {
     "id": "6687d08d-0bbc-4cd7-b755-e4111539c439",
@@ -12555,22 +12573,20 @@ const mockDocuments: Document[] = [
 
 
 const Index = () => {
-  const [showUploadDialog, setShowUploadDialog] = useState(false);
-  const [category, setCategory] = useState<CategoryType>('all');
+  const [category] = useState<CategoryType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [currentPath, setCurrentPath] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const navigate = useNavigate();
   const [isDragging, setIsDragging] = useState(false);
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [dragCounter, setDragCounter] = useState(0);
+  const [setDragCounter] = useState(0);
   const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -12677,7 +12693,7 @@ const Index = () => {
     });
 
     try {
-      const response = await axios.post("http://localhost:8000/v2/upload", formData, {
+      const response = await axios.post("http://localhost:8000/v2/upload-folder-bulk", formData, {
         headers: {
           "Authorization": `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
