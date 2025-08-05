@@ -12,7 +12,7 @@ export function useArchiveDocuments() {
     setLoading(true);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('http://localhost:8000/v2/metadata/archive/list', {
+      const response = await fetch('/api/v2/metadata/archive/list', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -69,7 +69,7 @@ export function useArchiveDocuments() {
   const archiveDocument = async (fileName: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:8000/v2/metadata/archive/${encodeURIComponent(fileName)}`, {
+      const response = await fetch(`/api/v2/metadata/archive/${encodeURIComponent(fileName)}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -103,7 +103,7 @@ export function useArchiveDocuments() {
   const unarchiveDocument = async (fileName: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:8000/v2/metadata/un-archive/${encodeURIComponent(fileName)}`, {
+      const response = await fetch(`/api/v2/metadata/un-archive/${encodeURIComponent(fileName)}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

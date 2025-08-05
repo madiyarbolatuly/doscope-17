@@ -107,7 +107,7 @@ const TrashBin = () => {
   const fetchTrashedDocuments = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:8000/v2/trash", {
+      const response = await fetch("/api/v2/trash", {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -190,7 +190,7 @@ const TrashBin = () => {
       }
 
       const encodedFileName = encodeURIComponent(document.name);
-      await axios.post(`http://localhost:8000/v2/restore/${encodedFileName}`, {}, {
+              await axios.post(`/api/v2/restore/${encodedFileName}`, {}, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -222,7 +222,7 @@ const TrashBin = () => {
       }
 
       const encodedFileName = encodeURIComponent(document.name);
-      await axios.delete(`http://localhost:8000/v2/trash/${encodedFileName}`, {
+              await axios.delete(`/api/v2/trash/${encodedFileName}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -261,7 +261,7 @@ const TrashBin = () => {
     for (const doc of selectedDocs) {
       try {
         const encodedFileName = encodeURIComponent(doc.name);
-        await axios.post(`http://localhost:8000/v2/restore/${encodedFileName}`, {}, {
+        await axios.post(`/api/v2/restore/${encodedFileName}`, {}, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         successCount++;
@@ -300,7 +300,7 @@ const TrashBin = () => {
     for (const doc of selectedDocs) {
       try {
         const encodedFileName = encodeURIComponent(doc.name);
-        await axios.delete(`http://localhost:8000/v2/trash/${encodedFileName}`, {
+        await axios.delete(`/api/v2/trash/${encodedFileName}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         successCount++;

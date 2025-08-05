@@ -18,95 +18,100 @@ import DocumentDetails from './pages/DocumentDetails';
 import Dashboard from './pages/Dashboard';
 import Notifications from './pages/Notifications';
 import { PermissionGuard } from './components/PermissionGuard';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import Favorites from './pages/Favorites';
 import SharedDocuments from './pages/SharedDocuments';
 
-// Removed <ProtectedRoute /> so users are never redirected to login
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Public route - Login */}
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/">
-                <Index />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/shared" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/shared">
-                <SharedDocuments />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/archived" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/archived">
-                <ArchivedPage />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/notifications" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/notifications">
-                <NotificationsPage />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/fileupload" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/fileupload">
-                <FileUpload />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/usersmanagement" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/usersmanagement">
-                <UserManagement />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/approvals" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/approvals">
-                <Approvals />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/settings" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/settings">
-                <Settings />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
-          <Route path="/documentdetails" element={<AppLayout><DocumentDetails /></AppLayout>} />
-          <Route path="/trash" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/trash">
-                <TrashBin />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/dashboard" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/dashboard">
-                <Dashboard />
-              </PermissionGuard>
-            </AppLayout>
-          } />
-          <Route path="/favorites" element={
-            <AppLayout>
-              <PermissionGuard pagePath="/favorites">
-                <Favorites />
-              </PermissionGuard>
-            </AppLayout>
-          } />
+          
+          {/* Protected routes - All other routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/">
+                  <Index />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/shared" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/shared">
+                  <SharedDocuments />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/archived" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/archived">
+                  <ArchivedPage />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/notifications" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/notifications">
+                  <NotificationsPage />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/fileupload" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/fileupload">
+                  <FileUpload />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/usersmanagement" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/usersmanagement">
+                  <UserManagement />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/approvals" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/approvals">
+                  <Approvals />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/settings" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/settings">
+                  <Settings />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
+            <Route path="/documentdetails" element={<AppLayout><DocumentDetails /></AppLayout>} />
+            <Route path="/trash" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/trash">
+                  <TrashBin />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/dashboard" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/dashboard">
+                  <Dashboard />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            <Route path="/favorites" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/favorites">
+                  <Favorites />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+          </Route>
         </Routes>
         <Toaster />
       </Router>

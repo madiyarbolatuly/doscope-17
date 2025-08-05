@@ -18,8 +18,8 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 const Login = () => {
-  const [username, setUsername] = useState('string');
-  const [password, setPassword] = useState('string');
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();

@@ -15,94 +15,86 @@ import {
 import { Document } from '@/types/document';
 import { Archive, Grid2X2, List, RotateCcw, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getArchivedDocuments, unarchiveDocument, deleteDocument } from '@/services/archiveService';
 
-// Mock archived documents
-const mockArchivedDocuments: Document[] = [
-  {
-    id: 'arch-1',
-    name: 'Quarterly Financial Report Q3 2024.pdf',
-    type: 'pdf',
-    size: '3.2 MB',
-    modified: '2024-01-20T14:30:00Z',
-    owner: 'Sarah Johnson',
-    category: 'Financial reports and analysis',
-    path: '/finance/q3-report.pdf',
-    tags: ['quarterly', 'finance', 'report'],
-    archived: true
-  },
-  {
-    id: 'arch-2',
-    name: 'Product Development Roadmap 2024',
-    type: 'folder',
-    size: '125 MB',
-    modified: '2024-01-18T09:15:00Z',
-    owner: 'Mike Chen',
-    category: 'Product development plans',
-    path: '/products/roadmap-2024/',
-    tags: ['product', 'roadmap', '2024'],
-    archived: true
-  },
-  {
-    id: 'arch-3',
-    name: 'Marketing Campaign Analysis.xlsx',
-    type: 'xlsx',
-    size: '2.8 MB',
-    modified: '2024-01-15T16:45:00Z',
-    owner: 'Emma Davis',
-    category: 'Marketing performance data',
-    path: '/marketing/campaign-analysis.xlsx',
-    tags: ['marketing', 'analysis', 'campaign'],
-    archived: true
-  },
-  {
-    id: 'arch-4',
-    name: 'Technical Documentation v2.1.docx',
-    type: 'doc',
-    size: '1.5 MB',
-    modified: '2024-01-12T11:20:00Z',
-    owner: 'Alex Thompson',
-    category: 'Technical documentation',
-    path: '/docs/tech-docs-v2.docx',
-    tags: ['technical', 'documentation', 'v2'],
-    archived: true
-  },
-  {
-    id: 'arch-5',
-    name: 'Company Logo Variations',
-    type: 'folder',
-    size: '45 MB',
-    modified: '2024-01-10T13:30:00Z',
-    owner: 'Lisa Wang',
-    category: 'Brand assets and guidelines',
-    path: '/assets/logo-variations/',
-    tags: ['branding', 'logo', 'assets'],
-    archived: true
-  },
-  {
-    id: 'arch-6',
-    name: 'Project Timeline.pdf',
-    type: 'pdf',
-    size: '890 KB',
-    modified: '2024-01-08T10:15:00Z',
-    owner: 'David Brown',
-    category: 'Project management documents',
-    path: '/projects/timeline.pdf',
-    tags: ['project', 'timeline', 'planning'],
-    archived: true
-  }
-];
+interface BackendArchivedDocument {
+  id: string;
+  name: string;
+  file_path: string;
+  created_at: string;
+  size: number;
+  file_type: string;
+  tags: string[] | null;
+  categories: string[] | null;
+  status: string;
+  file_hash: string;
+  access_to: string[] | null;
+  parent_id: string | null;
+  owner_id: string;
+}
 
 const ArchivedPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  const token = localStorage.getItem('authToken');
+
+  // Fetch archived documents from API
+  const fetchArchivedDocuments = async () => {
+    if (!token) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await getArchivedDocuments(token);
+      
+      if (response.documents && Array.isArray(response.documents)) {
+        const transformedDocuments: Document[] = response.documents.map((doc: BackendArchivedDocument) => ({
+          id: doc.id,
+          name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
+          type: doc.file_type ? (
+            doc.file_type.includes('pdf') ? 'pdf' :
+            doc.file_type.includes('doc') ? 'doc' :
+            doc.file_type.includes('xls') ? 'xlsx' :
+            doc.file_type.includes('ppt') ? 'ppt' :
+            doc.file_type.includes('pptx') ? 'pptx' :
+            doc.file_type.includes('png') ? 'png' :
+            doc.file_type.includes('image') ? 'image' : 'file'
+          ) : 'file',
+          size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
+          modified: doc.created_at,
+          owner: doc.owner_id,
+          category: doc.categories?.[0] || 'uncategorized',
+          path: doc.file_path,
+          tags: doc.tags || [],
+          parent_id: doc.parent_id ?? null,
+          archived: true,
+          starred: false,
+        }));
+        
+        setDocuments(transformedDocuments);
+      } else {
+        setDocuments([]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching archived documents:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch archived documents",
+        variant: "destructive"
+      });
+      setDocuments([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // In a real app, this would fetch from API
-    setDocuments(mockArchivedDocuments);
-  }, []);
+    fetchArchivedDocuments();
+  }, [token]);
 
   const filteredDocuments = documents.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -124,46 +116,122 @@ const ArchivedPage = () => {
     );
   };
 
-  const handleRestore = (document: Document) => {
-    toast({
-      title: "Document restored",
-      description: `${document.name} has been restored from archive`,
-    });
-    setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+  const handleRestore = async (document: Document) => {
+    if (!token) return;
+    
+    try {
+      await unarchiveDocument(document.name, token);
+      
+      toast({
+        title: "Success",
+        description: `${document.name} has been restored from archive`,
+      });
+      
+      // Refresh the list
+      fetchArchivedDocuments();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore document",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handlePermanentDelete = (document: Document) => {
-    toast({
-      title: "Document deleted",
-      description: `${document.name} has been permanently deleted`,
-      variant: "destructive"
-    });
-    setDocuments(prev => prev.filter(doc => doc.id !== document.id));
+  const handlePermanentDelete = async (document: Document) => {
+    if (!token) return;
+    
+    try {
+      await deleteDocument(document.id, token);
+      
+      toast({
+        title: "Success",
+        description: `${document.name} has been permanently deleted`,
+        variant: "destructive"
+      });
+      
+      // Refresh the list
+      fetchArchivedDocuments();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete document",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleRestoreSelected = () => {
-    if (selectedDocuments.length === 0) return;
+  const handleRestoreSelected = async () => {
+    if (selectedDocuments.length === 0 || !token) return;
     
-    toast({
-      title: "Documents restored",
-      description: `${selectedDocuments.length} document(s) restored from archive`,
-    });
+    let successCount = 0;
+    let failCount = 0;
     
-    setDocuments(prev => prev.filter(doc => !selectedDocuments.includes(doc.id)));
-    setSelectedDocuments([]);
+    for (const docId of selectedDocuments) {
+      const doc = documents.find(d => d.id === docId);
+      if (doc) {
+        try {
+          await unarchiveDocument(doc.name, token);
+          successCount++;
+        } catch (error) {
+          console.error(`Error restoring document ${doc.name}:`, error);
+          failCount++;
+        }
+      }
+    }
+    
+    if (successCount > 0) {
+      toast({
+        title: "Success",
+        description: `${successCount} document(s) restored from archive${failCount > 0 ? `, ${failCount} failed` : ''}`,
+      });
+      
+      setSelectedDocuments([]);
+      fetchArchivedDocuments();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to restore any documents",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedDocuments.length === 0) return;
+  const handleDeleteSelected = async () => {
+    if (selectedDocuments.length === 0 || !token) return;
     
-    toast({
-      title: "Documents deleted",
-      description: `${selectedDocuments.length} document(s) permanently deleted`,
-      variant: "destructive"
-    });
+    let successCount = 0;
+    let failCount = 0;
     
-    setDocuments(prev => prev.filter(doc => !selectedDocuments.includes(doc.id)));
-    setSelectedDocuments([]);
+    for (const docId of selectedDocuments) {
+      const doc = documents.find(d => d.id === docId);
+      if (doc) {
+        try {
+          await deleteDocument(doc.id, token);
+          successCount++;
+        } catch (error) {
+          console.error(`Error deleting document ${doc.name}:`, error);
+          failCount++;
+        }
+      }
+    }
+    
+    if (successCount > 0) {
+      toast({
+        title: "Success",
+        description: `${successCount} document(s) permanently deleted${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        variant: "destructive"
+      });
+      
+      setSelectedDocuments([]);
+      fetchArchivedDocuments();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to delete any documents",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -224,7 +292,14 @@ const ArchivedPage = () => {
         </div>
       )}
 
-      {filteredDocuments.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-lg border">
+          <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
+            <Archive className="h-8 w-8 text-muted-foreground animate-pulse" />
+          </div>
+          <h3 className="text-lg font-medium mb-1">Loading archived documents...</h3>
+        </div>
+      ) : filteredDocuments.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-lg border">
           <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
             <Archive className="h-8 w-8 text-muted-foreground" />

@@ -18,23 +18,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(() => {
-    try {
-      const storedToken = localStorage.getItem('authToken');
-      if (!storedToken) {
-        // Set mock token for development
-        const mockToken = 'mock-admin-token-12345';
-        localStorage.setItem('authToken', mockToken);
-        return mockToken;
-      }
-      return storedToken;
-    } catch {
-      return 'mock-admin-token-12345';
-    }
+    return localStorage.getItem('authToken');
   });
   
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true); // Always authenticated in development
-  const [isLoading, setIsLoading] = useState<boolean>(false); // No loading for mock user
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   // Effect to load user data when token exists
@@ -42,11 +31,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const loadUserData = async () => {
       if (token) {
         try {
-          // Always set mock admin user for development
-          const mockUser: User = {
-            id: 'mock-admin-user',
-            username: 'admin',
-            email: 'admin@company.com',
+          // Try to get real user data from API
+          const userData = await getCurrentUser();
+          const fullUser: User = {
+            id: userData.id,
+            username: userData.username,
+            email: userData.email || `${userData.username}@company.com`,
             role: 'admin',
             permissions: ['*'],
             departments: ['development'],
@@ -54,25 +44,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             createdAt: new Date().toISOString(),
             lastLogin: new Date().toISOString()
           };
-          setUser(mockUser);
+          setUser(fullUser);
           setIsAuthenticated(true);
         } catch (err) {
           console.error("Failed to load user data", err);
-          // Even if there's an error, keep the mock user
-          const mockUser: User = {
-            id: 'mock-admin-user',
-            username: 'admin',
-            email: 'admin@company.com',
-            role: 'admin',
-            permissions: ['*'],
-            departments: ['development'],
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString()
-          };
-          setUser(mockUser);
-          setIsAuthenticated(true);
+          // If API call fails, clear token and redirect to login
+          localStorage.removeItem('authToken');
+          setToken(null);
+          setUser(null);
+          setIsAuthenticated(false);
         }
+      } else {
+        setIsAuthenticated(false);
       }
       setIsLoading(false);
     };
@@ -82,9 +65,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (credentials: { username: string; password: string }) => {
     setError(null);
+    setIsLoading(true);
     try {
       const data = await loginUserService(credentials);
       setToken(data.access_token);
+      localStorage.setItem('authToken', data.access_token);
       setIsAuthenticated(true);
       
       // Fetch user data after successful login
@@ -108,11 +93,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || "Failed to login");
       throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = () => {
     logoutUserService();
+    localStorage.removeItem('authToken');
     setToken(null);
     setUser(null);
     setIsAuthenticated(false);

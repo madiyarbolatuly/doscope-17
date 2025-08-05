@@ -1,6 +1,6 @@
 
 // API configuration
-export const API_ROOT = import.meta.env.VITE_API_ROOT || "http://localhost:8000/v2";
+export const API_ROOT = import.meta.env.VITE_API_ROOT || "/api/v2";
 
 // Authentication endpoints
 export const AUTH_ENDPOINTS = {
@@ -41,4 +41,4 @@ export const NOTIFICATION_ENDPOINTS = {
 };
 
 // OpenAPI spec endpoint
-export const OPENAPI_SPEC_URL = "http://localhost:8000/openapi.json";
+export const OPENAPI_SPEC_URL = "/api/openapi.json";

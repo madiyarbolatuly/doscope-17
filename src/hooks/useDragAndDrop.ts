@@ -14,7 +14,7 @@ export function useDragAndDrop({ onDrop }: { onDrop: (files: File[]) => Promise<
       if (item.isFile) {
         const fileEntry = item as FileSystemFileEntry;
         fileEntry.file((file) => {
-          (file as any).relativePath = path + file.name;
+          (file as File & { relativePath?: string }).relativePath = path + file.name;
           fileList.push(file);
           resolve();
         });
@@ -26,6 +26,8 @@ export function useDragAndDrop({ onDrop }: { onDrop: (files: File[]) => Promise<
           }
           resolve();
         });
+      } else {
+        resolve();
       }
     });
   };
@@ -61,17 +63,7 @@ export function useDragAndDrop({ onDrop }: { onDrop: (files: File[]) => Promise<
     e.stopPropagation();
     setDragCounter(0);
     setIsDragging(false);
-
-    const items = e.dataTransfer.items;
-    const files: File[] = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i].webkitGetAsEntry?.();
-      if (item) {
-        await traverseFileTree(item, '', files);
-      }
-    }
-    await onDrop(files);
+    await handleDropWithFolders(e);
   };
 
   return {

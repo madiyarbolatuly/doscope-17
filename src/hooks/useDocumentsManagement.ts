@@ -106,7 +106,7 @@ export function useDocumentsManagement({
   const handleToggleFavorite = useCallback(async (documentId: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:8000/v2/metadata/${documentId}/star?repo_cls=document`, {
+      const response = await fetch(`/api/v2/metadata/${documentId}/star?repo_cls=document`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -139,7 +139,7 @@ export function useDocumentsManagement({
   const handleArchiveDocument = useCallback(async (fileName: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:8000/v2/metadata/archive/${encodeURIComponent(fileName)}`, {
+      const response = await fetch(`/api/v2/metadata/archive/${encodeURIComponent(fileName)}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
