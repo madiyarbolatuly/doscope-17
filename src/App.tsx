@@ -21,6 +21,7 @@ import { PermissionGuard } from './components/PermissionGuard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Favorites from './pages/Favorites';
 import SharedDocuments from './pages/SharedDocuments';
+import FolderView from './pages/FolderView';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           
           {/* Protected routes - All other routes */}
           <Route element={<ProtectedRoute />}>
+            {/* Root documents */}
             <Route path="/" element={
               <AppLayout>
                 <PermissionGuard pagePath="/">
@@ -39,6 +41,26 @@ function App() {
                 </PermissionGuard>
               </AppLayout>
             } />
+            
+            {/* Folder navigation routes */}
+            <Route path="/folder/:folderId" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/folder">
+                  <FolderView />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            
+            {/* Document details route */}
+            <Route path="/document/:documentId" element={
+              <AppLayout>
+                <PermissionGuard pagePath="/document">
+                  <DocumentDetails />
+                </PermissionGuard>
+              </AppLayout>
+            } />
+            
+            {/* Existing routes */}
             <Route path="/shared" element={
               <AppLayout>
                 <PermissionGuard pagePath="/shared">
@@ -89,7 +111,6 @@ function App() {
               </AppLayout>
             } />
             <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
-            <Route path="/documentdetails" element={<AppLayout><DocumentDetails /></AppLayout>} />
             <Route path="/trash" element={
               <AppLayout>
                 <PermissionGuard pagePath="/trash">

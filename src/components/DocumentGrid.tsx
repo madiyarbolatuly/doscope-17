@@ -1,89 +1,80 @@
-
 import React from 'react';
 import { Document } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
 import { DocumentListItem } from './DocumentListItem';
+import { Link } from 'react-router-dom';
+import { Checkbox } from '@/components/ui/checkbox';
+import { FileText, File, FileSpreadsheet, FileImage, Folder } from 'lucide-react';
 
 interface DocumentGridProps {
   documents: Document[];
   onDocumentClick: (document: Document) => void;
-  onDocumentPreview: (document: Document) => void;
-  viewMode: 'grid' | 'list';
   onDocumentSelect: (document: Document) => void;
-  onToggleFavorite?: (document: Document) => void;
-  selectedDocument?: Document | null;
-  multipleSelection?: boolean;
-  selectionActions?: any;
-  toggleFavorite?: (documentId: string) => Promise<void>;
-  onArchive?: (fileName: string) => void;
-  onUnarchive?: (fileName: string) => void;
+  selectedDocumentIds: string[];
 }
 
-export function DocumentGrid({ 
-  documents, 
-  onDocumentClick, 
-  onDocumentPreview, 
-  viewMode, 
+export const DocumentGrid: React.FC<DocumentGridProps> = ({
+  documents,
+  onDocumentClick,
   onDocumentSelect,
-  onToggleFavorite,
-  selectedDocument,
-  multipleSelection = false,
-  selectionActions,
-  toggleFavorite,
-  onArchive,
-  onUnarchive
-}: DocumentGridProps) {
-  const handleToggleFavorite = (document: Document) => {
-    if (onToggleFavorite) {
-      onToggleFavorite(document);
-    } else if (toggleFavorite) {
-      toggleFavorite(document.id);
+  selectedDocumentIds,
+}) => {
+  const renderIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'folder':
+        return <Folder className="h-5 w-5 text-blue-500" />;
+      case 'pdf':
+        return <FileText className="h-5 w-5 text-red-500" />;
+      case 'doc':
+      case 'docx':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'xls':
+      case 'xlsx':
+        return <FileSpreadsheet className="h-5 w-5 text-green-500" />;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return <FileImage className="h-5 w-5 text-purple-500" />;
+      default:
+        return <File className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  if (documents.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="text-muted-foreground mb-4">
-          Документы не найдены
-        </div>
-      </div>
-    );
-  }
-
-  if (viewMode === 'grid') {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {documents.map((document) => (
-          <DocumentCard
-            key={document.id}
-            document={document}
-            onClick={() => onDocumentClick(document)}
-            onPreview={() => onDocumentPreview(document)}
-            onSelect={() => onDocumentSelect(document)}
-            onToggleFavorite={() => handleToggleFavorite(document)}
-            isSelected={selectedDocument?.id === document.id}
-            multipleSelection={multipleSelection}
-          />
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {documents.map((document) => (
-        <DocumentListItem
+        <div
           key={document.id}
-          document={document}
+          className={`relative group cursor-pointer rounded-lg border p-4 hover:shadow-md transition-shadow ${
+            selectedDocumentIds.includes(document.id) ? 'ring-2 ring-blue-500' : ''
+          }`}
           onClick={() => onDocumentClick(document)}
-          onPreview={() => onDocumentPreview(document)}
-          onSelect={() => onDocumentSelect(document)}
-          onToggleFavorite={() => handleToggleFavorite(document)}
-          isSelected={selectedDocument?.id === document.id}
-          multipleSelection={multipleSelection}
-        />
+        >
+          <div className="flex items-center justify-between mb-2">
+            <Checkbox
+              checked={selectedDocumentIds.includes(document.id)}
+              onCheckedChange={() => onDocumentSelect(document)}
+              onClick={(e) => e.stopPropagation()}
+            />
+            {document.type === 'folder' && (
+              <Link
+                to={`/folder/${document.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-blue-500 hover:text-blue-700"
+              >
+                Open
+              </Link>
+            )}
+          </div>
+          
+          <div className="text-center">
+            {renderIcon(document.type)}
+            <h3 className="mt-2 text-sm font-medium truncate">{document.name}</h3>
+            <p className="text-xs text-gray-500">{document.size}</p>
+          </div>
+        </div>
       ))}
     </div>
   );
-}
+};

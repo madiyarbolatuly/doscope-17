@@ -1,60 +1,48 @@
 import React from 'react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "./ui/breadcrumb";
-import { Home, Folder } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, Home } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface BreadcrumbItem {
-  id?: string;
+  id: string;
   name: string;
   path: string;
-  isActive?: boolean;
 }
 
 interface BreadcrumbNavigationProps {
   items: BreadcrumbItem[];
-  onNavigate: (item: BreadcrumbItem) => void;
+  onItemClick: (itemId: string) => void;
 }
 
-export function BreadcrumbNavigation({ items, onNavigate }: BreadcrumbNavigationProps) {
+export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
+  items,
+  onItemClick,
+}) => {
   return (
-    <Breadcrumb className="mb-4">
-      <BreadcrumbList>
-        {items.map((item, index) => (
-          <React.Fragment key={item.id || index}>
-            <BreadcrumbItem>
-              {item.isActive ? (
-                <BreadcrumbPage className="flex items-center gap-1">
-                  {index === 0 ? (
-                    <Home className="h-4 w-4" />
-                  ) : (
-                    <Folder className="h-4 w-4" />
-                  )}
-                  {item.name}
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink 
-                  onClick={() => onNavigate(item)}
-                  className="flex items-center gap-1 cursor-pointer hover:text-primary"
-                >
-                  {index === 0 ? (
-                    <Home className="h-4 w-4" />
-                  ) : (
-                    <Folder className="h-4 w-4" />
-                  )}
-                  {item.name}
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-            {index < items.length - 1 && <BreadcrumbSeparator />}
-          </React.Fragment>
-        ))}
-      </BreadcrumbList>
-    </Breadcrumb>
+    <nav className="flex items-center space-x-1 text-sm">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onItemClick('root')}
+        className="flex items-center space-x-1"
+      >
+        <Home className="h-4 w-4" />
+        <span>Home</span>
+      </Button>
+      
+      {items.map((item, index) => (
+        <React.Fragment key={item.id}>
+          <ChevronRight className="h-4 w-4 text-gray-400" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onItemClick(item.id)}
+            className="hover:underline"
+          >
+            {item.name}
+          </Button>
+        </React.Fragment>
+      ))}
+    </nav>
   );
-}
+};

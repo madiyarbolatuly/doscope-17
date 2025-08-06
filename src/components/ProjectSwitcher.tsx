@@ -25,7 +25,7 @@ interface Project {
 
 // Mock projects data - replace with your actual data source
 const mockProjects: Project[] = [
-  { id: '1', name: 'Pepsico', userEmail: 'smth@pepsico.com' },
+  { id: '1', name: 'PepsiCo', userEmail: 'smth@pepsiCo.com' },
   { id: '2', name: 'ПГУ Туркестан', userEmail: 'snk@samruk.kz' },
   { id: '3', name: 'Жем', userEmail: 'srv@skbs.com' },
   { id: '4', name: 'Караганда AБЗ', userEmail: 'snk@samruk.kz' },

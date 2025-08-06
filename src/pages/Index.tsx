@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EnhancedFolderTree } from '@/components/EnhancedFolderTree';
 import { mockDocuments} from '@/pages/mdocuments'
-
+import { useLocation } from 'react-router-dom';
 
 
 interface BackendDocument {
@@ -67,6 +67,11 @@ const Index = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const [folderId, setFolderId] = useState<string | null>(null);
+  const location = useLocation();
+  
+  // Check if we're at the root (no folder ID in URL)
+  const isAtRoot = location.pathname === '/';
+
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -392,7 +397,7 @@ const Index = () => {
 
       toast({
         title: "Success",
-        description: `Document moved to archive`,
+        description: `Document moved to bin`,
       });
 
       // Refresh document list
@@ -552,8 +557,13 @@ const Index = () => {
   );
 
   const handleDocumentClick = (document: Document) => {
-    setSelectedDocument(document);
-    setShowSidebar(true);
+    if (document.type === 'folder') {
+      // Navigate to folder view
+      navigate(`/folder/${document.id}`);
+    } else {
+      setSelectedDocument(document);
+      setShowSidebar(true);
+    }
   };
 
   const handleDocumentSelect = (document: Document) => {
@@ -612,7 +622,7 @@ const Index = () => {
     if (successCount > 0) {
       toast({
         title: "Success",
-        description: `${successCount} document(s) moved to archive`,
+        description: `${successCount} document(s) moved to bin`,
       });
 
       // Refresh document list

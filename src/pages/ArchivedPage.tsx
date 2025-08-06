@@ -67,7 +67,7 @@ const ArchivedPage = () => {
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
           owner: doc.owner_id,
-          category: doc.categories?.[0] || 'uncategorized',
+          category: doc.categories?.[0] || ' --',
           path: doc.file_path,
           tags: doc.tags || [],
           parent_id: doc.parent_id ?? null,
