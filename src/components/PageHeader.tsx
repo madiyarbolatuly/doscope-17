@@ -8,7 +8,6 @@ import { CategoryType } from '@/types/document';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NotificationBell } from './NotificationBell';
 import { UserButton } from './UserButton';
-import { ProjectSwitcher } from './ProjectSwitcher';
 
 interface PageHeaderProps {
   title: string;
@@ -57,7 +56,6 @@ export function PageHeader({
     
     return (
       <div className="flex gap-2 items-center">
-        <ProjectSwitcher />
         <NotificationBell />
         <UserButton />
       </div>

@@ -19,16 +19,16 @@ import { cn } from '@/lib/utils';
 import { Document } from '@/types/document';
 
 interface ProjectSwitcherProps {
-  folders: Document[];
-  selectedFolderId: string | null;
-  onFolderSelect: (folderId: string | null) => void;
+  folders?: Document[];
+  selectedFolderId?: string | null;
+  onFolderSelect?: (folderId: string | null) => void;
   className?: string;
 }
 
 export function ProjectSwitcher({ 
-  folders, 
-  selectedFolderId, 
-  onFolderSelect, 
+  folders = [], 
+  selectedFolderId = null, 
+  onFolderSelect = () => {}, 
   className 
 }: ProjectSwitcherProps) {
   const [open, setOpen] = useState(false);
