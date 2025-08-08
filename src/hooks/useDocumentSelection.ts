@@ -27,11 +27,18 @@ export function useDocumentSelection() {
     setSelectedDocumentIds([]);
   }, []);
 
+  // Add compatibility properties for existing code
+  const selectedDocuments = selectedDocumentIds;
+  const clearSelection = handleClearSelection;
+
   return {
     selectedDocumentIds,
     handleDocumentSelect,
     handleSelectAll,
     handleClearSelection,
-    setSelectedDocumentIds
+    setSelectedDocumentIds,
+    // Compatibility properties
+    selectedDocuments,
+    clearSelection
   };
 }

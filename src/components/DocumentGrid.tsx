@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Document } from '@/types/document';
 import { DocumentCard } from './DocumentCard';
@@ -11,13 +12,23 @@ interface DocumentGridProps {
   onDocumentClick: (document: Document) => void;
   onDocumentSelect: (document: Document) => void;
   selectedDocumentIds: string[];
+  viewMode?: 'grid' | 'list';
+  multipleSelection?: boolean;
+  selectionActions?: any;
+  toggleFavorite?: (documentId: string) => Promise<void>;
+  selectedDocument?: Document | null;
 }
 
 export const DocumentGrid: React.FC<DocumentGridProps> = ({
   documents,
   onDocumentClick,
   onDocumentSelect,
-  selectedDocumentIds,
+  selectedDocumentIds = [], // Default to empty array to prevent undefined errors
+  viewMode = 'grid',
+  multipleSelection = false,
+  selectionActions,
+  toggleFavorite,
+  selectedDocument,
 }) => {
   const renderIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -41,6 +52,22 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
     }
   };
 
+  if (viewMode === 'list') {
+    return (
+      <div className="space-y-2">
+        {documents.map((document) => (
+          <DocumentListItem
+            key={document.id}
+            document={document}
+            isSelected={selectedDocumentIds.includes(document.id)}
+            onSelect={() => onDocumentSelect(document)}
+            onClick={() => onDocumentClick(document)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
       {documents.map((document) => (
@@ -51,22 +78,24 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
           }`}
           onClick={() => onDocumentClick(document)}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Checkbox
-              checked={selectedDocumentIds.includes(document.id)}
-              onCheckedChange={() => onDocumentSelect(document)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            {document.type === 'folder' && (
-              <Link
-                to={`/folder/${document.id}`}
+          {multipleSelection && (
+            <div className="flex items-center justify-between mb-2">
+              <Checkbox
+                checked={selectedDocumentIds.includes(document.id)}
+                onCheckedChange={() => onDocumentSelect(document)}
                 onClick={(e) => e.stopPropagation()}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                Open
-              </Link>
-            )}
-          </div>
+              />
+              {document.type === 'folder' && (
+                <Link
+                  to={`/folder/${document.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  Open
+                </Link>
+              )}
+            </div>
+          )}
           
           <div className="text-center">
             {renderIcon(document.type)}
