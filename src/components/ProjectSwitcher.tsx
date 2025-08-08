@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Check, ChevronsUpDown, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -16,46 +16,48 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-
-interface Project {
-  id: string;
-  name: string;
-  userEmail: string;
-}
-
-// Mock projects data - replace with your actual data source
-const mockProjects: Project[] = [
-  { id: '1', name: 'PepsiCo', userEmail: 'smth@pepsiCo.com' },
-  { id: '2', name: 'ПГУ Туркестан', userEmail: 'snk@samruk.kz' },
-  { id: '3', name: 'Жем', userEmail: 'srv@skbs.com' },
-  { id: '4', name: 'Караганда AБЗ', userEmail: 'snk@samruk.kz' },
-  { id: '5', name: 'Кызылорда Стадион', userEmail: 'snk@samruk.kz' },
-];
+import { Document } from '@/types/document';
 
 interface ProjectSwitcherProps {
+  folders: Document[];
+  selectedFolderId: string | null;
+  onFolderSelect: (folderId: string | null) => void;
   className?: string;
 }
 
-export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
+export function ProjectSwitcher({ 
+  folders, 
+  selectedFolderId, 
+  onFolderSelect, 
+  className 
+}: ProjectSwitcherProps) {
   const [open, setOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project>(mockProjects[0]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredProjects = useMemo(() => {
-    if (!searchQuery) return mockProjects;
-    
-    return mockProjects.filter(project =>
-      project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.userEmail.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [searchQuery]);
+  const allFolders = [
+    { id: null, name: 'Root Folder', description: 'All documents' },
+    ...folders.map(folder => ({
+      id: folder.id,
+      name: folder.name,
+      description: `Folder • ${folder.owner || 'Unknown owner'}`
+    }))
+  ];
 
-  const handleSelectProject = (project: Project) => {
-    setSelectedProject(project);
+  const filteredFolders = useMemo(() => {
+    if (!searchQuery) return allFolders;
+    
+    return allFolders.filter(folder =>
+      folder.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      folder.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, allFolders]);
+
+  const selectedFolder = allFolders.find(folder => folder.id === selectedFolderId);
+
+  const handleSelectFolder = (folderId: string | null) => {
+    onFolderSelect(folderId);
     setOpen(false);
     setSearchQuery('');
-    // Add any additional logic for project switching here
-    console.log('Switched to project:', project);
   };
 
   return (
@@ -66,51 +68,59 @@ export function ProjectSwitcher({ className }: ProjectSwitcherProps) {
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-[280px] justify-between bg-background"
+            className="w-[280px] justify-between bg-white hover:bg-gray-50 border-gray-200 shadow-sm"
           >
-            <div className="flex flex-col items-start text-left">
-              <span className="font-medium truncate max-w-[200px]">
-                {selectedProject.name}
-              </span>
-              <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                {selectedProject.userEmail}
-              </span>
+            <div className="flex items-center gap-2 text-left">
+              <Folder className="h-4 w-4 text-blue-600" />
+              <div className="flex flex-col">
+                <span className="font-medium text-gray-800 truncate max-w-[200px]">
+                  {selectedFolder?.name || 'Select folder'}
+                </span>
+                <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                  {selectedFolder?.description || 'Choose a folder to view'}
+                </span>
+              </div>
             </div>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="start">
-          <Command>
+        <PopoverContent className="w-[280px] p-0 bg-white border border-gray-200 shadow-lg" align="start">
+          <Command className="bg-white">
             <div className="flex items-center border-b px-3">
               <CommandInput
-                placeholder="Найти проекты..."
+                placeholder="Search folders..."
                 value={searchQuery}
                 onValueChange={setSearchQuery}
-                className="border-0 bg-transparent focus:ring-0"
+                className="border-0 bg-transparent focus:ring-0 placeholder:text-gray-400"
               />
             </div>
-            <CommandList>
-              <CommandEmpty>Ничего не найдено.</CommandEmpty>
+            <CommandList className="max-h-64">
+              <CommandEmpty className="py-4 text-center text-gray-500">
+                No folders found.
+              </CommandEmpty>
               <CommandGroup>
-                {filteredProjects.map((project) => (
+                {filteredFolders.map((folder) => (
                   <CommandItem
-                    key={project.id}
-                    value={`${project.name} ${project.userEmail}`}
-                    onSelect={() => handleSelectProject(project)}
-                    className="flex items-center justify-between cursor-pointer"
+                    key={folder.id || 'root'}
+                    value={`${folder.name} ${folder.description}`}
+                    onSelect={() => handleSelectFolder(folder.id)}
+                    className="flex items-center justify-between cursor-pointer hover:bg-gray-50 px-3 py-2"
                   >
-                    <div className="flex flex-col">
-                      <span className="font-medium truncate max-w-[200px]">
-                        {project.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        {project.userEmail}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <Folder className="h-4 w-4 text-blue-600" />
+                      <div className="flex flex-col">
+                        <span className="font-medium text-gray-800 truncate max-w-[180px]">
+                          {folder.name}
+                        </span>
+                        <span className="text-xs text-gray-500 truncate max-w-[180px]">
+                          {folder.description}
+                        </span>
+                      </div>
                     </div>
                     <Check
                       className={cn(
-                        "ml-2 h-4 w-4",
-                        selectedProject.id === project.id ? "opacity-100" : "opacity-0"
+                        "ml-2 h-4 w-4 text-blue-600",
+                        selectedFolderId === folder.id ? "opacity-100" : "opacity-0"
                       )}
                     />
                   </CommandItem>

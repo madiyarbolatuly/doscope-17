@@ -1,13 +1,13 @@
+
 import { useState, useCallback } from 'react';
 import { Document } from '@/types/document';
 
 export function useDocumentSelection() {
-  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
 
   const handleDocumentSelect = useCallback((document: Document) => {
-    setSelectedDocuments(prev => {
-      const isSelected = prev.includes(document.id);
-      if (isSelected) {
+    setSelectedDocumentIds(prev => {
+      if (prev.includes(document.id)) {
         return prev.filter(id => id !== document.id);
       } else {
         return [...prev, document.id];
@@ -16,23 +16,22 @@ export function useDocumentSelection() {
   }, []);
 
   const handleSelectAll = useCallback((documents: Document[]) => {
-    setSelectedDocuments(prev => {
-      if (prev.length === documents.length) {
-        return [];
-      } else {
-        return documents.map(doc => doc.id);
-      }
-    });
-  }, []);
+    if (selectedDocumentIds.length === documents.length) {
+      setSelectedDocumentIds([]);
+    } else {
+      setSelectedDocumentIds(documents.map(doc => doc.id));
+    }
+  }, [selectedDocumentIds.length]);
 
-  const clearSelection = useCallback(() => {
-    setSelectedDocuments([]);
+  const handleClearSelection = useCallback(() => {
+    setSelectedDocumentIds([]);
   }, []);
 
   return {
-    selectedDocuments,
+    selectedDocumentIds,
     handleDocumentSelect,
     handleSelectAll,
-    clearSelection
+    handleClearSelection,
+    setSelectedDocumentIds
   };
 }
