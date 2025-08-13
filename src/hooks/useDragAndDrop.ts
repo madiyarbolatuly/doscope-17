@@ -74,3 +74,6 @@ export function useDragAndDrop({ onDrop }: { onDrop: (files: File[]) => Promise<
     handleDropArea,
   };
 }
+
+
+

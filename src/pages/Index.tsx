@@ -65,14 +65,9 @@ const Index = () => {
   const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
   const [folderId, setFolderId] = useState<string | null>(null);
   const location = useLocation();
-  
-  // Check if we're at the root (no folder ID in URL)
   const isAtRoot = location.pathname === '/';
-
-
   const handleSort = (field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -81,11 +76,7 @@ const Index = () => {
       setSortOrder('asc');
     }
   };
-
-
   const token = localStorage.getItem('authToken')
-
- 
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
@@ -108,16 +99,17 @@ const Index = () => {
         const transformedDocuments: Document[] = data[docsKey].map((doc: BackendDocument) => ({
           id: doc.id,
           name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
-          type: doc.file_type ? (
-            doc.file_type.includes('pdf') ? 'pdf' :
-          doc.file_type.includes('doc') ? 'doc' :
-          doc.file_type.includes('xls') ? 'xlsx' :
-          doc.file_type.includes('ppt') ? 'ppt' :
-          doc.file_type.includes('pptx') ? 'pptx' :
-          doc.file_type.includes('png') ? 'png' :
-          doc.file_type.includes('image') ? 'image' : 'file'
-          ) : 'file',
-          size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
+          type: doc.file_type === 'folder'
+            ? 'folder'
+            : doc.file_type?.includes('pdf') ? 'pdf'
+            : doc.file_type?.includes('doc') ? 'doc'
+            : doc.file_type?.includes('xls') ? 'xlsx'
+            : doc.file_type?.includes('pptx') ? 'pptx'
+            : doc.file_type?.includes('ppt') ? 'ppt'
+            : doc.file_type?.includes('png') ? 'png'
+            : doc.file_type?.includes('image') ? 'image'
+            : 'file',
+          size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : (doc.file_type === 'folder' ? '--' : 'Unknown'),
           modified: doc.created_at,
           owner: doc.owner_id,
           category: doc.categories?.[0] || 'uncategorized',
@@ -127,6 +119,7 @@ const Index = () => {
           archived: doc.status === 'archived',
           starred: false,
         }));
+        
      const combined = [...transformedDocuments, ...mockDocuments];
      setDocuments(combined);      
 } else {
@@ -169,7 +162,7 @@ const Index = () => {
   const handleFileUpload = async (files: File[], folderId?: string) => {
     const formData = new FormData();
     files.forEach(file => {
-      formData.append('files', file, file.name);
+      formData.append('files', file, (file as any).relativePath || file.webkitRelativePath || file.name);
     });
 
     try {

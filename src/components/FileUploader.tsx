@@ -47,7 +47,7 @@ export function FileUploader({
     if (files.length === 0) return;
     const formData = new FormData();
     files.forEach(file => {
-      formData.append('files', file, file.name);
+      formData.append('files', file, (file as any).relativePath || file.webkitRelativePath || file.name);
     });
     try {
       // Replace with your actual API endpoint

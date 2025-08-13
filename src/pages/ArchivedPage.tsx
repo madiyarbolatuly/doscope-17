@@ -55,15 +55,21 @@ const ArchivedPage = () => {
         const transformedDocuments: Document[] = response.documents.map((doc: BackendArchivedDocument) => ({
           id: doc.id,
           name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
-          type: doc.file_type ? (
-            doc.file_type.includes('pdf') ? 'pdf' :
-            doc.file_type.includes('doc') ? 'doc' :
-            doc.file_type.includes('xls') ? 'xlsx' :
-            doc.file_type.includes('ppt') ? 'ppt' :
-            doc.file_type.includes('pptx') ? 'pptx' :
-            doc.file_type.includes('png') ? 'png' :
-            doc.file_type.includes('image') ? 'image' : 'file'
-          ) : 'file',
+          type: doc.file_type === 'folder'
+          ? 'folder'
+          : doc.file_type?.includes('pdf')
+          ? 'pdf'
+          : doc.file_type?.includes('doc')
+          ? 'doc'
+          : doc.file_type?.includes('xls')
+          ? 'xlsx'
+          : doc.file_type?.includes('ppt')
+          ? 'ppt'
+          : doc.file_type?.includes('png')
+          ? 'png'
+          : doc.file_type?.includes('image')
+          ? 'image'
+          : 'file',
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
           owner: doc.owner_id,
