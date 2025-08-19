@@ -1,5 +1,5 @@
 
-export type UserRole = 'admin' | 'manager' | 'user' | 'viewer' | 'custom';
+export type UserRole = 'admin' | 'editor' | 'viewer';
 
 export interface Permission {
   id: string;
@@ -30,30 +30,22 @@ export interface RolePermissions {
 export const ROLE_PERMISSIONS: RolePermissions[] = [
   {
     role: 'admin',
-    permissions: ['*'], // All permissions
-    pageAccess: ['*'] // All pages
+    permissions: ['*'],
+    pageAccess: ['*']
   },
   {
-    role: 'manager',
+    role: 'editor',
     permissions: ['documents.read', 'documents.write', 'documents.approve', 'users.read'],
     pageAccess: ['/', '/documents', '/approvals', '/dashboard', '/favorites']
   },
   {
-    role: 'user',
-    permissions: ['documents.read', 'documents.write'],
-    pageAccess: ['/', '/documents', '/dashboard', '/favorites']
-  },
-  {
     role: 'viewer',
     permissions: ['documents.read'],
-    pageAccess: ['/', '/documents', '/dashboard']
+    pageAccess: ['/shared']              // ← только страница «Поделённые документы»
   },
-  {
-    role: 'custom',
-    permissions: [],
-    pageAccess: ['/']
-  }
+ 
 ];
+
 
 export const DEFAULT_PERMISSIONS: Permission[] = [
   {

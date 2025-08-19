@@ -9,15 +9,33 @@ import { FileText, File, FileSpreadsheet, FileImage, Folder } from 'lucide-react
 interface DocumentGridProps {
   documents: Document[];
   onDocumentClick: (document: Document) => void;
+  onDocumentPreview: (document: Document) => Promise<void>;
+  viewMode: 'grid' | 'list';
+  selectedDocument: Document | null;
   onDocumentSelect: (document: Document) => void;
-  selectedDocumentIds: string[];
+  multipleSelection: boolean;
+  selectionActions: {
+    selectedIds: string[];
+    onSelectAll: () => void;
+    onClearSelection: () => void;
+    onDeleteSelected: () => Promise<void>;
+    onDownloadSelected: () => void;
+    onShareSelected: () => void;
+    onArchiveSelected: () => Promise<void>;
+  };
+  toggleFavorite: (documentId: string) => Promise<void>;
 }
 
 export const DocumentGrid: React.FC<DocumentGridProps> = ({
   documents,
   onDocumentClick,
   onDocumentSelect,
-  selectedDocumentIds,
+  onDocumentPreview,
+  viewMode,
+  selectedDocument,
+  multipleSelection,
+  selectionActions,
+  toggleFavorite,
 }) => {
   const renderIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -47,13 +65,13 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
         <div
           key={document.id}
           className={`relative group cursor-pointer rounded-lg border p-4 hover:shadow-md transition-shadow ${
-            selectedDocumentIds.includes(document.id) ? 'ring-2 ring-blue-500' : ''
+            selectionActions.selectedIds.includes(document.id) ? 'ring-2 ring-blue-500' : ''
           }`}
           onClick={() => onDocumentClick(document)}
         >
           <div className="flex items-center justify-between mb-2">
             <Checkbox
-              checked={selectedDocumentIds.includes(document.id)}
+              checked={selectionActions.selectedIds.includes(document.id)}
               onCheckedChange={() => onDocumentSelect(document)}
               onClick={(e) => e.stopPropagation()}
             />

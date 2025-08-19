@@ -2,28 +2,23 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface BreadcrumbItem {
-  id: string;
-  name: string;
-  path: string;
-}
+import { BreadcrumbItem } from '@/types/navigation';
 
 interface BreadcrumbNavigationProps {
   items: BreadcrumbItem[];
-  onItemClick: (itemId: string) => void;
+  onNavigate: (item: BreadcrumbItem) => void;
 }
 
 export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
   items,
-  onItemClick,
+  onNavigate,
 }) => {
   return (
     <nav className="flex items-center space-x-1 text-sm">
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => onItemClick('root')}
+        onClick={() => onNavigate({ name: 'Home', path: '/' })}
         className="flex items-center space-x-1"
       >
         <Home className="h-4 w-4" />
@@ -31,12 +26,12 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
       </Button>
       
       {items.map((item, index) => (
-        <React.Fragment key={item.id}>
+        <React.Fragment key={item.path}>
           <ChevronRight className="h-4 w-4 text-gray-400" />
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onItemClick(item.id)}
+            onClick={() => onNavigate(item)}
             className="hover:underline"
           >
             {item.name}

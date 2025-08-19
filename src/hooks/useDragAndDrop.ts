@@ -63,7 +63,17 @@ export function useDragAndDrop({ onDrop }: { onDrop: (files: File[]) => Promise<
     e.stopPropagation();
     setDragCounter(0);
     setIsDragging(false);
-    await handleDropWithFolders(e);
+    
+    const items = e.dataTransfer.items;
+    const files: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].webkitGetAsEntry?.();
+      if (item) {
+        await traverseFileTree(item, '', files);
+      }
+    }
+    await onDrop(files);
   };
 
   return {

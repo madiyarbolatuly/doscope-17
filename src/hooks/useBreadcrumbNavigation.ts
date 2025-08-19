@@ -1,11 +1,5 @@
 import { useState, useCallback } from 'react';
-
-interface BreadcrumbItem {
-  id?: string;
-  name: string;
-  path: string;
-  isActive?: boolean;
-}
+import { BreadcrumbItem } from '@/types/navigation';
 
 export function useBreadcrumbNavigation() {
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([

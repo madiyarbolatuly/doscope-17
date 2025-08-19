@@ -289,11 +289,11 @@ const ArchivedPage = () => {
           </span>
           <Button size="sm" onClick={handleRestoreSelected}>
             <RotateCcw className="h-4 w-4 mr-1" />
-            Restore
+            Восстановить
           </Button>
           <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
             <Trash2 className="h-4 w-4 mr-1" />
-            Delete permanently
+            Удалить навсегда
           </Button>
         </div>
       )}

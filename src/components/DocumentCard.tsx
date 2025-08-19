@@ -121,11 +121,7 @@ export function DocumentCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onPreview(document)}>Просмотр</DropdownMenuItem>
-            {isFolder ? (
-              <>
-                <DropdownMenuItem>Новая папка</DropdownMenuItem>
-              </>
-            ) : (
+            {(
               <DropdownMenuItem>Скачать</DropdownMenuItem>
             )}
             <DropdownMenuItem>Поделиться</DropdownMenuItem>

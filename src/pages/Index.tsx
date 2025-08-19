@@ -62,6 +62,7 @@ const Index = () => {
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
+  const [progress, setProgress] = useState(0); // Add this line
   const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -77,6 +78,24 @@ const Index = () => {
     }
   };
   const token = localStorage.getItem('authToken')
+  
+
+  // Синхронизируем выбранную папку с URL. Сначала ищем параметр ?folderId=...,
+  // если его нет – пытаемся извлечь идентификатор из пути /folder/{id}.
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const fromQuery = searchParams.get('folderId');
+    if (fromQuery) {
+      setFolderId(fromQuery);
+      return;
+    }
+    const match = location.pathname.match(/\/folder\/([^/]+)/);
+    if (match && match[1]) {
+      setFolderId(match[1]);
+    } else {
+      setFolderId(null); // ни параметры, ни путь не указывают на папку
+    }
+  }, [location.pathname, location.search]);
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
@@ -138,6 +157,8 @@ const Index = () => {
       setIsLoading(false);
     }
   }, [token]);
+
+  
 
   const { createShareLink, shareWithUsers, loading: shareLoading, error: shareError } = useShare();
 
@@ -289,52 +310,67 @@ const Index = () => {
       }
     });
   };
-
   const handleDropWithFolders = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setIsDragging(false);
-
+    e.stopPropagation();
+  
+    const filesToUpload: File[] = [];
     const items = e.dataTransfer.items;
-    const files: File[] = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i].webkitGetAsEntry?.();
-      if (item) {
-        await traverseFileTree(item, '', files);
+  
+    // Traverse the dropped items – supports nested folders via webkitGetAsEntry
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const dtItem = items[i];
+        const entry =
+          typeof (dtItem as any).webkitGetAsEntry === 'function'
+            ? (dtItem as any).webkitGetAsEntry()
+            : undefined;
+        if (entry) {
+          await traverseFileTree(entry, '', filesToUpload);
+        } else {
+          const file = dtItem.getAsFile?.();
+          if (file) {
+            (file as File & { relativePath?: string }).relativePath =
+              (file as any).webkitRelativePath || file.name;
+            filesToUpload.push(file);
+          }
+        }
       }
     }
-
-    type FileWithRelativePath = File & { relativePath?: string };
-    const formData = new FormData();
-    files.forEach(file => {
-      const fileWithRelativePath = file as FileWithRelativePath;
-      formData.append('files', file, fileWithRelativePath.relativePath || file.name);
-    });
-
-    try {
-      const response = await axios.post("/api/v2/upload", formData, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "multipart/form-data"
-        }
+  
+    // Fallback: use dataTransfer.files if needed
+    if (filesToUpload.length === 0) {
+      const fallback = Array.from(e.dataTransfer.files || []);
+      fallback.forEach((file) => {
+        (file as File & { relativePath?: string }).relativePath =
+          (file as any).webkitRelativePath || file.name;
       });
-
-      toast({
-        title: "Success",
-        description: `Uploaded ${files.length} file(s) successfully`,
-      });
-
-      fetchDocuments();
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast({
-        title: "Error",
-        description: "Failed to upload files",
-        variant: "destructive"
-      });
+      filesToUpload.push(...fallback);
     }
+  
+    if (filesToUpload.length === 0) return;
+  
+    const formData = new FormData();
+    filesToUpload.forEach((file) => {
+      const rp =
+        (file as any).relativePath ||
+        (file as any).webkitRelativePath ||
+        file.name;
+      formData.append('files', file, rp);
+    });
+  
+    // Send to backend
+    await axios.post('/api/v2/upload-folder-bulk', formData, {
+      headers: { Authorization: `Bearer ${token}` },
+      onUploadProgress: (p) => {
+        const percent = p.total
+          ? Math.round((p.loaded * 100) / p.total)
+          : 0;
+        setProgress(percent);
+      },
+    });
   };
-
+  
 
   // Rename/update document metadata
   const handleUpdateMetadata = async (documentId: string, newName: string, tags?: string[], categories?: string[]) => {
@@ -744,15 +780,16 @@ const Index = () => {
 
 /** visible in the table / grid */
 const visibleDocuments = React.useMemo(() => {
-  // First filter out archived documents
   const nonArchivedDocs = documents.filter(d => !d.archived);
-  
-  if (folderId === null) {
-    // root view - only non-archived documents
+
+  if (!folderId) {
     return nonArchivedDocs.filter(d => d.parent_id === null);
   }
-  // inside a folder - only non-archived documents
-  return nonArchivedDocs.filter(d => d.parent_id === folderId);
+
+  return nonArchivedDocs.filter(d => {
+    if (d.parent_id == null) return false;
+    return String(d.parent_id) === String(folderId);
+  });
 }, [documents, folderId]);
 
 
@@ -1134,7 +1171,7 @@ const toBytes = (size: string): number => {
         ) : (
           <div className="mt-4 animate-fade-in">
             <DocumentGrid
-              documents={filteredDocuments}
+              documents={documents}
               onDocumentClick={handleDocumentClick}
               onDocumentPreview={handlePreviewFile}
               viewMode={viewMode}

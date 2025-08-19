@@ -165,7 +165,7 @@ const DocumentDetails = () => {
     }, 500);
   }, [id]);
 
-  const handleDocumentPreview = (document: Document) => {
+  const handleDocumentPreview = async (document: Document) => {
     console.log('Preview document:', document.name);
   };
 
@@ -288,6 +288,17 @@ const DocumentDetails = () => {
                         viewMode={viewMode}
                         selectedDocument={null}
                         onDocumentSelect={() => {}}
+                        multipleSelection={false}
+                        selectionActions={{
+                          selectedIds: [],
+                          onSelectAll: () => {},
+                          onClearSelection: () => {},
+                          onDeleteSelected: async () => {},
+                          onDownloadSelected: () => {},
+                          onShareSelected: () => {},
+                          onArchiveSelected: async () => {},
+                        }}
+                        toggleFavorite={async () => {}}
                       />
                     </CardContent>
                   </Card>

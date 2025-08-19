@@ -156,7 +156,7 @@ export function DocumentTable({
                       {onRestore && (
                         <DropdownMenuItem onClick={() => onRestore(doc)}>
                           <RotateCcw className="h-4 w-4 mr-2" />
-                          Restore
+                          Восстановить
                         </DropdownMenuItem>
                       )}
                       {onPermanentDelete && (
@@ -165,7 +165,7 @@ export function DocumentTable({
                           onClick={() => onPermanentDelete(doc)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Delete permanently
+                          Удалить навсегда
                         </DropdownMenuItem>
                       )}
                     </>

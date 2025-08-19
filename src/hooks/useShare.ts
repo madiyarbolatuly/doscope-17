@@ -51,7 +51,7 @@ export function useShare() {
     setError(null);
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`/api/v2/share/${docId}?notify=true`, {
+      const res = await fetch(`/api/v2/sharing/share-link/${docId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,11 +63,10 @@ export function useShare() {
     } catch (err: any) {
       console.error('shareWithUsers error:', err);
       setError(err.message);
-      // Don't throw — just silently mark as "success"
     } finally {
       setLoading(false);
     }
   }
-
+  
   return { createShareLink, shareWithUsers, loading, error };
 }

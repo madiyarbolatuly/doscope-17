@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TreeNode } from '@/utils/buildTree';
 import { TreeViewItem } from './TreeViewItem';
@@ -52,6 +51,32 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
     const rootNodes = new Set(data.map(node => node.id));
     setExpandedNodes(rootNodes);
   }, [data]);
+
+  // Synchronise selected folder with URL query parameter.
+  // When the component is first mounted, if no folder is selected
+  // via props but a `folderId` is present in the current URL
+  // (e.g. `?folderId=xyz`), call the `onSelect` callback so the
+  // parent can update its state accordingly. This makes it possible
+  // for users to copy the URL and share it with others – when they
+  // navigate to that URL, the same folder will be selected automatically.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // Only initialise from the URL if there isn't already a selected
+    // folder provided from the parent. Without this guard we would
+    // continually overwrite the parent's selection whenever the
+    // component re-renders.
+    if (!selectedId) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const folderFromUrl = searchParams.get('folderId');
+      if (folderFromUrl) {
+        onSelect(folderFromUrl);
+      }
+    }
+    // We intentionally only run this effect once on mount. The empty
+    // dependency array means it will not re-run when `selectedId`
+    // changes, preventing an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleNode = (id: string) => {
     setExpandedNodes(prev => {
@@ -122,16 +147,7 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2 p-2 border-b">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => setShowCreateFolderDialog(true)}
-          className="flex items-center gap-2"
-        >
-          <FolderPlus className="h-4 w-4" />
-          Новая папка
-        </Button>
+      <div className="flex gap-2 p-2 border-b">       
         <Button variant="outline" size="sm" onClick={handleRootUpload} className="flex items-center gap-2">
           <Upload className="h-4 w-4" />
           Загрузить
@@ -144,20 +160,42 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
           <div className="text-center py-8 text-muted-foreground">Нет папок</div>
         ) : (
           <div className="group">
-            {data.map((node) => (
-              <TreeViewItem
-                key={node.id}
-                node={node}
-                level={0}
-                isExpanded={expandedNodes.has(node.id)}
-                onToggle={toggleNode}
-                onSelect={onSelect}
-                selectedId={selectedId}
-                allNodes={data}
-                onAction={handleAction}
-                expandedNodes={expandedNodes}
-              />
-            ))}
+            {data.map((node) => {
+              // Wrap the provided onSelect to update the URL when a folder is selected.
+              // This ensures that the folder ID is reflected in the query string, enabling
+              // the URL to be shared with others so that they will see the same folder
+              // selected when they open it. The wrapper persists the rest of the
+              // existing behaviour and forwards the call to the parent-provided
+              // `onSelect` callback.
+              const handleSelect = (id: string) => {
+                // Update the URL without causing a full page reload. We modify
+                // the current query parameters rather than clobbering all of them,
+                // preserving other potential parameters.
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('folderId', id);
+                  // Use `replaceState` to avoid adding a new entry to the browser
+                  // history on every click; copying the URL still reflects the
+                  // current folder.
+                  window.history.replaceState({}, '', url.toString());
+                }
+                onSelect(id);
+              };
+              return (
+                <TreeViewItem
+                  key={node.id}
+                  node={node}
+                  level={0}
+                  isExpanded={expandedNodes.has(node.id)}
+                  onToggle={toggleNode}
+                  onSelect={handleSelect}
+                  selectedId={selectedId}
+                  allNodes={data}
+                  onAction={handleAction}
+                  expandedNodes={expandedNodes}
+                />
+              );
+            })}
           </div>
         )}
       </div>
