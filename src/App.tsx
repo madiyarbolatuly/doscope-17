@@ -43,6 +43,7 @@ function App() {
             } />
             
             {/* Folder navigation routes */}
+                        {/* Folder navigation routes */}
             <Route path="/folder/:folderId" element={
               <AppLayout>
                 <PermissionGuard pagePath="/folder">
@@ -50,7 +51,7 @@ function App() {
                 </PermissionGuard>
               </AppLayout>
             } />
-            
+
             {/* Document details route */}
             <Route path="/document/:documentId" element={
               <AppLayout>

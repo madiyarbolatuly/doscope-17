@@ -11,7 +11,7 @@ export interface FolderNavigation {
 export const createFolderNavigation = (navigate: NavigateFunction): FolderNavigation => {
   return {
     navigateToFolder: (folderId: string) => {
-      navigate(`/folder/${folderId}`);
+      navigate(`/?folderId=${folderId}`);
     },
     
     navigateToRoot: () => {
@@ -23,16 +23,16 @@ export const createFolderNavigation = (navigate: NavigateFunction): FolderNaviga
     },
     
     getCurrentPath: () => {
-      return window.location.pathname;
+      return window.location.pathname + window.location.search;
     },
     
     buildBreadcrumbPath: async (folderId: string): Promise<string[]> => {
-      // This would fetch the breadcrumb path from the API
-      // Implementation depends on your backend structure
+      // You can fetch parent chain from API if needed
       return [];
     }
   };
 };
+
 
 export const useFolderNavigation = (navigate: NavigateFunction) => {
   return createFolderNavigation(navigate);

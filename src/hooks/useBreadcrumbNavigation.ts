@@ -12,7 +12,7 @@ export function useBreadcrumbNavigation() {
     } else {
       setBreadcrumbs([
         { name: 'Документы', path: '/', isActive: false },
-        { id: folderId, name: 'Текущая папка', path: `/folder/${folderId}`, isActive: true }
+        { id: folderId, name: 'Текущая папка', path: `/?folderId=${folderId}`, isActive: true }
       ]);
     }
   }, []);

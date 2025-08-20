@@ -101,62 +101,61 @@ const Index = () => {
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/v2/metadata?limit=50&offset=0", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      const qs = new URLSearchParams({ limit: "1000", offset: "0" });
+  
+      // Always include recursive=true
+      qs.set("recursive", "true");
+  
+      // Still allow navigation inside subfolders
+  
+      const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch documents');
-      }
-
-      const data = await response.json();
-      const docsKey = Object.keys(data).find(key => Array.isArray(data[key]));
-
-      if (docsKey && Array.isArray(data[docsKey])) {
-        const transformedDocuments: Document[] = data[docsKey].map((doc: BackendDocument) => ({
-          id: doc.id,
-          name: doc.name ? decodeURIComponent(doc.name) : 'Unnamed Document',
-          type: doc.file_type === 'folder'
-            ? 'folder'
-            : doc.file_type?.includes('pdf') ? 'pdf'
-            : doc.file_type?.includes('doc') ? 'doc'
-            : doc.file_type?.includes('xls') ? 'xlsx'
-            : doc.file_type?.includes('pptx') ? 'pptx'
-            : doc.file_type?.includes('ppt') ? 'ppt'
-            : doc.file_type?.includes('png') ? 'png'
-            : doc.file_type?.includes('image') ? 'image'
-            : 'file',
-          size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : (doc.file_type === 'folder' ? '--' : 'Unknown'),
-          modified: doc.created_at,
-          owner: doc.owner_id,
-          category: doc.categories?.[0] || 'uncategorized',
-          path: doc.file_path,
-          tags: doc.tags || [],
-          parent_id: doc.parent_id ?? null,
-          archived: doc.status === 'archived',
-          starred: false,
-        }));
-        
-     const combined = [...transformedDocuments, ...mockDocuments];
-     setDocuments(combined);      
-} else {
-        console.log('No real documents found');
-        setDocuments(mockDocuments);
-      }
-    } catch (error) {
-      console.error('Error fetching documents:', error);
-      console.log('Using due to API error');
-      setDocuments(mockDocuments);
-      toast({
-        title: "Info",
-        description: "Files loaded from DB",
-      });
+  
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  
+      const data = await res.json();
+      const list = Array.isArray(data?.documents) ? data.documents : [];
+  
+      const mapped = list.map((doc: BackendDocument) => ({
+        id: String(doc.id),
+        name: doc.name ? decodeURIComponent(doc.name) : "Unnamed Document",
+        type:
+          doc.file_type === "folder" ? "folder" :
+          doc.file_type?.includes("pdf") ? "pdf" :
+          doc.file_type?.includes("doc") ? "doc" :
+          doc.file_type?.includes("xls") ? "xlsx" :
+          doc.file_type?.includes("pptx") ? "pptx" :
+          doc.file_type?.includes("ppt") ? "ppt" :
+          doc.file_type?.includes("png") ? "png" :
+          doc.file_type?.includes("image") ? "image" : "file",
+        size:
+          doc.size != null
+            ? `${(Number(doc.size) / (1024 * 1024)).toFixed(2)} MB`
+            : doc.file_type === "folder" ? "--" : "Unknown",
+        modified: doc.created_at,
+        owner: doc.owner_id,
+        category: doc.categories?.[0] || "uncategorized",
+        path: doc.file_path ?? null,
+        tags: doc.tags || [],
+        parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
+        archived: doc.status === "archived",
+        starred: false,
+      }));
+  
+      setDocuments(mapped);
+    } catch (e) {
+      console.error(e);
+      setDocuments([]);
     } finally {
       setIsLoading(false);
     }
   }, [token]);
+  
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+  
 
   
 
@@ -360,7 +359,7 @@ const Index = () => {
     });
   
     // Send to backend
-    await axios.post('/api/v2/upload-folder-bulk', formData, {
+    await axios.post(`/api/v2/upload-folder-bulk${folderId ? `?parent_id=${folderId}` : ''}`, formData, {
       headers: { Authorization: `Bearer ${token}` },
       onUploadProgress: (p) => {
         const percent = p.total
@@ -369,6 +368,9 @@ const Index = () => {
         setProgress(percent);
       },
     });
+    
+    // ✅ Refresh after upload
+    fetchDocuments();
   };
   
 
@@ -503,27 +505,7 @@ const Index = () => {
     }
   };
 
-  // Toggle favorite/star status
-  const handleToggleFavorite = async (document: Document) => {
-    try {
-      await toggleStar(document.name, token!);
-      
-      toast({
-        title: "Success",
-        description: `Document "${document.name}" ${document.starred ? 'unstarred' : 'starred'} successfully`,
-      });
-
-      // Refresh document list
-      fetchDocuments();
-    } catch (error: any) {
-      console.error('Error toggling favorite:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to toggle favorite status",
-        variant: "destructive"
-      });
-    }
-  };
+  
 
   // Rename document
   const handleRenameDocument = async (document: Document, newName: string) => {
@@ -718,6 +700,8 @@ const Index = () => {
         }
       });
 
+     
+
       toast({
         title: "Success",
         description: `Uploaded ${files.length} file(s) successfully`,
@@ -856,18 +840,6 @@ const visibleDocuments = React.useMemo(() => {
 
   const searchableKeys = ['name', 'type', 'owner', 'modified',];
 
-const searchDocuments = (documents: DocumentType[], query: string) => {
-  return documents.filter(doc =>
-    searchableKeys.some(key => {
-      const value = doc[key as keyof typeof doc];
-      if (Array.isArray(value)) {
-        return value.some(val => val.toLowerCase().includes(query));
-      }
-      return typeof value === 'string' && value.toLowerCase().includes(query);
-    })
-  );
-};
-
  // 🔄 replace your existing filteredDocuments declaration with this
 const filteredDocuments = React.useMemo(() => {
   const q = searchQuery.trim().toLowerCase();
@@ -956,7 +928,8 @@ const toBytes = (size: string): number => {
       // если кликнули по той же папке ─ снимаем выбор
        setFolderId(prev => (prev === id ? null : id));
 
-    }}      onFileUpload={handleFileUpload}
+    }}   
+           onFileUpload={handleFileUpload}
             onShare={handleShareNode}
             />
   </nav>
@@ -1084,9 +1057,11 @@ const toBytes = (size: string): number => {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <div className={`flex items-center gap-3 ${document.type === 'folder' ? 'text-blue-600 font-semibold' : ''}`}>
                           {renderIcon(document.type)}
-                          <span className="font-medium">{document.name}</span>
+                          <span className="font-medium">
+                            {document.type === 'folder' ? `${document.name}/` : document.name}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>

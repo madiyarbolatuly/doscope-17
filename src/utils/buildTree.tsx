@@ -1,29 +1,23 @@
-import { Document } from '@/types/document';
+// utils/buildTree.ts
+import { Document } from "@/types/document";
 
-export interface TreeNode extends Document {
-  children: TreeNode[];
-}
+export type TreeNode = Document & { children?: TreeNode[] };
 
-// 1. Build a lookup of nodes, each with an empty children array.
-// 2. For each node, if it has a parent_id, push it into its parent’s children.
 export function buildTree(docs: Document[]): TreeNode[] {
-  const nodes: Record<string, TreeNode> = {};
-  docs.forEach(d => {
-    nodes[d.id] = { ...d, children: [] };
+  const map = new Map<string, TreeNode>();
+  const roots: TreeNode[] = [];
+
+  // Initialize all nodes
+  docs.forEach(doc => {
+    map.set(doc.id, { ...doc, children: [] });
   });
 
-  const roots: TreeNode[] = [];
-  docs.forEach(d => {
-    if (d.parent_id) {
-      const parent = nodes[d.parent_id];
-      if (parent) {
-        parent.children.push(nodes[d.id]);
-      } else {
-        // orphan–parent not found, treat as root
-        roots.push(nodes[d.id]);
-      }
+  // Assign children to parents
+  docs.forEach(doc => {
+    if (doc.parent_id && map.has(doc.parent_id)) {
+      map.get(doc.parent_id)!.children!.push(map.get(doc.id)!);
     } else {
-      roots.push(nodes[d.id]);
+      roots.push(map.get(doc.id)!); // top-level folder/file
     }
   });
 

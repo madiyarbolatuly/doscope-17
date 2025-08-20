@@ -187,23 +187,23 @@ const FolderView = () => {
   // Navigation handlers
   const handleFolderClick = (folder: Document) => {
     if (folder.type === 'folder') {
-      navigate(`/folder/${folder.id}`);
+      navigate(`/?folderId=${folder.id}`);
     }
   };
-
+  
   const handleFolderSelect = (id: string) => {
-    navigate(`/folder/${id}`);
+    navigate(`/?folderId=${id}`);
   };
-
+  
   const handleBackToRoot = () => {
     navigate('/');
   };
-
+  
   const handleBreadcrumbClick = (folderId: string) => {
     if (folderId === 'root') {
       navigate('/');
     } else {
-      navigate(`/folder/${folderId}`);
+      navigate(`/?folderId=${folderId}`);
     }
   };
 

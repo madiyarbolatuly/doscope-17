@@ -14,6 +14,8 @@ interface DocumentGridProps {
   selectedDocument: Document | null;
   onDocumentSelect: (document: Document) => void;
   multipleSelection: boolean;
+  onOpen?: (item: Document) => void; // 👈 add this
+
   selectionActions: {
     selectedIds: string[];
     onSelectAll: () => void;
@@ -77,7 +79,7 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
             />
             {document.type === 'folder' && (
               <Link
-                to={`/folder/${document.id}`}
+                to={`/?folderId=${document.id}`}
                 onClick={(e) => e.stopPropagation()}
                 className="text-blue-500 hover:text-blue-700"
               >
