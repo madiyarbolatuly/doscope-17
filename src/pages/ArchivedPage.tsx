@@ -69,6 +69,9 @@ const ArchivedPage = () => {
           ? 'png'
           : doc.file_type?.includes('image')
           ? 'image'
+          : doc.file_type?.includes('zip') 
+          ? 'zip'
+
           : 'file',
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
@@ -291,10 +294,7 @@ const ArchivedPage = () => {
             <RotateCcw className="h-4 w-4 mr-1" />
             Восстановить
           </Button>
-          <Button size="sm" variant="destructive" onClick={handleDeleteSelected}>
-            <Trash2 className="h-4 w-4 mr-1" />
-            Удалить навсегда
-          </Button>
+          
         </div>
       )}
 

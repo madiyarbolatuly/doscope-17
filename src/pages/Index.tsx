@@ -79,6 +79,7 @@ const Index = () => {
   };
   const token = localStorage.getItem('authToken')
   
+  
 
   // Синхронизируем выбранную папку с URL. Сначала ищем параметр ?folderId=...,
   // если его нет – пытаемся извлечь идентификатор из пути /folder/{id}.
@@ -101,7 +102,7 @@ const Index = () => {
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const qs = new URLSearchParams({ limit: "1000", offset: "0" });
+      const qs = new URLSearchParams({ limit: "530", offset: "0" });
   
       // Always include recursive=true
       qs.set("recursive", "true");
@@ -128,7 +129,8 @@ const Index = () => {
           doc.file_type?.includes("pptx") ? "pptx" :
           doc.file_type?.includes("ppt") ? "ppt" :
           doc.file_type?.includes("png") ? "png" :
-          doc.file_type?.includes("image") ? "image" : "file",
+          doc.file_type?.includes("image") ? "image":
+          doc.file_type?.includes('zip') ? 'zip' : "file",
         size:
           doc.size != null
             ? `${(Number(doc.size) / (1024 * 1024)).toFixed(2)} MB`
@@ -178,6 +180,45 @@ const Index = () => {
   }, [fetchDocuments]);
 
   // Preview document
+  async function uploadFilesInBatches(
+    files: File[],
+    token: string,
+    batchSize = 20,
+    concurrency = 3
+  ) {
+    const queue: Promise<any>[] = [];
+  
+    for (let i = 0; i < files.length; i += batchSize) {
+      const chunk = files.slice(i, i + batchSize);
+      const formData = new FormData();
+      chunk.forEach(file => {
+        formData.append("files", file, (file as any).relativePath || file.webkitRelativePath || file.name);
+      });
+  
+      const req = axios.post("/api/v2/upload-folder-bulk", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (p) => {
+          const percent = p.total ? Math.round((p.loaded * 100) / p.total) : 0;
+          console.log(`Batch ${i / batchSize + 1} progress: ${percent}%`);
+        },
+      });
+  
+      queue.push(req);
+  
+      if (queue.length >= concurrency) {
+        await Promise.all(queue);
+        queue.length = 0;
+      }
+    }
+  
+    if (queue.length > 0) {
+      await Promise.all(queue);
+    }
+  }
+  
 
   const handleFileUpload = async (files: File[], folderId?: string) => {
     const formData = new FormData();
@@ -359,16 +400,8 @@ const Index = () => {
     });
   
     // Send to backend
-    await axios.post(`/api/v2/upload-folder-bulk${folderId ? `?parent_id=${folderId}` : ''}`, formData, {
-      headers: { Authorization: `Bearer ${token}` },
-      onUploadProgress: (p) => {
-        const percent = p.total
-          ? Math.round((p.loaded * 100) / p.total)
-          : 0;
-        setProgress(percent);
-      },
-    });
-    
+    await uploadFilesInBatches(filesToUpload, token!, 25, 3); 
+
     // ✅ Refresh after upload
     fetchDocuments();
   };
@@ -570,7 +603,7 @@ const Index = () => {
   const handleDocumentClick = (document: Document) => {
     if (document.type === 'folder') {
       // Navigate to folder view
-      navigate(`/folder/${document.id}`);
+      navigate(`/?folderId=${document.id}`);
     } else {
       setSelectedDocument(document);
       setShowSidebar(true);

@@ -27,6 +27,16 @@ import {
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { TreeNode } from '@/utils/buildTree';
+import {
+  archiveDocument,
+  unarchiveDocument,
+  toggleStar,
+  renameDocument,
+  deleteDocument,
+} from "@/services/archiveService";
+
+import { useShare } from "@/hooks/useShare";
+
 
 interface TreeViewItemProps {
   node: TreeNode;
@@ -57,10 +67,55 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   const [newName, setNewName] = useState(node.name);
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedTargetFolder, setSelectedTargetFolder] = useState<string>('');
-
+1
   const isSelected = selectedId === node.id;
   const hasChildren = node.children && node.children.length > 0;
   const isFolder = node.type === 'folder';
+  const { openShare } = useShare();
+
+const handleArchive = async (docId: string) => {
+  try {
+    await archiveDocument(docId);
+    toast({ title: "Document archived" });
+    onRefresh?.();
+  } catch {
+    toast({ title: "Failed to archive", variant: "destructive" });
+  }
+};
+
+const handleUnarchive = async (docId: string) => {
+  try {
+    await unarchiveDocument(docId);
+    toast({ title: "Document unarchived" });
+    onRefresh?.();
+  } catch {
+    toast({ title: "Failed to unarchive", variant: "destructive" });
+  }
+};
+
+const handleDelete = async (docId: string) => {
+  try {
+    await deleteDocument(docId);
+    toast({ title: "Document deleted" });
+    onRefresh?.();
+  } catch {
+    toast({ title: "Failed to delete", variant: "destructive" });
+  }
+};
+
+const handleToggleStar = async (docId: string) => {
+  try {
+    await toggleStar(docId);
+    onRefresh?.();
+  } catch {
+    toast({ title: "Failed to favorite", variant: "destructive" });
+  }
+};
+
+const handleShare = (doc: Document) => {
+  openShare(doc);
+};
+
 
   const handleAction = (action: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -198,10 +253,6 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               <FolderPlus className="h-4 w-4 mr-2" />
               Добавить подпапку
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => handleAction('upload', e)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Загрузить файлы
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             
             <DropdownMenuItem onClick={(e) => handleAction('rename', e)}>
@@ -221,7 +272,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
             
             <DropdownMenuItem onClick={(e) => handleAction('move', e)}>
               <Move className="h-4 w-4 mr-2" />
-              Переместить
+              тить
             </DropdownMenuItem>
             
             <DropdownMenuItem onClick={(e) => handleAction('download', e)}>

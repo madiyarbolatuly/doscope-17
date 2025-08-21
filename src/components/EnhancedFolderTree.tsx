@@ -27,6 +27,7 @@ interface EnhancedFolderTreeProps {
   onCreateFolder?: (folderName: string, parentId?: string) => void;
   onMoveNode?: (nodeId: string, targetFolderId: string) => void;
   onRenameNode?: (nodeId: string, newName: string) => void;
+  onAction: (action: string, nodeId: string, data?: any) => void;  // <-- 🔥 add this
 }
 
 export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
