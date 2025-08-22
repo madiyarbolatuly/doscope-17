@@ -78,81 +78,127 @@ const Index = () => {
     }
   };
   const token = localStorage.getItem('authToken')
+// current selected project (top-level folder)
+const [projectRootId, setProjectRootId] = useState<string | null>(() =>
+  localStorage.getItem("projectRootId")
+);
+
+// helper to keep state + storage in sync
+const setCurrentProject = (id: string | null) => {
+  setProjectRootId(id);
+  if (id) localStorage.setItem("projectRootId", id);
+  else localStorage.removeItem("projectRootId");
+};
+
   
-  
+// projects = top-level folders (parent_id === null)
+const projects = useMemo(
+  () =>
+    documents
+      .filter(d => d.type === "folder" && d.parent_id === null)
+      .map(d => ({ id: d.id, name: d.name, userEmail: "" })), // fill email if you have it
+  [documents]
+);
 
   // Синхронизируем выбранную папку с URL. Сначала ищем параметр ?folderId=...,
   // если его нет – пытаемся извлечь идентификатор из пути /folder/{id}.
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const fromQuery = searchParams.get('folderId');
-    if (fromQuery) {
-      setFolderId(fromQuery);
-      return;
+    if (!folderId && projectRootId) {
+      navigate(`/?folderId=${projectRootId}`);
+      setFolderId(projectRootId);
     }
-    const match = location.pathname.match(/\/folder\/([^/]+)/);
-    if (match && match[1]) {
-      setFolderId(match[1]);
-    } else {
-      setFolderId(null); // ни параметры, ни путь не указывают на папку
-    }
-  }, [location.pathname, location.search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectRootId]);
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const qs = new URLSearchParams({ limit: "530", offset: "0" });
   
-      // Always include recursive=true
-      qs.set("recursive", "true");
+    // util: keep only nodes in the subtree of rootId (client-side fallback)
+    const filterSubtree = (rows: BackendDocument[], rootId: string) => {
+      const want = new Set<string>([String(rootId)]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const r of rows) {
+          const pid = r.parent_id != null ? String(r.parent_id) : null;
+          if (pid && want.has(pid) && !want.has(String(r.id))) {
+            want.add(String(r.id));
+            changed = true;
+          }
+        }
+      }
+      return rows.filter(r => want.has(String(r.id)) || (r.parent_id && want.has(String(r.parent_id))));
+    };
   
-      // Still allow navigation inside subfolders
-  
+    const tryFetch = async (params: Record<string,string>) => {
+      const qs = new URLSearchParams({ limit: '1400', offset: '0', ...params });
       const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
-  
-      if (!res.ok) throw new Error(`Failed: ${res.status}`);
-  
+      if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      const list = Array.isArray(data?.documents) ? data.documents : [];
+      return (Array.isArray(data?.documents) ? data.documents : []) as BackendDocument[];
+    };
   
-      const mapped = list.map((doc: BackendDocument) => ({
+    try {
+      let rows: BackendDocument[] = [];
+  
+      if (projectRootId) {
+        // ✅ preferred: ask backend for subtree only
+        try {
+          rows = await tryFetch({ recursive: 'true', ancestor_id: String(projectRootId) });
+        } catch {
+          // fallback: fetch a larger slice and filter in the client
+          const all = await tryFetch({ recursive: 'true' });
+          rows = filterSubtree(all, String(projectRootId));
+        }
+      } else {
+        // no project selected → fetch a reasonable slice (e.g., top-level view)
+        rows = await tryFetch({ recursive: 'true' });
+      }
+  
+      const mapped: Document[] = rows.map((doc) => ({
         id: String(doc.id),
-        name: doc.name ? decodeURIComponent(doc.name) : "Unnamed Document",
+        // ⬇️ don't decode: names may not be percent-encoded
+        name: doc.name || 'Unnamed Document',
         type:
-          doc.file_type === "folder" ? "folder" :
-          doc.file_type?.includes("pdf") ? "pdf" :
-          doc.file_type?.includes("doc") ? "doc" :
-          doc.file_type?.includes("xls") ? "xlsx" :
-          doc.file_type?.includes("pptx") ? "pptx" :
-          doc.file_type?.includes("ppt") ? "ppt" :
-          doc.file_type?.includes("png") ? "png" :
-          doc.file_type?.includes("image") ? "image":
-          doc.file_type?.includes('zip') ? 'zip' : "file",
-        size:
-          doc.size != null
-            ? `${(Number(doc.size) / (1024 * 1024)).toFixed(2)} MB`
-            : doc.file_type === "folder" ? "--" : "Unknown",
+          doc.file_type === 'folder' ? 'folder' :
+          doc.file_type?.includes('pdf') ? 'pdf' :
+          doc.file_type?.includes('doc') ? 'doc' :
+          doc.file_type?.includes('xls') ? 'xlsx' :
+          doc.file_type?.includes('pptx') ? 'pptx' :
+          doc.file_type?.includes('ppt') ? 'ppt' :
+          doc.file_type?.includes('png') ? 'png' :
+          doc.file_type?.includes('image') ? 'image' :
+          doc.file_type?.includes('zip') ? 'zip' : 'file',
+        size: doc.file_type === 'folder'
+          ? '--'
+          : (doc.size != null ? `${(Number(doc.size) / (1024*1024)).toFixed(2)} MB` : 'Unknown'),
         modified: doc.created_at,
         owner: doc.owner_id,
-        category: doc.categories?.[0] || "uncategorized",
+        category: doc.categories?.[0] || 'uncategorized',
         path: doc.file_path ?? null,
         tags: doc.tags || [],
         parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
-        archived: doc.status === "archived",
+        archived: doc.status === 'archived',
         starred: false,
       }));
   
       setDocuments(mapped);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast({
+        title: 'Ошибка загрузки',
+        description: `Метаданные не получены (${e?.message ?? 'unknown'}).`,
+        variant: 'destructive',
+      });
       setDocuments([]);
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, projectRootId, toast]);
+  
   
   useEffect(() => {
     fetchDocuments();
@@ -175,9 +221,6 @@ const Index = () => {
   };
 
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
 
   // Preview document
   async function uploadFilesInBatches(
@@ -194,18 +237,24 @@ const Index = () => {
       chunk.forEach(file => {
         formData.append("files", file, (file as any).relativePath || file.webkitRelativePath || file.name);
       });
+      const url = folderId
+      ? `/api/v2/upload-folder-bulk?parent_id=${folderId}`
+      : (projectRootId
+          ? `/api/v2/upload-folder-bulk?parent_id=${projectRootId}`
+          : `/api/v2/upload-folder-bulk`);
   
-      const req = axios.post("/api/v2/upload-folder-bulk", formData, {
+      const req = axios.post(url, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
-        onUploadProgress: (p) => {
-          const percent = p.total ? Math.round((p.loaded * 100) / p.total) : 0;
-          console.log(`Batch ${i / batchSize + 1} progress: ${percent}%`);
-        },
-      });
-  
+          onUploadProgress: (p) => {
+            const percent = p.total ? Math.round((p.loaded * 100) / p.total) : 0;
+            console.log(`Batch ${i / batchSize + 1} progress: ${percent}%`);
+          },
+        }
+      );
+      
       queue.push(req);
   
       if (queue.length >= concurrency) {
@@ -227,12 +276,20 @@ const Index = () => {
     });
 
     try {
-      const response = await axios.post("/api/v2/upload-folder-bulk", formData, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "multipart/form-data"
-        }
-      });
+      const url = folderId
+      ? `/api/v2/upload-folder-bulk?parent_id=${folderId}`
+      : (projectRootId
+          ? `/api/v2/upload-folder-bulk?parent_id=${projectRootId}`
+          : `/api/v2/upload-folder-bulk`);
+    
+    const response = await axios.post(url, formData, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    
+      
 
       toast({
         title: "Success",
@@ -257,32 +314,89 @@ const Index = () => {
     }
   };
   const handlePreviewFile = async (document: Document) => {
-    try {
-      const encoded = encodeURIComponent(document.name);
-      // 1) Fetch with auth header
-      const res = await fetch(`/api/v2/preview/${encoded}`, {
-        headers: { Authorization: `Bearer ${token}` },
+    // Helper to try multiple endpoints (ID → name → path → file route)
+    const buildCandidates = () => {
+      const byId = document.id ? [`/api/v2/preview/${encodeURIComponent(document.id)}`] : [];
+      const byName = document.name ? [
+        `/api/v2/preview/name/${encodeURIComponent(document.name)}`,
+        `/api/v2/preview/${encodeURIComponent(document.name)}`,
+        `/api/v2/file/${encodeURIComponent(document.name)}/preview`,
+      ] : [];
+      const byPath = document.path ? [
+        `/api/v2/preview?path=${encodeURIComponent(document.path)}`,
+        `/api/v2/file/preview?path=${encodeURIComponent(document.path)}`
+      ] : [];
+      return [...byId, ...byName, ...byPath];
+    };
+  
+    const candidates = buildCandidates();
+    if (candidates.length === 0) {
+      toast({
+        title: 'Ошибка',
+        description: 'Нет доступного идентификатора для предпросмотра',
+        variant: 'destructive',
       });
-      if (!res.ok) throw new Error('Preview fetch failed');
-
-      // 2) Read it as a Blob
-      const blob = await res.blob();
-
-      // 3) Create an object URL so the browser can render it
+      return;
+    }
+  
+    try {
+      // Revoke any previous URL to avoid memory leaks
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+  
+      let blob: Blob | null = null;
+      let lastStatus = 0;
+      let lastUrl = '';
+  
+      for (const url of candidates) {
+        lastUrl = url;
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        lastStatus = res.status;
+  
+        if (res.ok) {
+          // Some servers send JSON with a signed URL; handle that too
+          const ct = (res.headers.get('content-type') || '').toLowerCase();
+          if (ct.includes('application/json')) {
+            try {
+              const data = await res.json();
+              if (data?.url) {
+                setPreviewUrl(data.url); // direct signed URL
+                setSelectedDocument(document);
+                setShowSidebar(true);
+                return;
+              }
+            } catch {
+              /* fall through to blob */
+            }
+          }
+          blob = await res.blob();
+          break;
+        }
+  
+        // For 404 specifically, try next candidate; for other errors break early
+        if (res.status !== 404) break;
+      }
+  
+      if (!blob) {
+        throw new Error(`Preview fetch failed (${lastStatus}) via ${lastUrl}`);
+      }
+  
       const url = URL.createObjectURL(blob);
       setPreviewUrl(url);
-
       setSelectedDocument(document);
       setShowSidebar(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       toast({
-        title: 'Error',
-        description: 'Не удалось загрузить предпросмотр',
+        title: 'Ошибка предпросмотра',
+        description:
+          typeof err?.message === 'string' ? err.message : 'Не удалось загрузить предпросмотр',
         variant: 'destructive',
       });
     }
   };
+  
 
   // Download document
   const handleDownloadFile = async (doc: Document) => {
@@ -796,18 +910,12 @@ const Index = () => {
   };
 
 /** visible in the table / grid */
-const visibleDocuments = React.useMemo(() => {
-  const nonArchivedDocs = documents.filter(d => !d.archived);
-
-  if (!folderId) {
-    return nonArchivedDocs.filter(d => d.parent_id === null);
-  }
-
-  return nonArchivedDocs.filter(d => {
-    if (d.parent_id == null) return false;
-    return String(d.parent_id) === String(folderId);
-  });
+const visibleDocuments = useMemo(() => {
+  const inScope = documents.filter(d => !d.archived); // docs are already limited to the project
+  if (!folderId) return inScope.filter(d => d.parent_id === null); // show project root
+  return inScope.filter(d => d.parent_id === String(folderId));
 }, [documents, folderId]);
+
 
 
   const handleDragOverArea = (e: React.DragEvent<HTMLDivElement>) => {
@@ -874,23 +982,20 @@ const visibleDocuments = React.useMemo(() => {
   const searchableKeys = ['name', 'type', 'owner', 'modified',];
 
  // 🔄 replace your existing filteredDocuments declaration with this
-const filteredDocuments = React.useMemo(() => {
+ const filteredDocuments = React.useMemo(() => {
+  const base = visibleDocuments;                      // ⟵ use only the current folder's items
   const q = searchQuery.trim().toLowerCase();
+  if (!q) return base;
 
-  // ── 1) no query  →  just show the current folder view
-  if (q === '') return visibleDocuments;
-
-  // ── 2) with query →  search in *all* docs, not only the visible ones
-  return documents.filter(doc =>
-    searchableKeys.some(key => {
-      const val = doc[key as keyof Document];
-      if (Array.isArray(val)) {
-        return val.some(v => v.toLowerCase().includes(q));
-      }
-      return typeof val === 'string' && val.toLowerCase().includes(q);
+  return base.filter(doc =>
+    ['name','type','owner','modified'].some((key) => {
+      const v = (doc as any)[key];
+      if (Array.isArray(v)) return v.some((s) => String(s).toLowerCase().includes(q));
+      return typeof v === 'string' && v.toLowerCase().includes(q);
     })
   );
-}, [documents, visibleDocuments, searchQuery]);
+}, [visibleDocuments, searchQuery]);
+
 
 
 const toBytes = (size: string): number => {
@@ -925,10 +1030,109 @@ const toBytes = (size: string): number => {
     return 0;
   });
 }, [filteredDocuments, sortBy, sortOrder]);
-  const folderTreeData: TreeNode[] = React.useMemo(() => {
-    const folders = documents.filter(doc => doc.type === 'folder');
-    return buildTree(folders);
-  }, [documents]);
+const folderTreeData: TreeNode[] = React.useMemo(() => {
+  // build relationships using all docs first
+  const full = buildTree(documents);
+  // then remove files from the rendered tree
+  const stripFiles = (nodes: TreeNode[] = []): TreeNode[] =>
+    nodes
+      .filter(n => n.type === 'folder')
+      .map(n => ({ ...n, children: stripFiles(n.children || []) }));
+  return stripFiles(full);
+}, [documents]);
+// put near your other helpers in Index.tsx
+const createFolderApi = async (payload: { name: string; parent_id: string | null }) => {
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' as const };
+  // Trailing slash recommended to match the backend decorator
+  const { data } = await axios.post('/api/v2/folders/', payload, { headers });
+  return data;
+};
+
+
+
+const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
+  // Special case: creating a root folder uses parent_id = null
+  const isRoot = nodeId === 'root';
+  const node = documents.find(d => d.id === nodeId);
+
+  // Axios instance-like headers
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' as const };
+
+  try {
+    switch (action) {
+      // ---------- core metadata via PUT /api/v2/metadata/:id ----------
+      case 'rename': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        const newName = data?.newName?.trim();
+        if (!newName) return { ok: false, message: 'Нет нового имени' };
+
+        await axios.put(`/api/v2/metadata/${nodeId}`, { name: newName }, { headers });
+        await fetchDocuments();
+        return { ok: true, message: 'Переименовано' };
+      }
+
+      case 'move': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        // null → в корень
+        const targetFolderId = data?.targetFolderId ?? null;
+        await axios.put(`/api/v2/metadata/${nodeId}`, { parent_id: targetFolderId }, { headers });
+        await fetchDocuments();
+        return { ok: true, message: 'Перемещено' };
+      }
+
+      // ---------- create subfolder ----------
+      case 'create-subfolder': {
+        const folderName = data?.folderName?.trim();
+        if (!folderName) return { ok: false, message: 'Имя папки пустое' };
+        const parent_id = nodeId === 'root' ? null : nodeId;
+      
+        await createFolderApi({ name: folderName, parent_id });
+        await fetchDocuments();
+        return { ok: true, message: 'Папка создана' };
+      }
+
+      // ---------- share / download ----------
+      case 'share': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        handleShareNode(nodeId);
+        return { ok: true };
+      }
+
+      case 'download': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        await handleDownloadFile(node);
+        return { ok: true };
+      }
+
+      // ---------- archive / favorite / delete (use your existing helpers) ----------
+      case 'archive': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        await handleArchiveDocument(node);
+        return { ok: true, message: 'В архиве' };
+      }
+
+      case 'favorite': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        await toggleFavorite(nodeId); // consider '/api/v2/metadata/:id/star' if needed
+        return { ok: true, message: 'Избранное обновлено' };
+      }
+
+      case 'delete': {
+        if (!node) return { ok: false, message: 'Узел не найден' };
+        await handleDeleteDocument(node);
+        return { ok: true, message: 'Удалено' };
+      }
+
+      // ---------- not implemented ----------
+      case 'upload':
+      default:
+        return false; // the row will show a "not implemented" toast
+    }
+  } catch (e: any) {
+    return { ok: false, message: e?.message ?? 'Ошибка' };
+  }
+};
+
 
 
 
@@ -938,33 +1142,45 @@ const toBytes = (size: string): number => {
 
         {/*</div><div className="flex items-center justify-between mb-4">*/}
         <PageHeader
-          
-          title={getCategoryTitle(category)}
-          categoryType={category}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          
-        />
+  title={getCategoryTitle(category)}
+  categoryType={category}
+  searchQuery={searchQuery}
+  setSearchQuery={setSearchQuery}
+  viewMode={viewMode}
+  setViewMode={setViewMode}
+
+  // ✅ NEW
+  projects={projects}
+  selectedProjectId={projectRootId}
+  onProjectChange={(id) => {
+    setCurrentProject(id);
+    setFolderId(id);
+    navigate(`/?folderId=${id}`);
+    // If your API supports server-side scoping (e.g., ?root_id=),
+    // you could trigger fetchDocuments() that queries only that tree.
+  }}
+/>
+
       </div>
   {/* left pane: folder tree  <nav className="w-64 overflow-auto h-screen p-2">*/}
   
   
 
  <div className="flex flex-1 overflow-hidden bg-dots">
-      <nav className="w-64 overflow-y-auto border-r bg-white p-2 shadow-inner">
-     <EnhancedFolderTree
-        data={folderTreeData}
-        selectedId={folderId}
-        onSelect={(id) => {
-      // если кликнули по той же папке ─ снимаем выбор
-       setFolderId(prev => (prev === id ? null : id));
+  <nav className="w-64 overflow-y-auto border-r bg-white p-2 shadow-inner">
+  <EnhancedFolderTree
+  data={folderTreeData}
+  selectedId={folderId}
+  onSelect={(id) => {
+    setFolderId(prev => (prev === id ? null : id));
+    if (id) navigate(`/?folderId=${id}`); else navigate(`/`);
+  }}
+  onFileUpload={handleFileUpload}
+  onAction={handleTreeAction}
+/>
 
-    }}   
-           onFileUpload={handleFileUpload}
-            onShare={handleShareNode}
-            />
+
+
   </nav>
       <div className="flex-1 p-4 overflow-y-auto relative bg-gray-50 bg-dots">
       {/* Header with Upload Button */}
@@ -1179,24 +1395,25 @@ const toBytes = (size: string): number => {
         ) : (
           <div className="mt-4 animate-fade-in">
             <DocumentGrid
-              documents={documents}
-              onDocumentClick={handleDocumentClick}
-              onDocumentPreview={handlePreviewFile}
-              viewMode={viewMode}
-              selectedDocument={selectedDocument}
-              onDocumentSelect={handleDocumentSelect}
-              multipleSelection={true}
-              selectionActions={{
-                selectedIds: selectedDocumentIds,
-                onSelectAll: handleSelectAll,
-                onClearSelection: handleClearSelection,
-                onDeleteSelected: handleDeleteSelected,
-                onDownloadSelected: handleDownloadSelected,
-                onShareSelected: handleShareSelected,
-                onArchiveSelected: handleArchiveSelected
-              }}
-              toggleFavorite={toggleFavorite}
-            />
+  documents={sortedDocuments}     // ⟵ was `documents`
+  onDocumentClick={handleDocumentClick}
+  onDocumentPreview={handlePreviewFile}
+  viewMode={viewMode}
+  selectedDocument={selectedDocument}
+  onDocumentSelect={handleDocumentSelect}
+  multipleSelection={true}
+  selectionActions={{
+    selectedIds: selectedDocumentIds,
+    onSelectAll: handleSelectAll,
+    onClearSelection: handleClearSelection,
+    onDeleteSelected: handleDeleteSelected,
+    onDownloadSelected: handleDownloadSelected,
+    onShareSelected: handleShareSelected,
+    onArchiveSelected: handleArchiveSelected
+  }}
+  toggleFavorite={toggleFavorite}
+/>
+
           </div>
         )}
       </div>          </div>

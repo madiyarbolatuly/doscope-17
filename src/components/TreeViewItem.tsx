@@ -1,42 +1,24 @@
-
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Folder, FolderPlus, Edit3, Share, Move, Trash2, Upload, Download, FileText, MoreVertical, Star, Archive } from 'lucide-react';
+import {
+  ChevronDown, ChevronRight, Folder, FolderPlus, Edit3,
+  Share as ShareIcon, Move, Trash2, Download, MoreVertical, Star, Archive
+} from 'lucide-react';
 import { Button } from './ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from './ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle,
 } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { TreeNode } from '@/utils/buildTree';
-import {
-  archiveDocument,
-  unarchiveDocument,
-  toggleStar,
-  renameDocument,
-  deleteDocument,
-} from "@/services/archiveService";
-
-import { useShare } from "@/hooks/useShare";
-
+import { toast } from '@/hooks/use-toast';
 
 interface TreeViewItemProps {
   node: TreeNode;
@@ -46,7 +28,8 @@ interface TreeViewItemProps {
   onSelect: (id: string) => void;
   selectedId: string | null;
   allNodes: TreeNode[];
-  onAction: (action: string, nodeId: string, data?: any) => void;
+  onAction: (action: string, nodeId: string, data?: any) =>
+    void | Promise<boolean | { ok?: boolean; message?: string }>;
   expandedNodes: Set<string>;
 }
 
@@ -59,7 +42,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   selectedId,
   allNodes,
   onAction,
-  expandedNodes
+  expandedNodes,
 }) => {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -67,59 +50,59 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   const [newName, setNewName] = useState(node.name);
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedTargetFolder, setSelectedTargetFolder] = useState<string>('');
-1
+
   const isSelected = selectedId === node.id;
-  const hasChildren = node.children && node.children.length > 0;
   const isFolder = node.type === 'folder';
-  const { openShare } = useShare();
+  const hasChildren = !!(node.children && node.children.length > 0);
 
-const handleArchive = async (docId: string) => {
-  try {
-    await archiveDocument(docId);
-    toast({ title: "Document archived" });
-    onRefresh?.();
-  } catch {
-    toast({ title: "Failed to archive", variant: "destructive" });
-  }
-};
+  // Numbers-first, case-insensitive, natural ordering
+  const collator = React.useMemo(
+    () => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }),
+    []
+  );
+  const startsWithDigit = (s: string) => /^\s*\d/.test(s || '');
+  const compareNodes = React.useCallback((a: TreeNode, b: TreeNode) => {
+    const aNum = startsWithDigit(a.name);
+    const bNum = startsWithDigit(b.name);
+    if (aNum !== bNum) return aNum ? -1 : 1;
+    return collator.compare(a.name || '', b.name || '');
+  }, [collator]);
 
-const handleUnarchive = async (docId: string) => {
-  try {
-    await unarchiveDocument(docId);
-    toast({ title: "Document unarchived" });
-    onRefresh?.();
-  } catch {
-    toast({ title: "Failed to unarchive", variant: "destructive" });
-  }
-};
+  const sortedChildren = React.useMemo(
+    () => (node.children || []).slice().sort(compareNodes),
+    [node.children, compareNodes]
+  );
 
-const handleDelete = async (docId: string) => {
-  try {
-    await deleteDocument(docId);
-    toast({ title: "Document deleted" });
-    onRefresh?.();
-  } catch {
-    toast({ title: "Failed to delete", variant: "destructive" });
-  }
-};
-
-const handleToggleStar = async (docId: string) => {
-  try {
-    await toggleStar(docId);
-    onRefresh?.();
-  } catch {
-    toast({ title: "Failed to favorite", variant: "destructive" });
-  }
-};
-
-const handleShare = (doc: Document) => {
-  openShare(doc);
-};
-
+  // Unified runner with safe feedback
+  const runAction = async (action: string, payload?: any) => {
+    try {
+      const res = await Promise.resolve(onAction(action, node.id, payload));
+      if (res === false) {
+        toast({ title: 'Действие недоступно', description: `Действие "${action}" не реализовано.` });
+      } else if (typeof res === 'object' && res) {
+        const ok = 'ok' in res ? (res as any).ok : true;
+        const message = (res as any).message;
+        if (!ok) {
+          toast({
+            title: 'Ошибка',
+            description: message ?? `Не удалось выполнить "${action}"`,
+            variant: 'destructive',
+          });
+        } else if (message) {
+          toast({ title: message });
+        }
+      }
+    } catch (e) {
+      toast({
+        title: 'Ошибка',
+        description: `Не удалось выполнить "${action}"`,
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleAction = (action: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    
     switch (action) {
       case 'rename':
         setShowRenameDialog(true);
@@ -128,77 +111,62 @@ const handleShare = (doc: Document) => {
         setShowMoveDialog(true);
         break;
       case 'add-subfolder':
+        if (!isFolder) {
+          toast({ title: 'Невозможно', description: 'Подпапка только в папке.' });
+          return;
+        }
         setShowCreateFolderDialog(true);
         break;
-      case 'share':
-        onAction('share', node.id);
-        break;
-      case 'archive':
-        onAction('archive', node.id);
-        break;
-      case 'favorite':
-        onAction('favorite', node.id);
-        break;
-      case 'delete':
-        onAction('delete', node.id);
-        break;
-      case 'upload':
-        onAction('upload', node.id);
-        break;
-      case 'download':
-        onAction('download', node.id);
-        break;
-      case 'view-source':
-        onAction('view-source', node.id);
-        break;
       default:
-        onAction(action, node.id);
+        void runAction(action);
     }
   };
 
-  const handleRename = () => {
-    if (newName.trim() !== node.name) {
-      onAction('rename', node.id, { newName: newName.trim() });
+  const handleRename = async () => {
+    const trimmed = newName.trim();
+    if (trimmed && trimmed !== node.name) {
+      await runAction('rename', { newName: trimmed });
     }
     setShowRenameDialog(false);
   };
 
-  const handleMove = () => {
+  const handleMove = async () => {
     if (selectedTargetFolder) {
-      onAction('move', node.id, { targetFolderId: selectedTargetFolder });
+      await runAction('move', {
+        targetFolderId: selectedTargetFolder === 'root' ? null : selectedTargetFolder,
+      });
     }
     setShowMoveDialog(false);
     setSelectedTargetFolder('');
   };
 
-  const handleCreateFolder = () => {
-    if (newFolderName.trim()) {
-      onAction('create-subfolder', node.id, { folderName: newFolderName.trim() });
+  const handleCreateFolder = async () => {
+    const trimmed = newFolderName.trim();
+    if (trimmed) {
+      await runAction('create-subfolder', { folderName: trimmed });
     }
     setShowCreateFolderDialog(false);
     setNewFolderName('');
   };
 
+  // Build sorted folder tree for "Move" picker
   const getFolderOptions = (excludeId: string): TreeNode[] => {
-    const filterFolders = (nodes: TreeNode[]): TreeNode[] => {
-      return nodes
-        .filter(n => n.type === 'folder' && n.id !== excludeId)
-        .map(n => ({
-          ...n,
-          children: filterFolders(n.children || [])
-        }));
-    };
-    return filterFolders(allNodes);
+    const sortLevel = (nodes: TreeNode[] = []): TreeNode[] =>
+      nodes
+        .filter((n) => n.type === 'folder' && n.id !== excludeId)
+        .slice()
+        .sort(compareNodes)
+        .map((n) => ({ ...n, children: sortLevel(n.children || []) }));
+    return sortLevel(allNodes);
   };
 
-  const renderFolderOptions = (folders: TreeNode[], prefix = ''): React.ReactNode[] => {
-    return folders.flatMap(folder => [
+  const renderFolderOptions = (folders: TreeNode[], prefix = ''): React.ReactNode[] =>
+    folders.flatMap((folder) => [
       <SelectItem key={folder.id} value={folder.id}>
         {prefix}{folder.name}
       </SelectItem>,
-      ...renderFolderOptions(folder.children || [], prefix + '  ')
+      ...renderFolderOptions(folder.children || [], prefix + '  '),
     ]);
-  };
 
   return (
     <>
@@ -209,85 +177,77 @@ const handleShare = (doc: Document) => {
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => onSelect(node.id)}
       >
-        {/* Expand/Collapse Button */}
-        {isFolder && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 p-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle(node.id);
-            }}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </Button>
-        )}
+       {isFolder ? (
+  <Button
+    variant="ghost"
+    size="icon"
+    className="h-4 w-4 p-0"
+    onClick={(e) => {
+      e.stopPropagation();
+      if (hasChildren) onToggle(node.id);
+    }}
+    disabled={!hasChildren} // disables click if no children
+  >
+    {hasChildren ? (
+      isExpanded ? (
+        <ChevronDown className="h-3 w-3" />
+      ) : (
+        <ChevronRight className="h-3 w-3" />
+      )
+    ) : (
+      // empty placeholder to keep layout consistent
+      <div className="h-3 w-3" />
+    )}
+  </Button>
+) : (
+  <div className="w-4" />
+)}
 
-        {!isFolder && <div className="w-4" />}
-
-        {/* Icon */}
         <Folder className="h-4 w-4 text-yellow-600" />
-
-        {/* Node Name */}
         <span className="flex-1 text-sm truncate">{node.name}</span>
 
-        {/* Actions Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost"
-              size="icon"
+              variant="ghost" size="icon"
               className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-background border shadow-lg z-50">
+          <DropdownMenuContent align="end" className="w-52 bg-background border shadow-lg z-50">
             <DropdownMenuItem onClick={(e) => handleAction('add-subfolder', e)}>
               <FolderPlus className="h-4 w-4 mr-2" />
               Добавить подпапку
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            
             <DropdownMenuItem onClick={(e) => handleAction('rename', e)}>
               <Edit3 className="h-4 w-4 mr-2" />
               Переименовать
             </DropdownMenuItem>
-            
             <DropdownMenuItem onClick={(e) => handleAction('share', e)}>
-              <Share className="h-4 w-4 mr-2" />
+              <ShareIcon className="h-4 w-4 mr-2" />
               Поделиться
             </DropdownMenuItem>
-            
             <DropdownMenuItem onClick={(e) => handleAction('favorite', e)}>
               <Star className="h-4 w-4 mr-2" />
               Добавить в избранное
             </DropdownMenuItem>
-            
             <DropdownMenuItem onClick={(e) => handleAction('move', e)}>
               <Move className="h-4 w-4 mr-2" />
-              тить
+              Переместить
             </DropdownMenuItem>
-            
             <DropdownMenuItem onClick={(e) => handleAction('download', e)}>
               <Download className="h-4 w-4 mr-2" />
               Скачать
             </DropdownMenuItem>
-            
             <DropdownMenuSeparator />
-            
             <DropdownMenuItem onClick={(e) => handleAction('archive', e)}>
               <Archive className="h-4 w-4 mr-2" />
               Архивировать
             </DropdownMenuItem>
-            
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={(e) => handleAction('delete', e)}
               className="text-destructive"
             >
@@ -298,10 +258,9 @@ const handleShare = (doc: Document) => {
         </DropdownMenu>
       </div>
 
-      {/* Expanded Children */}
       {isExpanded && hasChildren && (
         <div>
-          {node.children?.map((child) => (
+          {sortedChildren.map((child) => (
             <TreeViewItem
               key={child.id}
               node={child}
@@ -318,87 +277,65 @@ const handleShare = (doc: Document) => {
         </div>
       )}
 
-      {/* Rename Dialog */}
+      {/* Rename */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Переименовать {isFolder ? 'папку' : 'файл'}</DialogTitle>
-            <DialogDescription>
-              Введите новое имя для "{node.name}"
-            </DialogDescription>
+            <DialogDescription>Введите новое имя для “{node.name}”.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Имя
-              </Label>
-              <Input
-                id="name"
-                value={newName}
+              <Label htmlFor="name" className="text-right">Имя</Label>
+              <Input id="name" value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); }}
                 className="col-span-3"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleRename}>
-              Переименовать
-            </Button>
+            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>Отмена</Button>
+            <Button onClick={handleRename}>Переименовать</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Create Folder Dialog */}
+      {/* Create subfolder */}
       <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Создать новую папку</DialogTitle>
-            <DialogDescription>
-              Введите имя для новой подпапки в "{node.name}"
-            </DialogDescription>
+            <DialogDescription>Введите имя для новой подпапки в “{node.name}”.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="folderName" className="text-right">
-                Имя папки
-              </Label>
+              <Label htmlFor="folderName" className="text-right">Имя папки</Label>
               <Input
-                id="folderName"
-                value={newFolderName}
+                id="folderName" value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                className="col-span-3"
-                placeholder="Имя новой папки"
+                onKeyDown={(e) => { if (e.key === 'Enter' && newFolderName.trim()) handleCreateFolder(); }}
+                className="col-span-3" placeholder="Имя новой папки"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
-              Создать
-            </Button>
+            <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>Отмена</Button>
+            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>Создать</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Move Dialog */}
+      {/* Move */}
       <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Переместить {isFolder ? 'папку' : 'файл'}</DialogTitle>
-            <DialogDescription>
-              Выберите папку назначения для "{node.name}"
-            </DialogDescription>
+            <DialogDescription>Выберите папку назначения для “{node.name}”.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="target" className="text-right">
-                Папка назначения
-              </Label>
+              <Label htmlFor="target" className="text-right">Папка назначения</Label>
               <Select value={selectedTargetFolder} onValueChange={setSelectedTargetFolder}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Выберите папку назначения" />
@@ -411,12 +348,8 @@ const handleShare = (doc: Document) => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleMove} disabled={!selectedTargetFolder}>
-              Переместить
-            </Button>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>Отмена</Button>
+            <Button onClick={handleMove} disabled={!selectedTargetFolder}>Переместить</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -19,51 +19,55 @@ interface PageHeaderProps {
   setSearchQuery?: (query: string) => void;
   viewMode?: 'grid' | 'list';
   setViewMode?: (mode: 'grid' | 'list') => void;
+
+  // ✅ NEW:
+  projects?: Array<{ id: string; name: string; userEmail?: string }>;
+  selectedProjectId?: string | null;
+  onProjectChange?: (id: string, name: string) => void;
 }
 
-export function PageHeader({ 
-  title, 
+export function PageHeader({
+  title,
   description,
   children,
   categoryType,
-  searchQuery, 
+  searchQuery,
   setSearchQuery,
   viewMode,
-  setViewMode
+  setViewMode,
+
+  // ✅ NEW:
+  projects = [],
+  selectedProjectId = null,
+  onProjectChange,
 }: PageHeaderProps) {
   const getCategoryDescription = (type?: CategoryType) => {
     if (!type) return description;
-    
     switch (type) {
-      case 'all':
-        return 'Все документы в вашем рабочем пространстве';
-      case 'recent':
-        return 'Недавно открытые документы';
-      case 'shared':
-        return 'Документы, которыми поделились с вами';
-      case 'favorites':
-        return 'Ваши избранные документы';
-      case 'trash':
-        return 'Удаленные документы';
-      default:
-        return `Документы в категории ${type}`;
+      case 'all':       return 'Все документы в вашем рабочем пространстве';
+      case 'recent':    return 'Недавно открытые документы';
+      case 'shared':    return 'Документы, которыми поделились с вами';
+      case 'favorites': return 'Ваши избранные документы';
+      case 'trash':     return 'Удаленные документы';
+      default:          return `Документы в категории ${type}`;
     }
   };
-
   const renderActions = () => {
-    if (children) {
-      return children;
-    }
-    
+    if (children) return children;
+
     return (
       <div className="flex gap-2 items-center">
-        <ProjectSwitcher />
+        {/* ✅ Wire the switcher here */}
+        <ProjectSwitcher
+          projects={projects}
+          selectedProjectId={selectedProjectId ?? undefined}
+          onProjectChange={(id, name) => onProjectChange?.(id, name)}
+        />
         <NotificationBell />
         <UserButton />
       </div>
     );
   };
-
   return (
     <div className="pb-4 border-b border-blue-200 bg-blue-50 px-6 pt-4 shadow-sm rounded-b-md">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">

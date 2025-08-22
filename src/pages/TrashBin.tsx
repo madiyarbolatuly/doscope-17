@@ -17,81 +17,7 @@ import { Archive, RotateCcw, Grid2X2, List, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
-// Mock data for development
-const mockTrashedDocuments: Document[] = [
-  {
-    id: 'mock-1',
-    name: 'Project Report Q4 2024.pdf',
-    type: 'pdf',
-    size: '2.4 MB',
-    modified: '2024-01-15T10:30:00Z',
-    owner: 'admin',
-    category: 'reports',
-    path: '/reports/project-report-q4.pdf',
-    tags: ['quarterly', 'report', 'project'],
-    archived: true
-  },
-  {
-    id: 'mock-2',
-    name: 'Marketing Presentation.pptx',
-    type: 'ppt',
-    size: '8.1 MB',
-    modified: '2024-01-10T14:22:00Z',
-    owner: 'admin',
-    category: 'marketing',
-    path: '/marketing/presentation.pptx',
-    tags: ['marketing', 'presentation'],
-    archived: true
-  },
-  {
-    id: 'mock-3',
-    name: 'Budget Spreadsheet 2024.xlsx',
-    type: 'xlsx',
-    size: '1.8 MB',
-    modified: '2024-01-08T09:15:00Z',
-    owner: 'admin',
-    category: 'finance',
-    path: '/finance/budget-2024.xlsx',
-    tags: ['budget', 'finance', '2024'],
-    archived: true
-  },
-  {
-    id: 'mock-4',
-    name: 'Old Project Designs',
-    type: 'folder',
-    size: '45 MB',
-    modified: '2024-01-05T16:45:00Z',
-    owner: 'admin',
-    category: 'design',
-    path: '/design/old-projects/',
-    tags: ['design', 'archived'],
-    archived: true
-  },
-  {
-    id: 'mock-5',
-    name: 'Meeting Notes January.docx',
-    type: 'doc',
-    size: '456 KB',
-    modified: '2024-01-03T11:20:00Z',
-    owner: 'admin',
-    category: 'meetings',
-    path: '/meetings/january-notes.docx',
-    tags: ['meeting', 'notes', 'january'],
-    archived: true
-  },
-  {
-    id: 'mock-6',
-    name: 'Company Logo Old.png',
-    type: 'image',
-    size: '892 KB',
-    modified: '2023-12-28T13:10:00Z',
-    owner: 'admin',
-    category: 'design',
-    path: '/assets/logo-old.png',
-    tags: ['logo', 'branding', 'old'],
-    archived: true
-  }
-];
+
 
 const TrashBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -133,18 +59,16 @@ const TrashBin = () => {
           ) : 'file',
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
-          owner: doc.owner_id,
+          owner: doc.owner_name || doc.owner_id,
           category: doc.categories && doc.categories.length > 0 ? doc.categories[0] : '--',
           path: doc.file_path,
           tags: doc.tags || []
         }));
         setDocuments(transformedDocuments);
-      } else {
-        setDocuments(mockTrashedDocuments);
+    
       }
     } catch (error) {
       console.error('Error fetching trashed documents:', error);
-      setDocuments(mockTrashedDocuments);
       toast({
         title: "Info",
         description: "Using mock data for demonstration",
