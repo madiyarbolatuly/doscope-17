@@ -756,6 +756,59 @@ const projects = useMemo(
     setShowSidebar(false);
   };
 
+  // Use "starred" consistently in your Document shape
+const handleToggleFavorite = async (doc: Document) => {
+  const idx = documents.findIndex(d => d.id === doc.id);
+  if (idx === -1) return;
+
+  // optimistic UI
+  const prev = documents[idx].starred ?? false;
+  const nextDocs = [...documents];
+  nextDocs[idx] = { ...nextDocs[idx], starred: !prev };
+  setDocuments(nextDocs);
+
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/json',
+  };
+
+  // Server expects NAME, not ID. Try both base paths in case you have a proxy.
+  const candidates = [
+    
+    `/api/v2/metadata/${doc.id}/star`,
+  ];
+
+  try {
+    let ok = false;
+    let lastStatus = 0;
+
+    for (const url of candidates) {
+      const res = await fetch(url, { method: 'PUT', headers });
+      lastStatus = res.status;
+      if (res.ok) { ok = true; break; }
+      if (![404, 405].includes(res.status)) break; // real error → stop trying
+    }
+
+    if (!ok) {
+      // revert
+      const reverted = [...documents];
+      reverted[idx] = { ...reverted[idx], starred: prev };
+      setDocuments(reverted);
+      throw new Error(`Toggle failed (status ${lastStatus}). Ensure the API exposes PUT /v2/metadata/{name}/star on port 8081 or proxy to it.`);
+    }
+  } catch (e: any) {
+    const reverted = [...documents];
+    reverted[idx] = { ...reverted[idx], starred: prev };
+    setDocuments(reverted);
+    toast({
+      title: 'Ошибка',
+      description: e?.message || 'Не удалось обновить избранное',
+      variant: 'destructive',
+    });
+  }
+};
+
+
   const handleDeleteSelected = async () => {
     const selectedDocs = documents.filter(doc => selectedDocumentIds.includes(doc.id));
 
@@ -1008,8 +1061,13 @@ const toBytes = (size: string): number => {
   }
 };
 
- const sortedDocuments = React.useMemo(() => {
+const sortedDocuments = React.useMemo(() => {
   return [...filteredDocuments].sort((a, b) => {
+    // 1. Сначала сравнение по типу: папки всегда выше
+    if (a.type === 'folder' && b.type !== 'folder') return -1;
+    if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+    // 2. Внутри группы сортировка по выбранному полю
     let valA: string | number = a[sortBy] as any;
     let valB: string | number = b[sortBy] as any;
 
@@ -1027,9 +1085,11 @@ const toBytes = (size: string): number => {
     if (typeof valA === 'number' && typeof valB === 'number') {
       return sortOrder === 'asc' ? valA - valB : valB - valA;
     }
+
     return 0;
   });
 }, [filteredDocuments, sortBy, sortOrder]);
+
 const folderTreeData: TreeNode[] = React.useMemo(() => {
   // build relationships using all docs first
   const full = buildTree(documents);
@@ -1112,8 +1172,9 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       }
 
       case 'favorite': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
-        await toggleFavorite(nodeId); // consider '/api/v2/metadata/:id/star' if needed
+        const doc = documents.find(d => d.id === nodeId);
+        if (!doc) return { ok: false, message: 'Документ не найден' };
+        await handleToggleFavorite(doc);
         return { ok: true, message: 'Избранное обновлено' };
       }
 
@@ -1330,9 +1391,12 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                       </TableCell>
                       <TableCell>
                         <span className="text-muted-foreground">
-                          {format(new Date(document.modified), 'MMM d, yyyy HH:mm')}
+                          {document.modified
+                            ? format(new Date(document.modified), "dd.MM.yyyy HH:mm")
+                            : "—"}
                         </span>
                       </TableCell>
+
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-xs text-white font-medium">
@@ -1342,17 +1406,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openShare(document);
-                        }}
-                        className="h-8 w-8"
-                        >
-                          <Share className="h-4 w-4" />
-                        </Button>
+                        
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
@@ -1360,9 +1414,10 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-background border shadow-lg">
+                          {document.type !== 'folder' &&
                             <DropdownMenuItem onClick={() => handlePreviewFile(document)}>
                               Просмотр
-                            </DropdownMenuItem>
+                            </DropdownMenuItem>}
                             <DropdownMenuItem onClick={() => handleDownloadFile(document)}>
                               Скачать
                             </DropdownMenuItem>
@@ -1372,7 +1427,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                             <DropdownMenuItem onClick={() => document.archived ? handleUnarchiveDocument(document) : handleArchiveDocument(document)}>
                               {document.archived ? 'Разархивировать' : 'Архивировать'}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleFavorite(document)}>
+                            <DropdownMenuItem onClick={() => toggleFavorite(document.name)}>
                               {document.starred ? 'Убрать из избранного' : 'Добавить в избранное'}
                             </DropdownMenuItem> 
                             <DropdownMenuSeparator />
@@ -1462,14 +1517,16 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       {!previewUrl && showSidebar && selectedDocument && (
        <div className="w-128 border bg-gradient-to-b from-gray-50 via-white to-gray-100 fixed right-0 top-56 h-full z-40 shadow-lg rounded-l-xl">
           <MetadataSidebar
-            document={selectedDocument}
-            previewUrl={previewUrl}
-            onClose={handleCloseSidebar}
-            onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
-            onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
-            onUpdateMetadata={handleUpdateMetadata}
-            token={token}
-          />
+  document={selectedDocument}
+  previewUrl={previewUrl}
+  onClose={handleCloseSidebar}
+  onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
+  onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
+  onUpdateMetadata={handleUpdateMetadata}
+  onToggleFavorite={handleToggleFavorite}   // ✅ pass down
+  token={token}
+/>
+
         </div>
         
       )}

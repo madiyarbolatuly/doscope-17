@@ -16,6 +16,7 @@ import { Star, Grid2X2, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFavoriteDocuments } from '@/hooks/useFavoriteDocuments';
 import { useDocumentSelection } from '@/hooks/useDocumentSelection';
+import { DocumentListItem } from '@/components/DocumentListItem';
 
 const Favorites = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,9 +60,9 @@ const Favorites = () => {
     clearSelection();
     setSelectedDocument(null);
   };
-
-  const handleToggleFavorite = async (document: Document) => {
-    await toggleFavorite(document.id);
+  const handleToggleFavorite = async (id: string) => {
+    const idx = documents.findIndex(d => d.id === id);
+    if (idx === -1) return;
   };
 
   if (loading) {
@@ -115,39 +116,65 @@ const Favorites = () => {
       </div>
 
       {filteredDocuments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-lg border">
-          <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <Star className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-1">Избранных документов нет</h3>
-          <p className="text-muted-foreground text-sm max-w-md">
-            Здесь пока нет документов или по вашему запросу ничего не найдено.
-          </p>
-        </div>
-      ) : (
-        <DocumentGrid
-          documents={filteredDocuments}
-          onDocumentClick={handleDocumentClick}
-          viewMode={viewMode}
-          selectedDocument={selectedDocument}
-          onDocumentSelect={handleDocumentSelectWrapper}
-          multipleSelection={true}
-          selectionActions={{
-            selectedIds: selectedDocuments,
-            onSelectAll: handleSelectAllWrapper,
-            onClearSelection: handleClearSelection,
-            onFavoriteSelected: () => {},
-            onUnfavoriteSelected: () => {},
-          }}
-          onDocumentPreview={(document) => {
-            toast({
-              title: 'Preview не реализован',
-              description: `Preview для: ${document.name}`,
-            });
-          }}
-          onToggleFavorite={handleToggleFavorite}
-        />
-      )}
+  <div className="flex flex-col items-center justify-center p-12 text-center bg-card rounded-lg border">
+    <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mb-4">
+      <Star className="h-8 w-8 text-muted-foreground" />
+    </div>
+    <h3 className="text-lg font-medium mb-1">Избранных документов нет</h3>
+    <p className="text-muted-foreground text-sm max-w-md">
+      Здесь пока нет документов или по вашему запросу ничего не найдено.
+    </p>
+  </div>
+) : viewMode === 'grid' ? (
+  <DocumentGrid
+    documents={filteredDocuments}
+    onDocumentClick={handleDocumentClick}
+    selectedDocument={selectedDocument}
+    onDocumentSelect={handleDocumentSelectWrapper}
+    multipleSelection
+    selectionActions={{
+      selectedIds: selectedDocuments,
+      onSelectAll: handleSelectAllWrapper,
+      onClearSelection: handleClearSelection,
+      onDeleteSelected: async () => {},   // add stub if required
+      onDownloadSelected: () => {},
+      onShareSelected: () => {},
+      onArchiveSelected: async () => {},
+    }}
+    
+    onDocumentPreview={async (document) => {
+  toast({
+    title: 'Preview не реализован',
+    description: `Preview для: ${document.name}`,
+  });
+}}
+
+  toggleFavorite={handleToggleFavorite}   // ✅ just pass the function
+  />
+) : (
+  <DocumentListItem
+    documents={filteredDocuments}
+    onDocumentClick={handleDocumentClick}
+    selectedDocument={selectedDocument}
+    onDocumentSelect={handleDocumentSelectWrapper}
+    multipleSelection
+    selectionActions={{
+      selectedIds: selectedDocuments,
+      onSelectAll: handleSelectAllWrapper,
+      onClearSelection: handleClearSelection,
+      onFavoriteSelected: () => {},
+      onUnfavoriteSelected: () => {},
+    }}
+    onDocumentPreview={(document) =>
+      toast({
+        title: 'Preview не реализован',
+        description: `Preview для: ${document.name}`,
+      })
+    }
+    onToggleFavorite={handleToggleFavorite}
+  />
+)}
+
     </div>
   );
 };

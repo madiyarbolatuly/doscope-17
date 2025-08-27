@@ -206,43 +206,7 @@ const ArchivedPage = () => {
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedDocuments.length === 0 || !token) return;
-    
-    let successCount = 0;
-    let failCount = 0;
-    
-    for (const docId of selectedDocuments) {
-      const doc = documents.find(d => d.id === docId);
-      if (doc) {
-        try {
-          await deleteDocument(doc.id, token);
-          successCount++;
-        } catch (error) {
-          console.error(`Error deleting document ${doc.name}:`, error);
-          failCount++;
-        }
-      }
-    }
-    
-    if (successCount > 0) {
-      toast({
-        title: "Success",
-        description: `${successCount} document(s) permanently deleted${failCount > 0 ? `, ${failCount} failed` : ''}`,
-        variant: "destructive"
-      });
-      
-      setSelectedDocuments([]);
-      fetchArchivedDocuments();
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to delete any documents",
-        variant: "destructive"
-      });
-    }
-  };
-
+ 
   return (
     <div className="container px-4 ml-0 mr-0 w-full md:px-6" style={{ maxWidth: "none" }}>
       <div className="mb-6">

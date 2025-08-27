@@ -19,8 +19,10 @@ interface MetadataSidebarProps {
   onDelete?: () => void;
   onUpdateMetadata?: (id: string, name: string, tags?: string[], categories?: string[]) => Promise<void>;
   onShare?: () => void;
+  onToggleFavorite?: (doc: Document) => void;   // 👈 add this
   token?: string;
 }
+
 
 export function MetadataSidebar({ 
   document,
@@ -30,6 +32,7 @@ export function MetadataSidebar({
   onDelete,
   onShare,
   onUpdateMetadata,
+  onToggleFavorite,
   token
 }: MetadataSidebarProps) {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -69,6 +72,8 @@ export function MetadataSidebar({
     setIsEditingName(true);
   };
 
+  
+
   const handleSaveEdit = async () => {
     if (!document.id || !onUpdateMetadata || newName.trim() === '') return;
     
@@ -89,7 +94,7 @@ export function MetadataSidebar({
 
   const isFolder = document.type === 'folder';
   const fileExtension = document.name.split('.').pop()?.toUpperCase() || '';
-  const modifiedDate = document.modified ? new Date(document.modified) : new Date();
+  const modifiedDate = document.created_at ? new Date(document.created_at) : new Date();
   
   return (
     <div className="h-full border-l bg-background overflow-y-auto">
@@ -187,11 +192,15 @@ export function MetadataSidebar({
                 <span className="hidden md:inline">Поделиться</span>
              </Button>
             
-          <Button variant="outline" size="sm">
-            <Star className="h-4 w-4 mr-2" />
-            {document.favorited ? 'Убрать' : 'В избранное'}
-          </Button>
-          
+             <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onToggleFavorite?.(document)}   // 👈 wire up
+              >
+                <Star className="h-4 w-4 mr-2" />
+                {document.starred ? 'Убрать' : 'В избранное'}
+              </Button>
+
           {onDelete && (
             <Button 
               variant="outline" 

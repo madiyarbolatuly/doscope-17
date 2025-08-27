@@ -60,8 +60,8 @@ export function DocumentListItem({
     }
   };
 
-  const modifiedDate = new Date(document.modified);
-  const formattedDate = format(modifiedDate, 'MMM d, yyyy');
+  // const modifiedDate = new Date(modifiedDate);
+  // const formattedDate = format(modifiedDate, 'MMM d, yyyy');
   
   return (
     <>
@@ -130,7 +130,7 @@ export function DocumentListItem({
           </div>
         </div>
         <div className="flex-shrink-0 text-sm text-muted-foreground w-32 px-2">
-          {formattedDate}
+          {/* {formattedDate} */}
         </div>
         <div className="flex-shrink-0 text-sm text-muted-foreground w-32 px-2 truncate">
           {document.owner}

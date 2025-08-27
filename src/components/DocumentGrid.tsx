@@ -25,7 +25,7 @@ interface DocumentGridProps {
     onShareSelected: () => void;
     onArchiveSelected: () => Promise<void>;
   };
-  toggleFavorite: (documentId: string) => Promise<void>;
+  toggleFavorite?: (doc: Document) => Promise<void> | void;  // ✅ Document instead of id
 }
 
 export const DocumentGrid: React.FC<DocumentGridProps> = ({
@@ -33,6 +33,7 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
   onDocumentClick,
   onDocumentSelect,
   onDocumentPreview,
+  
   viewMode,
   selectedDocument,
   multipleSelection,

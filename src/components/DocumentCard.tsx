@@ -160,7 +160,8 @@ export function DocumentCard({
           <div className="mt-2 space-y-1">
             <div className="flex items-center text-xs text-muted-foreground">
               <Calendar className="h-3 w-3 mr-1" />
-              <span>{new Date(document.modified).toLocaleDateString()}</span>
+              <span>  {new Date(document.created_at).toLocaleDateString('ru-RU')}
+              </span>
             </div>
           </div>
         </div>
