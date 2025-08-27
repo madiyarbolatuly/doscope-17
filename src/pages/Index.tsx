@@ -1061,7 +1061,7 @@ const toBytes = (size: string): number => {
   }
 };
 
-const sortedDocuments = React.useMemo(() => {
+ const sortedDocuments = React.useMemo(() => {
   return [...filteredDocuments].sort((a, b) => {
     // 1. Сначала сравнение по типу: папки всегда выше
     if (a.type === 'folder' && b.type !== 'folder') return -1;
