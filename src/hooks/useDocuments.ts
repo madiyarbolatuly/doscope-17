@@ -102,10 +102,6 @@ export function useDocuments(category?: string, status?: string) {
     }
   }, [category, status]);
 
-  useEffect(() => {
-    fetchDocuments();
-  }, [category, status, fetchDocuments]);
-
   return { docs, loading, error, totalCount, refetch: fetchDocuments };
 }
 

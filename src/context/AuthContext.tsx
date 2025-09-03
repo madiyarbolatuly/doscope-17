@@ -70,33 +70,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await loginUserService(credentials);
       setToken(data.access_token);
       localStorage.setItem('authToken', data.access_token);
+  
+      // Don’t mark authenticated until after fetching user
+      const userData = await getCurrentUser();
+      const fullUser: User = {
+        id: userData.id,
+        username: userData.username,
+        email: userData.email || `${userData.username}@company.com`,
+        role: 'admin',
+        permissions: ['*'],
+        departments: ['development'],
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
+      };
+      setUser(fullUser);
       setIsAuthenticated(true);
-      
-      // Fetch user data after successful login
-      try {
-        const userData = await getCurrentUser();
-        const fullUser: User = {
-          id: userData.id,
-          username: userData.username,
-          email: userData.email || `${userData.username}@company.com`,
-          role: 'admin',
-          permissions: ['*'],
-          departments: ['development'],
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          lastLogin: new Date().toISOString()
-        };
-        setUser(fullUser);
-      } catch (userErr) {
-        console.error("Failed to fetch user data after login", userErr);
-      }
     } catch (err: any) {
+      console.error("Login failed:", err);
       setError(err.response?.data?.detail || err.message || "Failed to login");
+      setIsAuthenticated(false); // ← explicitly reset
+      setToken(null);
+      localStorage.removeItem('authToken');
       throw err;
     } finally {
       setIsLoading(false);
     }
   };
+  
 
   const logout = () => {
     logoutUserService();

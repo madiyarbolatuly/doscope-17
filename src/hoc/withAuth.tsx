@@ -1,7 +1,7 @@
-
-import React from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { Loader2 } from 'lucide-react';
+import React from "react";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2 } from "lucide-react";
+import { Navigate } from "react-router-dom";
 
 export const withAuth = <P extends object>(
   Component: React.ComponentType<P>
@@ -17,8 +17,10 @@ export const withAuth = <P extends object>(
       );
     }
 
-    // No longer redirecting to login if not authenticated
-    // Just render the component regardless of authentication status
+    if (!isAuthenticated) {
+      return <Navigate to="/login" replace />;
+    }
+
     return <Component {...props} />;
   };
 

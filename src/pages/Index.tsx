@@ -18,6 +18,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
+import { createFolderApi } from "@/hooks/folders";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +46,9 @@ interface BackendDocument {
   access_to: string[] | null;
   id: string;
   parent_id: string | null;
+  is_archived?: boolean;      
+  is_favourited?: boolean;   
+  deleted_at?: string | null; 
 }
 
 
@@ -128,13 +133,15 @@ const projects = useMemo(
           }
         }
       }
-      return rows.filter(r => want.has(String(r.id)) || (r.parent_id && want.has(String(r.parent_id))));
+      return rows.filter(
+        (r) => want.has(String(r.id)) || (r.parent_id && want.has(String(r.parent_id)))
+      );
     };
   
-    const tryFetch = async (params: Record<string,string>) => {
-      const qs = new URLSearchParams({ limit: '1400', offset: '0', ...params });
+    const tryFetch = async (params: Record<string, string>) => {
+      const qs = new URLSearchParams({ limit: "1400", offset: "0", ...params });
       const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
@@ -147,51 +154,73 @@ const projects = useMemo(
       if (projectRootId) {
         // ✅ preferred: ask backend for subtree only
         try {
-          rows = await tryFetch({ recursive: 'true', ancestor_id: String(projectRootId) });
+          rows = await tryFetch({ recursive: "true", ancestor_id: String(projectRootId) });
         } catch {
           // fallback: fetch a larger slice and filter in the client
-          const all = await tryFetch({ recursive: 'true' });
+          const all = await tryFetch({ recursive: "true" });
           rows = filterSubtree(all, String(projectRootId));
         }
       } else {
         // no project selected → fetch a reasonable slice (e.g., top-level view)
-        rows = await tryFetch({ recursive: 'true' });
+        rows = await tryFetch({ recursive: "true" });
       }
+  
+      // ⬇️ NEW: drop archived & deleted items before mapping
+      const isArchived = (r: BackendDocument) =>
+        r.is_archived === true || r.status === "archived";
+  
+      const isDeleted = (r: BackendDocument) =>
+        !!r.deleted_at || r.status === "deleted";
+  
+      rows = rows.filter((r) => !isArchived(r) && !isDeleted(r));
   
       const mapped: Document[] = rows.map((doc) => ({
         id: String(doc.id),
         // ⬇️ don't decode: names may not be percent-encoded
-        name: doc.name || 'Unnamed Document',
+        name: doc.name || "Unnamed Document",
         type:
-          doc.file_type === 'folder' ? 'folder' :
-          doc.file_type?.includes('pdf') ? 'pdf' :
-          doc.file_type?.includes('doc') ? 'doc' :
-          doc.file_type?.includes('xls') ? 'xlsx' :
-          doc.file_type?.includes('pptx') ? 'pptx' :
-          doc.file_type?.includes('ppt') ? 'ppt' :
-          doc.file_type?.includes('png') ? 'png' :
-          doc.file_type?.includes('image') ? 'image' :
-          doc.file_type?.includes('zip') ? 'zip' : 'file',
-        size: doc.file_type === 'folder'
-          ? '--'
-          : (doc.size != null ? `${(Number(doc.size) / (1024*1024)).toFixed(2)} MB` : 'Unknown'),
+          doc.file_type === "folder"
+            ? "folder"
+            : doc.file_type?.includes("pdf")
+            ? "pdf"
+            : doc.file_type?.includes("doc")
+            ? "doc"
+            : doc.file_type?.includes("xls")
+            ? "xlsx"
+            : doc.file_type?.includes("pptx")
+            ? "pptx"
+            : doc.file_type?.includes("ppt")
+            ? "ppt"
+            : doc.file_type?.includes("png")
+            ? "png"
+            : doc.file_type?.includes("image")
+            ? "image"
+            : doc.file_type?.includes("zip")
+            ? "zip"
+            : "file",
+        size:
+          doc.file_type === "folder"
+            ? "--"
+            : doc.size != null
+            ? `${(Number(doc.size) / (1024 * 1024)).toFixed(2)} MB`
+            : "Unknown",
         modified: doc.created_at,
         owner: doc.owner_id,
-        category: doc.categories?.[0] || 'uncategorized',
+        category: doc.categories?.[0] || "uncategorized",
         path: doc.file_path ?? null,
         tags: doc.tags || [],
         parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
-        archived: doc.status === 'archived',
-        starred: false,
+        archived: isArchived(doc),          // will be false for the kept rows
+        starred: Boolean(doc.is_favourited) // preserve favourite if backend returns it
       }));
   
       setDocuments(mapped);
     } catch (e: any) {
       console.error(e);
       toast({
-        title: 'Ошибка загрузки',
-        description: `Метаданные не получены (${e?.message ?? 'unknown'}).`,
-        variant: 'destructive',
+        title: "Ошибка загрузки",
+        description: `Метаданные не получены (${e?.message ?? "unknown"}).`,
+        variant: "destructive",
       });
       setDocuments([]);
     } finally {
@@ -199,26 +228,45 @@ const projects = useMemo(
     }
   }, [token, projectRootId, toast]);
   
-  
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
   
-
+  const isOfficeEditable = (doc: Document) =>
+    ['docx', 'xlsx', 'pptx', 'ppt'].includes(doc.type);
   
+// guess the ext for the OnlyOffice config
+const guessOnlyOfficeExt = (doc: Document): 'docx' | 'xlsx' | 'pptx' => {
+  const lower = (doc.name || '').toLowerCase();
+  if (lower.endsWith('.docx')) return 'docx';
+  if (lower.endsWith('.xlsx')) return 'xlsx';
+  if (lower.endsWith('.pptx')) return 'pptx';
+  // fallback from your mapped `type`
+  if (doc.type === 'xlsx') return 'xlsx';
+  if (doc.type === 'pptx' || doc.type === 'ppt') return 'pptx';
+  return 'docx';
+};
 
-  const { createShareLink, shareWithUsers, loading: shareLoading, error: shareError } = useShare();
+const handleEdit = (doc: Document) => {
+  console.log('[handleEdit]', doc.id, doc.name);
 
-  // Handler that you’ll pass down to your grid/item “Share” button:
+  if (!isOfficeEditable(doc)) return;
+  const ext = guessOnlyOfficeExt(doc);
+
+  const search = new URLSearchParams({
+    ext,
+    title: doc.name,
+  }).toString();
+
+  navigate(`/edit/${encodeURIComponent(doc.id)}?${search}`);
+};
+
+
+
   const openShare = (doc: Document) => {
     setShareDoc(doc);
     setIsShareOpen(true);
    };
-
-  const closeShareModal = () => {
-    setShareDoc(null);
-    setIsShareOpen(false);
-  };
 
 
 
@@ -437,9 +485,6 @@ const projects = useMemo(
     }
   };
 
-  
-
-  // Upload document
   const traverseFileTree = async (
     item: FileSystemEntry,
     path = '',
@@ -464,6 +509,8 @@ const projects = useMemo(
       }
     });
   };
+
+
   const handleDropWithFolders = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -794,7 +841,7 @@ const handleToggleFavorite = async (doc: Document) => {
       const reverted = [...documents];
       reverted[idx] = { ...reverted[idx], starred: prev };
       setDocuments(reverted);
-      throw new Error(`Toggle failed (status ${lastStatus}). Ensure the API exposes PUT /v2/metadata/{name}/star on port 8081 or proxy to it.`);
+      throw new Error(`Toggle failed (status ${lastStatus}). Ensure the API exposes PUT /v2/metadata/{name}/star on port 8080 or proxy to it.`);
     }
   } catch (e: any) {
     const reverted = [...documents];
@@ -1100,15 +1147,6 @@ const folderTreeData: TreeNode[] = React.useMemo(() => {
       .map(n => ({ ...n, children: stripFiles(n.children || []) }));
   return stripFiles(full);
 }, [documents]);
-// put near your other helpers in Index.tsx
-const createFolderApi = async (payload: { name: string; parent_id: string | null }) => {
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' as const };
-  // Trailing slash recommended to match the backend decorator
-  const { data } = await axios.post('/api/v2/folders/', payload, { headers });
-  return data;
-};
-
-
 
 const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
   // Special case: creating a root folder uses parent_id = null
@@ -1141,16 +1179,22 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       }
 
       // ---------- create subfolder ----------
-      case 'create-subfolder': {
-        const folderName = data?.folderName?.trim();
-        if (!folderName) return { ok: false, message: 'Имя папки пустое' };
-        const parent_id = nodeId === 'root' ? null : nodeId;
-      
-        await createFolderApi({ name: folderName, parent_id });
-        await fetchDocuments();
-        return { ok: true, message: 'Папка создана' };
-      }
+      case "create-subfolder": {
+        const folderName: string = data?.folderName?.trim();
+        if (!folderName) return { ok: false, message: "Имя папки пустое" };
 
+        // root => null, otherwise convert to number
+        const parent_id =
+          nodeId === "root" ? null : Number(nodeId);
+
+        if (parent_id !== null && Number.isNaN(parent_id)) {
+          return { ok: false, message: "Некорректный ID папки" };
+        }
+
+        await createFolderApi(token, { name: folderName, parent_id });
+        await fetchDocuments();
+        return { ok: true, message: "Папка создана" };
+      }
       // ---------- share / download ----------
       case 'share': {
         if (!node) return { ok: false, message: 'Узел не найден' };
@@ -1193,9 +1237,6 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
     return { ok: false, message: e?.message ?? 'Ошибка' };
   }
 };
-
-
-
 
   return (
  <div className="flex flex-col h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100">
@@ -1427,6 +1468,18 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                             <DropdownMenuItem onClick={() => document.archived ? handleUnarchiveDocument(document) : handleArchiveDocument(document)}>
                               {document.archived ? 'Разархивировать' : 'Архивировать'}
                             </DropdownMenuItem>
+                            {document.type !== 'folder' && (
+                             <DropdownMenuItem
+                             onSelect={(e) => {
+                               e.preventDefault();    // keep the menu from stealing focus
+                               e.stopPropagation();   // avoid row onClick
+                               handleEdit(document);  // navigate to /edit/:id?ext=...&title=...
+                             }}
+                           >
+                             Редактировать
+                           </DropdownMenuItem>
+                          
+                            )}
                             <DropdownMenuItem onClick={() => toggleFavorite(document.name)}>
                               {document.starred ? 'Убрать из избранного' : 'Добавить в избранное'}
                             </DropdownMenuItem> 
@@ -1437,6 +1490,8 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                             >
                               Удалить
                             </DropdownMenuItem>
+                            
+
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -1450,24 +1505,24 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
         ) : (
           <div className="mt-4 animate-fade-in">
             <DocumentGrid
-  documents={sortedDocuments}     // ⟵ was `documents`
-  onDocumentClick={handleDocumentClick}
-  onDocumentPreview={handlePreviewFile}
-  viewMode={viewMode}
-  selectedDocument={selectedDocument}
-  onDocumentSelect={handleDocumentSelect}
-  multipleSelection={true}
-  selectionActions={{
-    selectedIds: selectedDocumentIds,
-    onSelectAll: handleSelectAll,
-    onClearSelection: handleClearSelection,
-    onDeleteSelected: handleDeleteSelected,
-    onDownloadSelected: handleDownloadSelected,
-    onShareSelected: handleShareSelected,
-    onArchiveSelected: handleArchiveSelected
-  }}
-  toggleFavorite={toggleFavorite}
-/>
+              documents={sortedDocuments}     // ⟵ was `documents`
+              onDocumentClick={handleDocumentClick}
+              onDocumentPreview={handlePreviewFile}
+              viewMode={viewMode}
+              selectedDocument={selectedDocument}
+              onDocumentSelect={handleDocumentSelect}
+              multipleSelection={true}
+              selectionActions={{
+                selectedIds: selectedDocumentIds,
+                onSelectAll: handleSelectAll,
+                onClearSelection: handleClearSelection,
+                onDeleteSelected: handleDeleteSelected,
+                onDownloadSelected: handleDownloadSelected,
+                onShareSelected: handleShareSelected,
+                onArchiveSelected: handleArchiveSelected
+              }}
+              toggleFavorite={toggleFavorite}
+            />
 
           </div>
         )}
@@ -1517,15 +1572,15 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       {!previewUrl && showSidebar && selectedDocument && (
        <div className="w-128 border bg-gradient-to-b from-gray-50 via-white to-gray-100 fixed right-0 top-56 h-full z-40 shadow-lg rounded-l-xl">
           <MetadataSidebar
-  document={selectedDocument}
-  previewUrl={previewUrl}
-  onClose={handleCloseSidebar}
-  onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
-  onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
-  onUpdateMetadata={handleUpdateMetadata}
-  onToggleFavorite={handleToggleFavorite}   // ✅ pass down
-  token={token}
-/>
+            document={selectedDocument}
+            previewUrl={previewUrl}
+            onClose={handleCloseSidebar}
+            onDownload={selectedDocument ? () => handleDownloadFile(selectedDocument) : undefined}
+            onDelete={selectedDocument ? () => handleDeleteDocument(selectedDocument) : undefined}
+            onUpdateMetadata={handleUpdateMetadata}
+            onToggleFavorite={handleToggleFavorite}   // ✅ pass down
+            token={token}
+          />
 
         </div>
         

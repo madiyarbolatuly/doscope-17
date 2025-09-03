@@ -22,6 +22,8 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import Favorites from './pages/Favorites';
 import SharedDocuments from './pages/SharedDocuments';
 import FolderView from './pages/FolderView';
+import EditDocumentPage from "@/pages/EditDocument";
+
 
 function App() {
   return (
@@ -134,6 +136,12 @@ function App() {
               </AppLayout>
             } />
           </Route>
+          <Route
+              path="/edit/:id"
+              element={<EditDocumentPage />}
+
+            />
+        
         </Routes>
         <Toaster />
       </Router>

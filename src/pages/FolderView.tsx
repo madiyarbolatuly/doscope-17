@@ -73,11 +73,9 @@ const FolderView = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [shareDoc, setShareDoc] = useState<Document | null>(null);
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [dragCounter, setDragCounter] = useState(0);
+ 
+  const [shareDoc] = useState<Document | null>(null);
+  const [setIsShareOpen] = useState(false);
   const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
