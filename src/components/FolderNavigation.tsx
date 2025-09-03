@@ -24,6 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import {
   Dialog,
   DialogContent,
@@ -33,8 +35,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
 
 interface FolderNavigationProps {
   currentFolderId?: string;
@@ -334,9 +334,8 @@ export function FolderNavigation({
             <DocumentGrid
               documents={documents}
               onDocumentClick={onDocumentClick}
-              onDocumentPreview={onDocumentPreview}
               onDocumentSelect={() => {}}
-              onToggleFavorite={handleToggleFavorite}
+              toggleFavorite={handleToggleFavorite}
               viewMode={viewMode}
             />
           )}

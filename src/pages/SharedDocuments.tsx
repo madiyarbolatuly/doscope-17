@@ -1,5 +1,5 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,108 +12,181 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Document } from '@/types/document';
 import { Share2, Download, FileText, File, FileImage, Folder, Eye, Calendar, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { API_ROOT } from '@/config/api';
+import type { Document } from '@/types/document';
+import { downloadByFileName } from '@/services/downloadService';
+
+
+type SharedWithMeItem = {
+  id: number;
+  token: string;
+  shared_with: string;       // user id текущего
+  filename: string;          // имя файла
+  expires_at: string;        // ISO
+  document_id: number;       // id документа
+  shared_by: string;         // user id того, кто поделился (у тебя сейчас без имени)
+  created_at: string;        // ISO
+};
 
 interface SharedDocument extends Document {
   sharedBy: string;
-  shareExpiration: string;
+  shareExpiration: string;   // ISO
+  token: string;
+  documentId: number;
   previewUrl?: string;
+  favorited?: boolean;
 }
 
-// Mock shared documents - только не истекшие
-const mockSharedDocuments: SharedDocument[] = [
- {
-    id: 'shared-5',
-    name: 'Спецификация до 31 августа 2025',
-    type: 'folder',
-    size: '18.6 MB',
-    modified: '2025-07-20T11:00:00Z',
-    owner: 'Madiyar Saduakas',
-    sharedBy: 'Madiyar Saduakas',
-    category: 'спецификации',
-    shareExpiration: '2025-08-31T18:59:59Z',
-    favorited: false
-  }
-];
+const fileTypeFromName = (name: string): Document['type'] => {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'pdf';
+  if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return 'ppt';
+  if (lower.endsWith('.xls') || lower.endsWith('.xlsx')) return 'xlsx';
+  if (lower.endsWith('.doc') || lower.endsWith('.docx')) return 'doc';
+  if (/\.(png|jpg|jpeg|gif|webp|bmp|tiff)$/i.test(lower)) return 'image';
+  if (!lower.includes('.')) return 'folder';
+  return 'file';
+};
 
-const SharedDocuments = () => {
+const getFileIcon = (type: string) => {
+  switch (type) {
+    case 'pdf':
+      return <FileText className="h-8 w-8 text-red-500" />;
+    case 'ppt':
+      return <FileText className="h-8 w-8 text-orange-500" />;
+    case 'image':
+      return <FileImage className="h-8 w-8 text-purple-500" />;
+    case 'folder':
+      return <Folder className="h-8 w-8 text-yellow-500" />;
+    default:
+      return <File className="h-8 w-8 text-gray-500" />;
+  }
+};
+
+const formatExpirationDate = (expiration: string) => {
+  const expirationDate = new Date(expiration);
+  return expirationDate.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+
+
+const SharedDocuments: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [documents, setDocuments] = useState<SharedDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
+  const token = localStorage.getItem('authToken') || '';
 
-  useEffect(() => {
-    // Фильтруем только не истекшие документы
-    const now = new Date();
-    const activeDocuments = mockSharedDocuments.filter(doc => {
-      const expirationDate = new Date(doc.shareExpiration);
-      return expirationDate > now;
-    });
-    setDocuments(activeDocuments);
-  }, []);
+  // Получение данных с /v2/sharing/shared-with-me
+  const fetchSharedWithMe = async () => {
+    setIsLoading(true);
+    try {
+      const resp = await axios.get<SharedWithMeItem[]>(
+        `${API_ROOT}/sharing/shared-with-me`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
 
-  const filteredDocuments = documents.filter(doc => 
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      const now = new Date();
 
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case 'pdf':
-        return <FileText className="h-8 w-8 text-red-500" />;
-      case 'ppt':
-        return <FileText className="h-8 w-8 text-orange-500" />;
-      case 'image':
-        return <FileImage className="h-8 w-8 text-purple-500" />;
-      case 'folder':
-        return <Folder className="h-8 w-8 text-yellow-500" />;
-      default:
-        return <File className="h-8 w-8 text-gray-500" />;
+      const mapped: SharedDocument[] = (resp.data || [])
+        // берём только неистёкшие
+        .filter(item => new Date(item.expires_at) > now)
+        // преобразуем к твоей структуре
+        .map((item): SharedDocument => {
+          const type = fileTypeFromName(item.filename);
+          return {
+            id: String(item.id),              // твой Document.id — string
+            name: item.filename,
+            type,
+            size: '—',                        // нет в ответе — оставим прочерк
+            modified: item.created_at,
+            owner: item.shared_by,            // у тебя сейчас нет имени - только id
+            category: '--',
+            path: '',                         // нет в ответе
+            tags: [],
+            favorited: false,
+
+            // дополнительные поля
+            sharedBy: item.shared_by,
+            shareExpiration: item.expires_at,
+            token: item.token,
+            documentId: item.document_id,
+          };
+        });
+
+      setDocuments(mapped);
+    } catch (e: any) {
+      console.error('shared-with-me error:', e);
+      toast({
+        title: 'Ошибка',
+        description: e?.response?.data?.detail || 'Не удалось загрузить «Поделенные со мной»',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const formatExpirationDate = (expiration: string) => {
-    const expirationDate = new Date(expiration);
-    return expirationDate.toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  useEffect(() => {
+    fetchSharedWithMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleDownload = (document: SharedDocument) => {
+  const filteredDocuments = useMemo(
+    () => documents.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [documents, searchQuery]
+  );
+
+  
+const handleDownload = async (doc: SharedDocument) => {
+  try {
+    // ВАЖНО: передаём точное имя из backend (без decode/трансформаций)
+    await downloadByFileName(doc.name, token);
+    // toast({ title: 'Готово', description: `Скачивание ${doc.name} запущено` });
+  } catch (e: any) {
+    console.error('Error downloading document:', e);
     toast({
-      title: "Загрузка начата",
-      description: `Скачивание ${document.name}`,
+      title: 'Ошибка',
+      description: e?.response?.status === 404
+        ? 'Файл не найден на сервере'
+        : (e?.message || 'Не удалось скачать файл'),
+      variant: 'destructive',
     });
-    console.log('Downloading document:', document.name);
-  };
-
+  }
+};
   const handlePreview = (document: SharedDocument) => {
     toast({
-      title: "Открытие предварительного просмотра",
+      title: "Предпросмотр",
       description: `Открытие ${document.name}`,
     });
-    console.log('Opening preview for document:', document.name);
+    console.log('Preview shared doc:', document);
   };
 
   const handleToggleFavorite = (document: SharedDocument) => {
-    setDocuments(prevDocs => 
-      prevDocs.map(doc => 
-        doc.id === document.id 
-          ? { ...doc, favorited: !doc.favorited }
-          : doc
+    setDocuments(prev =>
+      prev.map(d =>
+        d.id === document.id ? { ...d, favorited: !d.favorited } : d
       )
     );
-    
-    const isFavorited = !document.favorited;
+    const fav = !document.favorited;
     toast({
-      title: isFavorited ? "Добавлено в избранное" : "Удалено из избранного",
-      description: `${document.name} ${isFavorited ? 'добавлен в' : 'удален из'} избранное`,
+      title: fav ? "Добавлено в избранное" : "Удалено из избранного",
+      description: `${document.name} ${fav ? 'добавлен в' : 'удалён из'} избранного`,
     });
-    console.log('Toggled favorite for document:', document.name, 'favorited:', isFavorited);
   };
 
   return (
@@ -140,22 +213,34 @@ const SharedDocuments = () => {
               Поделенные файлы
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Безопасно загружайте файлы, которыми с вами поделились
+              Здесь отображаются файлы, которыми с вами поделились
             </p>
           </div>
 
           <div className="max-w-2xl mx-auto">
-            <SearchBar 
-              query={searchQuery} 
-              setQuery={setSearchQuery} 
-              placeholder="Поиск файлов..." 
+            <SearchBar
+              query={searchQuery}
+              setQuery={setSearchQuery}
+              placeholder="Поиск файлов..."
               showFilterButton={false}
             />
           </div>
         </div>
 
-        {/* Files Grid */}
-        {filteredDocuments.length === 0 ? (
+        {/* Скелет/пустой/список */}
+        {isLoading ? (
+          <div className="text-center py-16">
+            <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
+              <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+                <Share2 className="h-10 w-10 text-blue-600" />
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+                Загружаем…
+              </h3>
+              <p className="text-gray-600">Пожалуйста, подождите</p>
+            </div>
+          </div>
+        ) : filteredDocuments.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
               <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -165,7 +250,7 @@ const SharedDocuments = () => {
                 Файлы не найдены
               </h3>
               <p className="text-gray-600">
-                Поделенные с вами файлы будут отображаться здесь
+                Поделенные с вами активные файлы будут отображаться здесь
               </p>
             </div>
           </div>
@@ -173,16 +258,16 @@ const SharedDocuments = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {filteredDocuments.map((doc) => {
               return (
-                <Card 
-                  key={doc.id} 
+                <Card
+                  key={doc.id}
                   className="group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-white border-0 shadow-lg overflow-hidden"
                 >
                   <CardContent className="p-0">
                     {/* Preview Section */}
                     <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                       {doc.previewUrl ? (
-                        <img 
-                          src={doc.previewUrl} 
+                        <img
+                          src={doc.previewUrl}
                           alt={doc.name}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                         />
@@ -191,21 +276,21 @@ const SharedDocuments = () => {
                           {getFileIcon(doc.type)}
                         </div>
                       )}
-                      
+
                       {/* Favorite Button */}
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleToggleFavorite(doc)}
                         className={`absolute top-3 right-3 w-10 h-10 rounded-full shadow-lg transition-all duration-300 ${
-                          doc.favorited 
-                            ? 'bg-red-500 hover:bg-red-600 text-white' 
+                          doc.favorited
+                            ? 'bg-red-500 hover:bg-red-600 text-white'
                             : 'bg-white/80 hover:bg-white text-gray-600 hover:text-red-500'
                         }`}
                       >
                         <Heart className={`h-5 w-5 ${doc.favorited ? 'fill-current' : ''}`} />
                       </Button>
-                      
+
                       {/* Preview Overlay */}
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
                         <Button
@@ -235,12 +320,15 @@ const SharedDocuments = () => {
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={`https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`} />
                           <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
-                            {doc.sharedBy.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            {/* Инициалы из sharedBy (сейчас это id — просто первые 2 символа) */}
+                            {(doc.sharedBy?.slice(0, 2) || 'U').toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="text-sm text-gray-600">Поделился</p>
-                          <p className="text-sm font-semibold text-gray-900">{doc.sharedBy}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {doc.sharedBy}
+                          </p>
                         </div>
                       </div>
 
@@ -248,9 +336,7 @@ const SharedDocuments = () => {
                       <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
                         <Calendar className="h-5 w-5 text-green-600" />
                         <div className="text-center">
-                          <p className="text-xs text-gray-600 mb-1">
-                            Действует до
-                          </p>
+                          <p className="text-xs text-gray-600 mb-1">Действует до</p>
                           <p className="font-bold text-sm text-green-700">
                             {formatExpirationDate(doc.shareExpiration)}
                           </p>
@@ -258,7 +344,7 @@ const SharedDocuments = () => {
                       </div>
 
                       {/* Download Button */}
-                      <Button 
+                      <Button
                         className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                         onClick={() => handleDownload(doc)}
                       >
