@@ -149,31 +149,28 @@ const Favorites = () => {
   });
 }}
 
-  toggleFavorite={handleToggleFavorite}   // ✅ just pass the function
+toggleFavorite={handleToggleFavorite}   // ✅ just pass the function
   />
 ) : (
-  <DocumentListItem
-    documents={filteredDocuments}
-    onDocumentClick={handleDocumentClick}
-    selectedDocument={selectedDocument}
-    onDocumentSelect={handleDocumentSelectWrapper}
-    multipleSelection
-    selectionActions={{
-      selectedIds: selectedDocuments,
-      onSelectAll: handleSelectAllWrapper,
-      onClearSelection: handleClearSelection,
-      onFavoriteSelected: () => {},
-      onUnfavoriteSelected: () => {},
-    }}
-    onDocumentPreview={(document) =>
-      toast({
-        title: 'Preview не реализован',
-        description: `Preview для: ${document.name}`,
-      })
-    }
-    onToggleFavorite={handleToggleFavorite}
-  />
-)}
+  filteredDocuments.map((doc) => (
+    <DocumentListItem
+      key={doc.id}
+      document={doc}
+      onClick={handleDocumentClick} // ✅ соответствует props
+      onPreview={(document) =>
+        toast({
+          title: 'Preview не реализован',
+          description: `Preview для: ${document.name}`,
+        })
+      }
+      isSelected={selectedDocuments.includes(doc.id)} // ✅ отметка выбора
+      onSelect={() => handleDocumentSelectWrapper(doc)}
+      multipleSelection
+      onToggleFavorite={() => handleToggleFavorite(doc.id)}
+    />
+  ))
+) // ✅ correct prop name
+})
 
     </div>
   );

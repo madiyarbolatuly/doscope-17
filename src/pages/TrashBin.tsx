@@ -21,7 +21,7 @@ import { API_ROOT } from '@/config/api';
 
 // Получить список документов в корзине
 const getTrashedDocumentsApi = async (token: string) => {
-  const response = await axios.get(`${API_ROOT}/v2/trash`, {
+  const response = await axios.get(`${API_ROOT}/trash`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ const getTrashedDocumentsApi = async (token: string) => {
 // Восстановить документ из корзины (по имени файла)
 const recoverDocument = async (fileName: string, token: string) => {
   const response = await axios.post(
-    `${API_ROOT}/v2/restore/${encodeURIComponent(fileName)}`,
+    `${API_ROOT}/restore/${encodeURIComponent(fileName)}`,
     {},
     {
       headers: {
@@ -48,7 +48,7 @@ const recoverDocument = async (fileName: string, token: string) => {
 // Удалить документ из корзины навсегда (по имени файла)
 const permanentDeleteDocument = async (fileName: string, token: string) => {
   const response = await axios.delete(
-    `${API_ROOT}/v2/trash/${encodeURIComponent(fileName)}`,
+    `${API_ROOT}/trash/${encodeURIComponent(fileName)}`,
     {
       headers: {
         'Authorization': `Bearer ${token}`,

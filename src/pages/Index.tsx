@@ -1441,9 +1441,9 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-xs text-white font-medium">
-                            MS
+                            a
                           </div>
-                          <span className="text-sm">Madiyar Saduakas</span>
+                          <span className="text-sm">akmaral.alibekova</span>
                         </div>
                       </TableCell>
                       <TableCell>

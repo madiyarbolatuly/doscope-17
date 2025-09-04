@@ -28,6 +28,7 @@ type SharedWithMeItem = {
   document_id: number;       // id документа
   shared_by: string;         // user id того, кто поделился (у тебя сейчас без имени)
   created_at: string;        // ISO
+  file_type?: string;
 };
 
 interface SharedDocument extends Document {
@@ -39,16 +40,31 @@ interface SharedDocument extends Document {
   favorited?: boolean;
 }
 
-const fileTypeFromName = (name: string): Document['type'] => {
-  const lower = name.toLowerCase();
-  if (lower.endsWith('.pdf')) return 'pdf';
-  if (lower.endsWith('.ppt') || lower.endsWith('.pptx')) return 'ppt';
-  if (lower.endsWith('.xls') || lower.endsWith('.xlsx')) return 'xlsx';
-  if (lower.endsWith('.doc') || lower.endsWith('.docx')) return 'doc';
-  if (/\.(png|jpg|jpeg|gif|webp|bmp|tiff)$/i.test(lower)) return 'image';
-  if (!lower.includes('.')) return 'folder';
-  return 'file';
+const fileTypeFromName = (name: string, forceFolder = false): Document['type'] => {
+  if (forceFolder) return 'folder';
+
+  const parts = name.split('.');
+  const last = parts[parts.length - 1].toLowerCase();
+
+  // если точка есть, но это не известное расширение → это папка
+  const knownExts = ['pdf','ppt','pptx','xls','xlsx','doc','docx',
+                     'png','jpg','jpeg','gif','webp','bmp','tiff','zip'];
+
+  if (knownExts.includes(last)) {
+    if (['png','jpg','jpeg','gif','webp','bmp','tiff'].includes(last)) return 'image';
+    if (['xls','xlsx'].includes(last)) return 'xlsx';
+    if (['ppt','pptx'].includes(last)) return 'ppt';
+    if (['doc','docx'].includes(last)) return 'doc';
+    if (last === 'pdf') return 'pdf';
+    if (last === 'zip') return 'zip';
+    return 'file';
+  }
+
+  // иначе считаем папкой
+  return 'folder';
 };
+
+
 
 const getFileIcon = (type: string) => {
   switch (type) {
@@ -87,7 +103,7 @@ const SharedDocuments: React.FC = () => {
   const token = localStorage.getItem('authToken') || '';
 
   // Получение данных с /v2/sharing/shared-with-me
-  const fetchSharedWithMe = async () => {
+  const fetchSharedWithMe = async () => { 
     setIsLoading(true);
     try {
       const resp = await axios.get<SharedWithMeItem[]>(
@@ -107,7 +123,7 @@ const SharedDocuments: React.FC = () => {
         .filter(item => new Date(item.expires_at) > now)
         // преобразуем к твоей структуре
         .map((item): SharedDocument => {
-          const type = fileTypeFromName(item.filename);
+          const type = fileTypeFromName(item.filename, item.file_type === 'folder');
           return {
             id: String(item.id),              // твой Document.id — string
             name: item.filename,
