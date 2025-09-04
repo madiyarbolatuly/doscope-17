@@ -150,15 +150,21 @@ const projects = useMemo(
   
     try {
       let rows: BackendDocument[] = [];
-      if (!projectRootId) {
-        rows = await tryFetch({ recursive: "true" });
+  
+      if (projectRootId) {
+        // ✅ preferred: ask backend for subtree only
+        try {
+          rows = await tryFetch({ recursive: "true", ancestor_id: String(projectRootId) });
+        } catch {
+          // fallback: fetch a larger slice and filter in the client
+          const all = await tryFetch({ recursive: "true" });
+          rows = filterSubtree(all, String(projectRootId));
+        }
       } else {
-        rows = await tryFetch({ recursive: "true", ancestor_id: String(projectRootId) });
-        // 👇 include root-level too
-        rows = rows.concat(await tryFetch({ parent_id: null }));
+        // no project selected → fetch a reasonable slice (e.g., top-level view)
+        rows = await tryFetch({ recursive: "true" });
       }
-      
-   
+  
       // ⬇️ NEW: drop archived & deleted items before mapping
       const isArchived = (r: BackendDocument) =>
         r.is_archived === true || r.status === "archived";
@@ -191,9 +197,6 @@ const projects = useMemo(
             ? "image"
             : doc.file_type?.includes("zip")
             ? "zip"
-            : doc.file_type?.includes("rar")
-            ? "rar"
-
             : "file",
         size:
           doc.file_type === "folder"
