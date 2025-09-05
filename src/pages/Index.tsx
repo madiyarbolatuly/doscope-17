@@ -13,6 +13,7 @@ import { useShare } from '@/hooks/useShare';
 import { Button } from '@/components/ui/button';
 import { Plus, Share } from "lucide-react";
 import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
+import { durableUploadFolder } from "@/services/durableUpload";
 
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -73,6 +74,9 @@ const Index = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [folderId, setFolderId] = useState<string | null>(null);
   const location = useLocation();
+  
+  const [overallPct, setOverallPct] = useState(0);
+
   const isAtRoot = location.pathname === '/';
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -87,6 +91,39 @@ const Index = () => {
 const [projectRootId, setProjectRootId] = useState<string | null>(() =>
   localStorage.getItem("projectRootId")
 );
+useEffect(() => {
+  const q = new URLSearchParams(location.search);
+  const fid = q.get('folderId');
+  if (fid && fid !== folderId) setFolderId(fid);
+}, [location.search]); 
+// уже есть: const [overallPct, setOverallPct] = useState(0);
+const [isUploading, setIsUploading] = useState(false);
+const [uploadStats, setUploadStats] = useState({
+  totalBytes: 0,
+  uploadedBytes: 0,
+  startedAt: 0,
+  speedBps: 0,
+  etaSec: 0,
+});
+const clearFolderSelection = useCallback(() => {
+  setFolderId(null);
+  setCurrentProject(null);           // у тебя уже есть этот хелпер
+  navigate("/", { replace: true });  // убираем ?folderId=...
+}, [navigate]);
+
+
+const formatBytes = (n: number) => {
+  if (!n) return "0 B";
+  const u = ["B","KB","MB","GB","TB"];
+  const i = Math.floor(Math.log(n)/Math.log(1024));
+  return `${(n/Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${u[i]}`;
+};
+const formatDuration = (s: number) => {
+  if (!isFinite(s) || s <= 0) return "—";
+  const m = Math.floor(s/60), sec = Math.floor(s%60);
+  return m ? `${m}м ${sec}с` : `${sec}с`;
+};
+
 
 // helper to keep state + storage in sync
 const setCurrentProject = (id: string | null) => {
@@ -104,6 +141,35 @@ const projects = useMemo(
       .map(d => ({ id: d.id, name: d.name, userEmail: "" })), // fill email if you have it
   [documents]
 );
+useEffect(() => {
+  if (isLoading) return;
+  if (!folderId) return;
+
+  const exists = documents.some(d => d.id === folderId && d.type === 'folder');
+  if (!exists) {
+    toast({
+      title: "Папка не найдена",
+      description: `ID ${folderId} недействителен. Возвращаемся в корень.`,
+      variant: "destructive",
+    });
+    clearFolderSelection(); // сбрасывает state и уводит на "/"
+  }
+}, [isLoading, documents, folderId, clearFolderSelection]);
+
+useEffect(() => {
+  if (isLoading) return;
+  if (!projectRootId) return;
+
+  const exists = documents.some(d => d.id === projectRootId && d.type === 'folder');
+  if (!exists) {
+    clearFolderSelection();
+    toast({
+      title: "Проект недоступен",
+      description: "Сохранённая корневая папка больше не существует.",
+    });
+  }
+}, [isLoading, documents, projectRootId, clearFolderSelection]);
+
 
   // Синхронизируем выбранную папку с URL. Сначала ищем параметр ?folderId=...,
   // если его нет – пытаемся извлечь идентификатор из пути /folder/{id}.
@@ -268,93 +334,48 @@ const handleEdit = (doc: Document) => {
     setIsShareOpen(true);
    };
 
-
-
-  // Preview document
-  async function uploadFilesInBatches(
-    files: File[],
-    token: string,
-    batchSize = 20,
-    concurrency = 3
-  ) {
-    const queue: Promise<any>[] = [];
+   const handleFileUpload = async (files: File[], destFolderId?: string) => {
+    if (!files?.length) return;
   
-    for (let i = 0; i < files.length; i += batchSize) {
-      const chunk = files.slice(i, i + batchSize);
-      const formData = new FormData();
-      chunk.forEach(file => {
-        formData.append("files", file, (file as any).relativePath || file.webkitRelativePath || file.name);
-      });
-      const url = folderId
-      ? `/api/v2/upload-folder-bulk?parent_id=${folderId}`
-      : (projectRootId
-          ? `/api/v2/upload-folder-bulk?parent_id=${projectRootId}`
-          : `/api/v2/upload-folder-bulk`);
+    const totalBytes = files.reduce((a, f) => a + (f.size || 0), 0);
+    setIsUploading(true);
+    setUploadStats({ totalBytes, uploadedBytes: 0, startedAt: Date.now(), speedBps: 0, etaSec: 0 });
   
-      const req = axios.post(url, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-          onUploadProgress: (p) => {
-            const percent = p.total ? Math.round((p.loaded * 100) / p.total) : 0;
-            console.log(`Batch ${i / batchSize + 1} progress: ${percent}%`);
-          },
+    try {
+      await durableUploadFolder(
+        files,
+        token!,
+        { base: "/api/v2", folderId: destFolderId ?? folderId ?? undefined, projectRootId },
+        {
+          targetBatchMB: 100,
+          maxFilesPerBatch: 250,
+          concurrency: 3,
+          timeoutMs: 10 * 60 * 1000,
+          onProgress: (pct) => {
+            setOverallPct(pct);
+            setUploadStats(prev => {
+              const uploadedBytes = Math.round(totalBytes * (pct / 100));
+              const elapsedSec = (Date.now() - (prev.startedAt || Date.now())) / 1000;
+              const speedBps = elapsedSec > 0 ? uploadedBytes / elapsedSec : 0;
+              const remaining = Math.max(totalBytes - uploadedBytes, 0);
+              const etaSec = speedBps > 0 ? Math.ceil(remaining / speedBps) : 0;
+              return { ...prev, uploadedBytes, speedBps, etaSec };
+            });
+          }
         }
       );
-      
-      queue.push(req);
-  
-      if (queue.length >= concurrency) {
-        await Promise.all(queue);
-        queue.length = 0;
-      }
-    }
-  
-    if (queue.length > 0) {
-      await Promise.all(queue);
-    }
-  }
-  
-
-  const handleFileUpload = async (files: File[], folderId?: string) => {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file, (file as any).relativePath || file.webkitRelativePath || file.name);
-    });
-
-    try {
-      const url = folderId
-      ? `/api/v2/upload-folder-bulk?parent_id=${folderId}`
-      : (projectRootId
-          ? `/api/v2/upload-folder-bulk?parent_id=${projectRootId}`
-          : `/api/v2/upload-folder-bulk`);
-    
-    const response = await axios.post(url, formData, {
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    
-      
-
-      toast({
-        title: "Success",
-        description: `Uploaded ${files.length} file(s) successfully`,
-      });
-
+      toast({ title: "Успех", description: `Загружено: ${files.length} файл(ов)` });
       fetchDocuments();
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      toast({
-        title: "Error",
-        description: "Failed to upload files",
-        variant: "destructive"
-      });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Ошибка загрузки", description: err?.message ?? "Не удалось загрузить файлы", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      setOverallPct(0);
     }
   };
-
+  
+  
   const handleShareNode = (nodeId: string) => {
     const doc = documents.find(d => d.id === nodeId);
     if (doc) {
@@ -446,44 +467,88 @@ const handleEdit = (doc: Document) => {
   };
   
 
-  // Download document
-  const handleDownloadFile = async (doc: Document) => {
+  function filenameFromDisposition(h: Headers, fallback: string) {
+    const cd = h.get("content-disposition") || "";
+    // examples: attachment; filename="foo.pdf"; filename*=UTF-8''foo.pdf
+    const mStar = cd.match(/filename\*\s*=\s*[^']*''([^;]+)/i);
+    if (mStar) {
+      try { return decodeURIComponent(mStar[1]); } catch {}
+    }
+    const m = cd.match(/filename\s*=\s*"([^"]+)"|filename\s*=\s*([^;]+)/i);
+    if (m) return (m[1] || m[2] || "").trim();
+    return fallback;
+  }const handleDownloadFile = async (doc: Document) => {
     try {
-      const encodedFileName = encodeURIComponent(doc.name);
-      const downloadUrl = `/api/v2/file/${encodedFileName}/download`;
-
-      const response = await fetch(downloadUrl, {
-        headers: {
-          "Authorization": `Bearer ${token}`
+      // Prefer download by numeric ID (server zips folders automatically)
+      const candidates: string[] = [
+        `/api/v2/file/${encodeURIComponent(doc.id)}/download`,               // by id  (file OR folder→zip)
+        `/api/v2/file/${encodeURIComponent(doc.name)}/download`,             // by name (if still supported)
+        doc.path ? `/api/v2/file/download?path=${encodeURIComponent(doc.path)}` : ""
+      ].filter(Boolean);
+  
+      let lastStatus = 0, lastUrl = "";
+  
+      for (const url of candidates) {
+        lastUrl = url;
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "*/*",
+          },
+        });
+  
+        lastStatus = res.status;
+        if (!res.ok) {
+          // 404 → try next strategy; any other error → stop
+          if (res.status === 404) continue;
+          break;
         }
-      });
-
-      if (!response.ok) {
-        throw new Error('Download failed');
+  
+        // If server ever returns a JSON with a signed URL, handle it:
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          const data = await res.json().catch(() => null);
+          const directUrl = typeof data === "string" ? data : data?.url;
+          if (!directUrl) throw new Error("Пустой ответ при скачивании.");
+          const a = document.createElement("a");
+          a.href = directUrl;
+          a.download = doc.name; // fallback if server doesn’t set Content-Disposition
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          toast({ title: "Скачивание", description: `Начато: ${doc.name}` });
+          return;
+        }
+  
+        // Normal case: stream returned (file or zip)
+        const blob = await res.blob();
+        // Use server-provided filename if present (respects folder→zip naming)
+        const suggested = filenameFromDisposition(res.headers, doc.name);
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = suggested;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(href);
+  
+        toast({ title: "Скачивание", description: `Начато: ${suggested}` });
+        return;
       }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-
+  
+      throw new Error(`Download failed (${lastStatus}) via ${lastUrl}`);
+    } catch (e: any) {
+      console.error(e);
       toast({
-        title: "Success",
-        description: `Downloading: ${doc.name}`,
-      });
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      toast({
-        title: "Error",
-        description: "Failed to download document",
-        variant: "destructive"
+        title: "Ошибка",
+        description: e?.message || "Не удалось скачать",
+        variant: "destructive",
       });
     }
   };
+  
 
   const traverseFileTree = async (
     item: FileSystemEntry,
@@ -510,7 +575,6 @@ const handleEdit = (doc: Document) => {
     });
   };
 
-
   const handleDropWithFolders = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -518,7 +582,7 @@ const handleEdit = (doc: Document) => {
     const filesToUpload: File[] = [];
     const items = e.dataTransfer.items;
   
-    // Traverse the dropped items – supports nested folders via webkitGetAsEntry
+    // traversal как был
     if (items && items.length > 0) {
       for (let i = 0; i < items.length; i++) {
         const dtItem = items[i];
@@ -531,7 +595,7 @@ const handleEdit = (doc: Document) => {
         } else {
           const file = dtItem.getAsFile?.();
           if (file) {
-            (file as File & { relativePath?: string }).relativePath =
+            (file as any).relativePath =
               (file as any).webkitRelativePath || file.name;
             filesToUpload.push(file);
           }
@@ -539,11 +603,10 @@ const handleEdit = (doc: Document) => {
       }
     }
   
-    // Fallback: use dataTransfer.files if needed
     if (filesToUpload.length === 0) {
       const fallback = Array.from(e.dataTransfer.files || []);
       fallback.forEach((file) => {
-        (file as File & { relativePath?: string }).relativePath =
+        (file as any).relativePath =
           (file as any).webkitRelativePath || file.name;
       });
       filesToUpload.push(...fallback);
@@ -551,23 +614,53 @@ const handleEdit = (doc: Document) => {
   
     if (filesToUpload.length === 0) return;
   
-    const formData = new FormData();
-    filesToUpload.forEach((file) => {
-      const rp =
-        (file as any).relativePath ||
-        (file as any).webkitRelativePath ||
-        file.name;
-      formData.append('files', file, rp);
-    });
-  
-    // Send to backend
-    await uploadFilesInBatches(filesToUpload, token!, 25, 3); 
+    // Подсчёт общего размера и запуск UI прогресса
+const totalBytes = filesToUpload.reduce((a, f) => a + (f.size || 0), 0);
+setIsUploading(true);
+setUploadStats({
+  totalBytes,
+  uploadedBytes: 0,
+  startedAt: Date.now(),
+  speedBps: 0,
+  etaSec: 0,
+});
 
-    // ✅ Refresh after upload
-    fetchDocuments();
+try {
+  await durableUploadFolder(
+    filesToUpload,
+    token!,
+    { base: '/api/v2', folderId, projectRootId },
+    {
+      targetBatchMB: 100,
+      maxFilesPerBatch: 250,
+      concurrency: 3,
+      timeoutMs: 10 * 60 * 1000,
+      onProgress: (pct) => {
+        setOverallPct(pct);
+        setUploadStats(prev => {
+          const uploadedBytes = Math.round(totalBytes * (pct / 100));
+          const elapsedSec = (Date.now() - (prev.startedAt || Date.now())) / 1000;
+          const speedBps = elapsedSec > 0 ? uploadedBytes / elapsedSec : 0;
+          const remaining = Math.max(totalBytes - uploadedBytes, 0);
+          const etaSec = speedBps > 0 ? Math.ceil(remaining / speedBps) : 0;
+          return { ...prev, uploadedBytes, speedBps, etaSec };
+        });
+      }
+    }
+  );
+
+  toast({ title: "Успех", description: `Загружено: ${filesToUpload.length} файл(ов)` });
+  fetchDocuments();
+} catch (err: any) {
+  console.error(err);
+  toast({ title: "Ошибка загрузки", description: err?.message ?? "Не удалось загрузить папку", variant: "destructive" });
+} finally {
+  setIsUploading(false);
+  setOverallPct(0);
+}
+
   };
   
-
   // Rename/update document metadata
   const handleUpdateMetadata = async (documentId: string, newName: string, tags?: string[], categories?: string[]) => {
     try {
@@ -784,18 +877,22 @@ const handleEdit = (doc: Document) => {
   };
 
   const handleSelectAll = () => {
-    if (selectedDocumentIds.length === documents.length) {
+    if (selectedDocumentIds.length === filteredDocuments.length) {
       setSelectedDocumentIds([]);
       setSelectedDocument(null);
       setShowSidebar(false);
     } else {
-      setSelectedDocumentIds(documents.map(doc => doc.id));
-      if (!selectedDocument && documents.length > 0) {
-        setSelectedDocument(documents[0]);
+      const ids = filteredDocuments.map(d => d.id);  // ⟵ только видимые
+      setSelectedDocumentIds(ids);
+      if (!selectedDocument && ids.length > 0) {
+        const first = documents.find(d => d.id === ids[0])!;
+        setSelectedDocument(first);
         setShowSidebar(true);
       }
     }
   };
+  
+  
 
   const handleClearSelection = () => {
     setSelectedDocumentIds([]);
@@ -934,6 +1031,7 @@ const handleToggleFavorite = async (doc: Document) => {
 
     const fileList = Array.from(files);
     const formData = new FormData();
+  
 
     fileList.forEach(file => {
       formData.append('files', file, (file as File & { relativePath?: string }).relativePath || file.name);
@@ -1480,7 +1578,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
                            </DropdownMenuItem>
                           
                             )}
-                            <DropdownMenuItem onClick={() => toggleFavorite(document.name)}>
+                              <DropdownMenuItem onClick={() => handleToggleFavorite(document)}>
                               {document.starred ? 'Убрать из избранного' : 'Добавить в избранное'}
                             </DropdownMenuItem> 
                             <DropdownMenuSeparator />
@@ -1537,7 +1635,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       {previewUrl && selectedDocument && (
         <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex flex-col items-center justify-center">
           <button
-            className="absolute top-4 right-4 z-60 bg-white rounded-full p-2 shadow hover:bg-gray-200"
+            className="absolute top-4 right-4 z-70 bg-white rounded-full p-2 shadow hover:bg-gray-200"
             onClick={() => { setPreviewUrl(null); }}
           >
             <span className="sr-only">Закрыть предпросмотр</span>
@@ -1586,6 +1684,29 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
         
       )}
       </div>
+    {isUploading && (
+      <div className="fixed right-4 bottom-4 z-[70] w-96 rounded-xl border bg-white/95 shadow-lg p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="font-medium">Загрузка… {overallPct}%</div>
+          <div className="text-xs text-muted-foreground">
+            ETA {formatDuration(uploadStats.etaSec)}
+          </div>
+        </div>
+
+        <div className="h-2 w-full rounded bg-gray-200 overflow-hidden mb-2">
+          <div
+            className="h-2 bg-blue-600 transition-all"
+            style={{ width: `${overallPct}%` }}
+          />
+        </div>
+
+        <div className="text-xs text-muted-foreground">
+          {formatBytes(uploadStats.uploadedBytes)} / {formatBytes(uploadStats.totalBytes)}
+          {" • "}
+          {formatBytes(uploadStats.speedBps)}/s
+        </div>
+      </div>
+    )}
      
     </div>
   );

@@ -16,7 +16,7 @@ import { Share2, Download, FileText, File, FileImage, Folder, Eye, Calendar, Hea
 import { useToast } from '@/hooks/use-toast';
 import { API_ROOT } from '@/config/api';
 import type { Document } from '@/types/document';
-import { downloadByFileName } from '@/services/downloadService';
+import { downloadByFileId, downloadByFileName } from '@/services/downloadService';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -51,6 +51,9 @@ interface SharedDocument extends Document {
   previewUrl?: string;
   favorited?: boolean;
 }
+// Helpers to distinguish the union type you pass to handleDownload
+const isTreeNode = (x: any): x is TreeNode => typeof x?._nid === 'number';
+const isSharedDoc = (x: any): x is SharedDocument => typeof x?.documentId === 'number';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Utils
@@ -190,41 +193,44 @@ const SharedDocuments: React.FC = () => {
   };
 
   // скачать один файл (по имени)
-  const handleDownload = async (doc: SharedDocument | TreeNode) => {
-    try {
-      await downloadByFileName(doc.name, token);
-    } catch (e: any) {
-      console.error('Error downloading document:', e);
-      toast({ title: 'Ошибка', description: e?.response?.status === 404 ? 'Файл не найден на сервере' : (e?.message || 'Не удалось скачать файл'), variant: 'destructive' });
+// скачать один файл (ID → fallback name)
+const handleDownload = async (doc: SharedDocument | TreeNode) => {
+  try {
+    // Prefer numeric ID:
+    // - TreeNode: use _nid (DB id of that node)
+    // - SharedDocument (root file share): use documentId
+    if (isTreeNode(doc)) {
+      await downloadByFileId(doc._nid, token, doc.name);
+      return;
     }
-  };
+    if (isSharedDoc(doc)) {
+      await downloadByFileId(doc.documentId, token, doc.name);
+      return;
+    }
+
+    // Fallback by name (exact name incl. extension, unique in user scope)
+    await downloadByFileName(doc.name, token);
+  } catch (e: any) {
+    console.error('Error downloading document:', e);
+    const msg =
+      e?.response?.status === 404
+        ? 'Файл не найден на сервере'
+        : (e?.message || 'Не удалось скачать файл');
+    toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
+  }
+};
+
 
   // скачать всё (ZIP) — серверный маршрут(ы)
-  const handleDownloadAll = async (rootDoc: SharedDocument) => {
-    const jwt = localStorage.getItem('authToken') || '';
-    const candidates = [
-      `${API_ROOT}/folder/${rootDoc.documentId}/download-zip`,
-      `${API_ROOT}/folders/${rootDoc.documentId}/download-zip`,
-      `${API_ROOT}/folder/${rootDoc.documentId}/download`,
-      `${API_ROOT}/folders/${rootDoc.documentId}/download`,
-      `${API_ROOT}/sharing/${rootDoc.token}/download-all`,
-      `${API_ROOT}/zip?ancestor_id=${rootDoc.documentId}&recursive=true`,
-    ];
-    let lastErr: any = null;
-    for (const url of candidates) {
-      try {
-        const res = await axios.get(url, { headers: { Authorization: `Bearer ${jwt}`, Accept: 'application/zip' }, responseType: 'blob' });
-        const fileName = extractFilename(res.headers, `${rootDoc.name}.zip`);
-        const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
-        const a = document.createElement('a');
-        a.href = blobUrl; a.download = fileName; document.body.appendChild(a); a.click(); a.remove();
-        window.URL.revokeObjectURL(blobUrl);
-        return;
-      } catch (e) { lastErr = e; }
-    }
-    console.error('download-all failed', lastErr);
+  // скачать всю папку (сервер сам вернёт .zip)
+const handleDownloadAll = async (rootDoc: SharedDocument) => {
+  try {
+    await downloadByFileId(rootDoc.documentId, token, `${rootDoc.name}.zip`);
+  } catch (e: any) {
+    console.error('download-all failed', e);
     toast({ title: 'Ошибка', description: 'Не удалось скачать папку как архив', variant: 'destructive' });
-  };
+  }
+};
 
   // ────────────────────────────────────────────────────────────────────────────
   // Tree UI: используем ТОЛЬКО дочерние элементы от текущего узла
