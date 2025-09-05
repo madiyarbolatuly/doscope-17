@@ -205,7 +205,7 @@ useEffect(() => {
     };
   
     const tryFetch = async (params: Record<string, string>) => {
-      const qs = new URLSearchParams({ limit: "1400", offset: "0", ...params });
+      const qs = new URLSearchParams({ limit: "4000", offset: "0", ...params });
       const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
