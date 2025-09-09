@@ -60,8 +60,7 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
       const fromUrl = url.searchParams.get('folderId');
       if (fromUrl) onSelect(fromUrl);
     }
-    // run once
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   const toggleNode = (id: string) => {
@@ -79,17 +78,56 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
     }
     return onAction(action, nodeId, data);
   };
+// Upload one or more FILES (no folders)
+const handleRootUploadFiles = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
 
-  const handleRootUpload = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.onchange = (e) => {
-      const files = Array.from((e.target as HTMLInputElement).files || []);
-      if (files.length > 0 && onFileUpload) onFileUpload(files);
-    };
-    input.click();
-  };
+  input.addEventListener('change', (e) => {
+    const target = e.target as HTMLInputElement;
+    const list = Array.from(target.files ?? []);
+    if (list.length > 0 && onFileUpload) {
+      // no folder structure here; keep filename as relativePath for uniformity
+      const prepared = list.map((f) => {
+        (f as File & { relativePath?: string }).relativePath = f.name;
+        return f;
+      });
+      onFileUpload(prepared);
+    }
+  });
+
+  input.click();
+};
+
+// Upload a whole FOLDER (preserves subfolders)
+const handleRootUploadFolder = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.multiple = true;
+
+  // folder selection (Chromium, Safari)
+  (input as any).webkitdirectory = true;
+  (input as any).directory = true;
+
+  input.addEventListener('change', (e) => {
+    const target = e.target as HTMLInputElement;
+    const list = Array.from(target.files ?? []);
+    if (list.length > 0 && onFileUpload) {
+      // keep relative paths (important for folder uploads)
+      const prepared = list.map((f) => {
+        (f as File & { relativePath?: string }).relativePath =
+          (f as any).webkitRelativePath || f.name;
+        return f;
+      });
+      onFileUpload(prepared);
+    }
+  });
+
+  input.click();
+};
+
+  
 
   const handleCreateRootFolder = async () => {
     const name = newFolderName.trim();
@@ -103,17 +141,29 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
   return (
     <div className="space-y-2">
       <div className="flex gap-2 p-2 border-b">
-        <Button variant="outline" size="sm" onClick={handleRootUpload} className="flex items-center gap-2">
-          <Upload className="h-4 w-4" />
-          Загрузить
-        </Button>
-        {/* Optional: New root folder button
-        <Button variant="outline" size="sm" onClick={() => setShowCreateFolderDialog(true)} className="flex items-center gap-2">
-          <FolderPlus className="h-4 w-4" />
-          Новая папка
-        </Button>
-        */}
-      </div>
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={handleRootUploadFiles}
+    className="flex items-center gap-2"
+    title="Загрузить файлы"
+  >
+    <Upload className="h-4 w-4" />
+    Файлы
+  </Button>
+
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={handleRootUploadFolder}
+    className="flex items-center gap-2"
+    title="Загрузить папку c подпапками"
+  >
+    <Upload className="h-4 w-4" />
+    Папку
+  </Button>
+</div>
+
 
       <div className="space-y-1">
         <div className="font-medium text-sm text-muted-foreground px-2 py-1">Папки</div>

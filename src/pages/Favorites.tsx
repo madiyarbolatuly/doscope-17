@@ -170,7 +170,7 @@ toggleFavorite={handleToggleFavorite}   // ✅ just pass the function
     />
   ))
 ) // ✅ correct prop name
-})
+}
 
     </div>
   );

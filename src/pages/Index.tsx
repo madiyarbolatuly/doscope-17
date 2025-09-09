@@ -3,15 +3,13 @@ import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
 import { Document, CategoryType } from '@/types/document';
 import { toast } from '@/hooks/use-toast';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
 import { buildTree, TreeNode } from '@/utils/buildTree';
-import { useShare } from '@/hooks/useShare';
 import { Button } from '@/components/ui/button';
-import { Plus, Share } from "lucide-react";
+import { Share } from "lucide-react";
 import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
 import { durableUploadFolder } from "@/services/durableUpload";
 
@@ -21,6 +19,7 @@ import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from
 import { format } from 'date-fns';
 import { createFolderApi } from "@/hooks/folders";
 
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +28,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EnhancedFolderTree } from '@/components/EnhancedFolderTree';
-import { mockDocuments} from '@/pages/mdocuments'
 import { useLocation } from 'react-router-dom';
 
 
@@ -68,15 +66,25 @@ const Index = () => {
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
-  const [progress, setProgress] = useState(0); // Add this line
   const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [folderId, setFolderId] = useState<string | null>(null);
   const location = useLocation();
+  const [folders, setFolders] = useState<Document[]>([]); // holds folders for the tree
+  const PAGE_SIZE = 100;
+  const [offset, setOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   
   const [overallPct, setOverallPct] = useState(0);
 
+  const qs = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    offset: String(offset),
+    recursive: "false",
+    ...(folderId ? { parent_id: String(folderId) } : {}),
+  });
   const isAtRoot = location.pathname === '/';
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -143,21 +151,6 @@ const projects = useMemo(
 );
 useEffect(() => {
   if (isLoading) return;
-  if (!folderId) return;
-
-  const exists = documents.some(d => d.id === folderId && d.type === 'folder');
-  if (!exists) {
-    toast({
-      title: "Папка не найдена",
-      description: `ID ${folderId} недействителен. Возвращаемся в корень.`,
-      variant: "destructive",
-    });
-    clearFolderSelection(); // сбрасывает state и уводит на "/"
-  }
-}, [isLoading, documents, folderId, clearFolderSelection]);
-
-useEffect(() => {
-  if (isLoading) return;
   if (!projectRootId) return;
 
   const exists = documents.some(d => d.id === projectRootId && d.type === 'folder');
@@ -171,6 +164,8 @@ useEffect(() => {
 }, [isLoading, documents, projectRootId, clearFolderSelection]);
 
 
+
+
   // Синхронизируем выбранную папку с URL. Сначала ищем параметр ?folderId=...,
   // если его нет – пытаемся извлечь идентификатор из пути /folder/{id}.
   useEffect(() => {
@@ -180,123 +175,173 @@ useEffect(() => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectRootId]);
-
-  // Fetch documents
-  const fetchDocuments = useCallback(async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    // when folder changes, reload the page list from scratch
+    setDocuments([]);
+    setOffset(0);
+    setTotalCount(null);
+    setHasMore(true);
+  }, [folderId, projectRootId]);
   
-    // util: keep only nodes in the subtree of rootId (client-side fallback)
-    const filterSubtree = (rows: BackendDocument[], rootId: string) => {
-      const want = new Set<string>([String(rootId)]);
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (const r of rows) {
-          const pid = r.parent_id != null ? String(r.parent_id) : null;
-          if (pid && want.has(pid) && !want.has(String(r.id))) {
-            want.add(String(r.id));
-            changed = true;
-          }
+  useEffect(() => {
+    if (!folderId) return;
+    let cancelled = false;
+  
+    (async () => {
+      try {
+        const res = await fetch(`/api/v2/metadata/${encodeURIComponent(folderId)}/detail`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        });
+        if (!res.ok && res.status === 404 && !cancelled) {
+          toast({
+            title: "Папка не найдена",
+            description: `ID ${folderId} недействителен. Возвращаемся в корень.`,
+            variant: "destructive",
+          });
+          clearFolderSelection();
         }
+        // For other statuses just let the listing handle itself.
+      } catch {
+        /* network hiccup — let listing continue; don’t bounce user */
       }
-      return rows.filter(
-        (r) => want.has(String(r.id)) || (r.parent_id && want.has(String(r.parent_id)))
-      );
-    };
+    })();
   
-    const tryFetch = async (params: Record<string, string>) => {
-      const qs = new URLSearchParams({ limit: "4000", offset: "0", ...params });
+    return () => { cancelled = true; };
+  }, [folderId, token, clearFolderSelection]);
+  
+  const fetchFolderTree = useCallback(async () => {
+    try {
+      const qs = new URLSearchParams({
+        limit: "5000",        // folders are cheap; adjust if needed
+        offset: "0",
+        recursive: "true",
+        only_folders: "true",
+      });
       const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
-      return (Array.isArray(data?.documents) ? data.documents : []) as BackendDocument[];
-    };
   
-    try {
-      let rows: BackendDocument[] = [];
-  
-      if (projectRootId) {
-        // ✅ preferred: ask backend for subtree only
-        try {
-          rows = await tryFetch({ recursive: "true", ancestor_id: String(projectRootId) });
-        } catch {
-          // fallback: fetch a larger slice and filter in the client
-          const all = await tryFetch({ recursive: "true" });
-          rows = filterSubtree(all, String(projectRootId));
-        }
-      } else {
-        // no project selected → fetch a reasonable slice (e.g., top-level view)
-        rows = await tryFetch({ recursive: "true" });
-      }
-  
-      // ⬇️ NEW: drop archived & deleted items before mapping
-      const isArchived = (r: BackendDocument) =>
-        r.is_archived === true || r.status === "archived";
-  
-      const isDeleted = (r: BackendDocument) =>
-        !!r.deleted_at || r.status === "deleted";
-  
-      rows = rows.filter((r) => !isArchived(r) && !isDeleted(r));
-  
-      const mapped: Document[] = rows.map((doc) => ({
+      const mapped: Document[] = (data.documents || []).map((doc: any) => ({
         id: String(doc.id),
-        // ⬇️ don't decode: names may not be percent-encoded
-        name: doc.name || "Unnamed Document",
-        type:
-          doc.file_type === "folder"
-            ? "folder"
-            : doc.file_type?.includes("pdf")
-            ? "pdf"
-            : doc.file_type?.includes("doc")
-            ? "doc"
-            : doc.file_type?.includes("xls")
-            ? "xlsx"
-            : doc.file_type?.includes("pptx")
-            ? "pptx"
-            : doc.file_type?.includes("ppt")
-            ? "ppt"
-            : doc.file_type?.includes("png")
-            ? "png"
-            : doc.file_type?.includes("image")
-            ? "image"
-            : doc.file_type?.includes("zip")
-            ? "zip"
-            : "file",
-        size:
-          doc.file_type === "folder"
-            ? "--"
-            : doc.size != null
-            ? `${(Number(doc.size) / (1024 * 1024)).toFixed(2)} MB`
-            : "Unknown",
+        name: doc.name || "Unnamed",
+        type: "folder", // guaranteed by backend
+        size: "--",
         modified: doc.created_at,
         owner: doc.owner_id,
         category: doc.categories?.[0] || "uncategorized",
         path: doc.file_path ?? null,
         tags: doc.tags || [],
         parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
-        archived: isArchived(doc),          // will be false for the kept rows
-        starred: Boolean(doc.is_favourited) // preserve favourite if backend returns it
+        archived: false,
+        starred: Boolean(doc.is_favourited),
       }));
-  
-      setDocuments(mapped);
-    } catch (e: any) {
+      setFolders(mapped);
+    } catch (e) {
       console.error(e);
-      toast({
-        title: "Ошибка загрузки",
-        description: `Метаданные не получены (${e?.message ?? "unknown"}).`,
-        variant: "destructive",
-      });
-      setDocuments([]);
-    } finally {
-      setIsLoading(false);
     }
-  }, [token, projectRootId, toast]);
+  }, [token]);
+
+  useEffect(() => {
+    fetchFolderTree();
+  }, [fetchFolderTree]);
+
+  const tryFetch = useCallback(async () => {
+    const qs = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+      recursive: "false",
+      ...(folderId ? { parent_id: String(folderId) } : {}), // root: no parent_id
+    });
+  
+    const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+  
+    const rows = Array.isArray(data?.documents) ? data.documents : [];
+    const total = typeof data?.total_count === "number" ? data.total_count : rows.length;
+    return { rows, total };
+  }, [PAGE_SIZE, offset, folderId, token]);
+  
+  
+  
+  // Fetch documents
+  const fetchDocuments = useCallback(async () => {
+  if (isLoading || !hasMore) return;
+  setIsLoading(true);
+  try {
+    const { rows, total } = await tryFetch();
+
+    const isArchived = (r: any) => r.is_archived === true || r.status === "archived";
+    const isDeleted  = (r: any) => !!r.deleted_at || r.status === "deleted";
+    const filtered = rows.filter((r: any) => !isArchived(r) && !isDeleted(r));
+
+    const mapped: Document[] = filtered.map((doc: any) => ({
+      id: String(doc.id),
+      name: doc.name || "Unnamed Document",
+      type:
+        doc.file_type === "folder" ? "folder" :
+        doc.file_type?.includes("pdf") ? "pdf" :
+        doc.file_type?.includes("doc") ? "doc" :
+        doc.file_type?.includes("xls") ? "xlsx" :
+        doc.file_type?.includes("pptx") ? "pptx" :
+        doc.file_type?.includes("ppt") ? "ppt" :
+        doc.file_type?.includes("png") ? "png" :
+        doc.file_type?.includes("image") ? "image" :
+        doc.file_type?.includes("zip") ? "zip" : "file",
+      size: doc.file_type === "folder" ? "--" :
+            doc.size != null ? `${(Number(doc.size)/(1024*1024)).toFixed(2)} MB` : "Unknown",
+      modified: doc.created_at,
+      owner: doc.owner_id,
+      category: doc.categories?.[0] || "uncategorized",
+      path: doc.file_path ?? null,
+      tags: doc.tags || [],
+      parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
+      archived: false,
+      starred: Boolean(doc.is_favourited),
+    }));
+
+    setDocuments(prev => {
+      const byId = new Map(prev.map(d => [d.id, d]));
+      for (const m of mapped) byId.set(m.id, m); // last write wins
+      return Array.from(byId.values());
+    });
+    
+    
+        if (totalCount === null) setTotalCount(total);
+
+    const newOffset = offset + rows.length;
+    setOffset(newOffset);
+    setHasMore(newOffset < total);
+  } catch (e: any) {
+    console.error(e);
+    toast({
+      title: "Ошибка загрузки",
+      description: `Метаданные не получены (${e?.message ?? "unknown"}).`,
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+}, [isLoading, hasMore, offset, totalCount, tryFetch, toast]);
+
   
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+  
+  useEffect(() => {
+    const onScroll = () => {
+      if (!hasMore || isLoading) return;
+      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 400; // 400px from bottom
+      if (nearBottom) fetchDocuments();
+    };
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [hasMore, isLoading, fetchDocuments]);
   
   const isOfficeEditable = (doc: Document) =>
     ['docx', 'xlsx', 'pptx', 'ppt'].includes(doc.type);
@@ -1107,12 +1152,17 @@ const handleToggleFavorite = async (doc: Document) => {
     });
   };
 
-/** visible in the table / grid */
+// было: фильтрация по folderId
+// const visibleDocuments = useMemo(() => {
+//   const inScope = documents.filter(d => !d.archived);
+//   if (!folderId) return inScope.filter(d => d.parent_id === null);
+//   return inScope.filter(d => d.parent_id === String(folderId));
+// }, [documents, folderId]);
+
+// стало: всегда показываем все неархивные документы
 const visibleDocuments = useMemo(() => {
-  const inScope = documents.filter(d => !d.archived); // docs are already limited to the project
-  if (!folderId) return inScope.filter(d => d.parent_id === null); // show project root
-  return inScope.filter(d => d.parent_id === String(folderId));
-}, [documents, folderId]);
+  return documents.filter(d => !d.archived);
+}, [documents]);
 
 
 
@@ -1234,7 +1284,6 @@ const toBytes = (size: string): number => {
     return 0;
   });
 }, [filteredDocuments, sortBy, sortOrder]);
-
 const folderTreeData: TreeNode[] = React.useMemo(() => {
   // build relationships using all docs first
   const full = buildTree(documents);
@@ -1372,8 +1421,8 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
   data={folderTreeData}
   selectedId={folderId}
   onSelect={(id) => {
-    setFolderId(prev => (prev === id ? null : id));
-    if (id) navigate(`/?folderId=${id}`); else navigate(`/`);
+    setFolderId(id);
+    
   }}
   onFileUpload={handleFileUpload}
   onAction={handleTreeAction}
