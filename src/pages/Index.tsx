@@ -1284,16 +1284,11 @@ const toBytes = (size: string): number => {
     return 0;
   });
 }, [filteredDocuments, sortBy, sortOrder]);
-const folderTreeData: TreeNode[] = React.useMemo(() => {
-  // build relationships using all docs first
-  const full = buildTree(documents);
-  // then remove files from the rendered tree
-  const stripFiles = (nodes: TreeNode[] = []): TreeNode[] =>
-    nodes
-      .filter(n => n.type === 'folder')
-      .map(n => ({ ...n, children: stripFiles(n.children || []) }));
-  return stripFiles(full);
-}, [documents]);
+const folderTreeData: TreeNode[] = useMemo(() => {
+  const full = buildTree(folders); // только папки
+  return full;
+}, [folders]);
+
 
 const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
   // Special case: creating a root folder uses parent_id = null
@@ -1422,11 +1417,12 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
   selectedId={folderId}
   onSelect={(id) => {
     setFolderId(id);
-    
+    navigate(`/?folderId=${id}`);
   }}
   onFileUpload={handleFileUpload}
   onAction={handleTreeAction}
 />
+
 
 
 
