@@ -84,9 +84,11 @@ const Index = () => {
   const [offset, setOffset] = useState(0);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  
-  const [overallPct, setOverallPct] = useState(0);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
 
+  const [overallPct, setOverallPct] = useState(0);
+  const abortRef = React.useRef<AbortController | null>(null);
+  const reqSeq = React.useRef(0);
   const qs = new URLSearchParams({
     limit: String(PAGE_SIZE),
     offset: String(offset),
@@ -109,10 +111,25 @@ const [projectRootId, setProjectRootId] = useState<string | null>(() =>
 );
 useEffect(() => {
   const q = new URLSearchParams(location.search);
-  const fid = q.get('folderId');
-  if (fid && fid !== folderId) setFolderId(fid);
-}, [location.search]); 
-// уже есть: const [overallPct, setOverallPct] = useState(0);
+  const fid = q.get("folderId");       // string | null
+
+  if (fid !== null) {
+    // explicit folder in URL wins
+    if (fid !== folderId) setFolderId(fid);
+    return;
+  }
+
+  // no folderId in URL → if we have saved projectRootId, go there
+  if (folderId == null && projectRootId) {
+    navigate(`/?folderId=${projectRootId}`, { replace: true });
+    setFolderId(projectRootId);
+  } else if (folderId === undefined) {
+    // first mount, no project root → show root `/`
+    setFolderId(null);
+  }
+}, [location.search, projectRootId, navigate]); // ← note: no folderId here to avoid loops
+
+
 const [isUploading, setIsUploading] = useState(false);
 const [uploadStats, setUploadStats] = useState({
   totalBytes: 0,
@@ -150,7 +167,8 @@ const mapBackendDoc = (doc: DocumentMeta): Document => ({
   category: doc.categories?.[0] || "uncategorized",
   path: doc.file_path ?? null,
   tags: doc.tags || [],
-  parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
+  parent_id: doc.parent_id ? String(doc.parent_id) : null,
+
   archived: Boolean(doc.is_archived),
   starred: Boolean(doc.is_favourited),
 });
@@ -199,155 +217,171 @@ useEffect(() => {
   }
 }, [isLoading, documents, projectRootId, clearFolderSelection]);
 
+const tryFetch = useCallback(async () => {
+  const qs = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    offset: String(offset),
+    recursive: "false",
+  });
+  if (folderId != null) qs.set("parent_id", String(folderId)); // root: no parent_id
 
+  // set up abort controller for this request
+  const controller = new AbortController();
+  abortRef.current = controller;
 
+  const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    signal: controller.signal,
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  const data = await res.json();
 
-  // Синхронизируем выбранную папку с URL. Сначала ищем параметр ?folderId=...,
-  // если его нет – пытаемся извлечь идентификатор из пути /folder/{id}.
-  useEffect(() => {
-    if (!folderId && projectRootId) {
-      navigate(`/?folderId=${projectRootId}`);
-      setFolderId(projectRootId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectRootId]);
-  useEffect(() => {
-    // when folder changes, reload the page list from scratch
-    setDocuments([]);
-    setOffset(0);
-    setTotalCount(null);
-    setHasMore(true);
-  }, [folderId, projectRootId]);
-  
-  useEffect(() => {
-    if (!folderId) return;
-    let cancelled = false;
-  
-    (async () => {
-      try {
-        const res = await fetch(`/api/v2/metadata/${encodeURIComponent(folderId)}/detail`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-        });
-        if (!res.ok && res.status === 404 && !cancelled) {
-          toast({
-            title: "Папка не найдена",
-            description: `ID ${folderId} недействителен. Возвращаемся в корень.`,
-            variant: "destructive",
-          });
-          clearFolderSelection();
-        }
-        // For other statuses just let the listing handle itself.
-      } catch {
-        /* network hiccup — let listing continue; don’t bounce user */
-      }
-    })();
-  
-    return () => { cancelled = true; };
-  }, [folderId, token, clearFolderSelection]);
-  
-  const fetchFolderTree = useCallback(async () => {
-    try {
-      const qs = new URLSearchParams({
-        limit: "5000",        // folders are cheap; adjust if needed
-        offset: "0",
-        recursive: "true",
-        only_folders: "true",
-      });
-      const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const data = await res.json();
-  
-      const mapped: Document[] = (data.documents || [])
-        .map(mapBackendDoc)
-        .filter(d => d.type === "folder"); 
-      setFolders(mapped);
-    } catch (e) {
-      console.error(e);
-    }
-  }, [token]);
+  const rows = Array.isArray(data?.documents) ? data.documents : [];
+  const total = typeof data?.total_count === "number" ? data.total_count : rows.length;
+  return { rows, total };
+}, [PAGE_SIZE, offset, folderId, token]);
 
-  useEffect(() => {
-    fetchFolderTree();
-  }, [fetchFolderTree]);
-
-  const tryFetch = useCallback(async () => {
-    const qs = new URLSearchParams({
-      limit: String(PAGE_SIZE),
-      offset: String(offset),
-      recursive: "false",
-      ...(folderId ? { parent_id: String(folderId) } : {}), // root: no parent_id
-    });
-  
-    const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    });
-    if (!res.ok) throw new Error(String(res.status));
-    const data = await res.json();
-  
-    const rows = Array.isArray(data?.documents) ? data.documents : [];
-    const total = typeof data?.total_count === "number" ? data.total_count : rows.length;
-    return { rows, total };
-  }, [PAGE_SIZE, offset, folderId, token]);
-  
-  
-  
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
-  if (isLoading || !hasMore) return;
-  setIsLoading(true);
-  try {
-    const { rows, total } = await tryFetch();
+    if (!hasMore) return;        // keep this
+    if (isLoading) return;       // now safe because we abort on folder change
+  
+    setIsLoading(true);
+    const mySeq = ++reqSeq.current;
+  
+    try {
+      const { rows, total } = await tryFetch();
+  
+      // map/filter
+      const isArchived = (r: DocumentMeta) => r.is_archived === true || r.status === "archived";
+      const isDeleted  = (r: DocumentMeta) => !!r.deleted_at || r.status === "deleted";
+      const filtered = rows.filter((r: DocumentMeta) => !isArchived(r) && !isDeleted(r));
+      const mapped: Document[] = filtered.map(mapBackendDoc);
+  
+      // ignore stale response (aborted or superseded by newer folderId/offset)
+      if (mySeq !== reqSeq.current) return;
+  
+      // append if offset > 0, replace if offset === 0
+      setDocuments(prev => offset === 0 ? mapped : [...prev, ...mapped]);
+  
+      if (totalCount === null) setTotalCount(total);
+      setHasMore(offset + rows.length < total);  // compute purely; do NOT setOffset here
+    } catch (e: unknown) {
+      if ((e as any)?.name === 'AbortError') return; // user navigated, ignore
+      console.error(e);
+      toast({
+        title: "Ошибка загрузки",
+        description: `Метаданные не получены (${e instanceof Error ? e.message : "unknown"}).`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [hasMore, isLoading, offset, totalCount, tryFetch, toast]);
+  
 
-    const isArchived = (r: DocumentMeta) => r.is_archived === true || r.status === "archived";
-    const isDeleted  = (r: DocumentMeta) => !!r.deleted_at || r.status === "deleted";
-    const filtered = rows.filter((r: DocumentMeta) => !isArchived(r) && !isDeleted(r));
 
-    const mapped: Document[] = filtered.map(mapBackendDoc);
-
-
-    setDocuments(prev => {
-      const byId = new Map(prev.map(d => [d.id, d]));
-      for (const m of mapped) byId.set(m.id, m); // last write wins
-      return Array.from(byId.values());
-    });
-    
-    
-        if (totalCount === null) setTotalCount(total);
-
-    const newOffset = offset + rows.length;
-    setOffset(newOffset);
-    setHasMore(newOffset < total);
-  } catch (e: unknown) {
-    console.error(e);
-    toast({
-      title: "Ошибка загрузки",
-      description: `Метаданные не получены (${e instanceof Error ? e.message : "unknown"}).`,
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoading(false);
+// 1) Синхронизируем folderId с projectRootId
+useEffect(() => {
+  if (!folderId && projectRootId) {
+    navigate(`/?folderId=${projectRootId}`);
+    setFolderId(projectRootId);
   }
-}, [isLoading, hasMore, offset, totalCount, tryFetch, toast]);
+}, [projectRootId, folderId, navigate]);
+// сбрасываем список при смене папки
+useEffect(() => {
+  // allow root: folderId can be null; we still reset
+  // abort the previous request so it can't finish late
+  if (abortRef.current) {
+    abortRef.current.abort();
+    abortRef.current = null;
+  }
+  setIsLoading(false);   // ← IMPORTANT so the next fetch can start immediately
+  setDocuments([]);
+  setOffset(0);
+  setTotalCount(null);
+  setHasMore(true);
+}, [folderId]);
+
+// главный загрузчик
+useEffect(() => {
+  if (folderId === undefined) return; // not initialized yet
+  fetchDocuments();
+}, [folderId, offset, fetchDocuments]);
+
+// 3) Проверка, что папка существует
+useEffect(() => {
+  if (!folderId) return;
+  let cancelled = false;
+
+  (async () => {
+    try {
+      const res = await fetch(`/api/v2/metadata/${encodeURIComponent(folderId)}/detail`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!res.ok && res.status === 404 && !cancelled) {
+        toast({
+          title: "Папка не найдена",
+          description: `ID ${folderId} недействителен. Возвращаемся в корень.`,
+          variant: "destructive",
+        });
+        clearFolderSelection();
+      }
+    } catch {
+      /* сеть упала — не мешаем основному fetchDocuments */
+    }
+  })();
+
+  return () => { cancelled = true; };
+}, [folderId, token, clearFolderSelection]);
+
 
   
-  useEffect(() => {
-    fetchDocuments();
-  }, [fetchDocuments]);
   
-  useEffect(() => {
-    const onScroll = () => {
-      if (!hasMore || isLoading) return;
-      const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 400; // 400px from bottom
-      if (nearBottom) fetchDocuments();
-    };
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, [hasMore, isLoading, fetchDocuments]);
+useEffect(() => {
+  const onScroll = () => {
+    if (!hasMore || isLoading) return;
+    const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
+    if (nearBottom) {
+      setOffset(prev => prev + PAGE_SIZE);   // ← trigger loader effect
+    }
+  };
+  window.addEventListener('scroll', onScroll);
+  return () => window.removeEventListener('scroll', onScroll);
+}, [hasMore, isLoading, PAGE_SIZE]);
+
   
   const isOfficeEditable = (doc: Document) =>
     ['docx', 'xlsx', 'pptx', 'ppt'].includes(doc.type);
+  
+ // stays as a global fetch; re-run if project scope changes
+const fetchFolderTree = useCallback(async () => {
+  const qs = new URLSearchParams({
+    limit: "5000",
+    offset: "0",
+    recursive: "true",
+    only_folders: "true",
+    // if your backend supports scoping by project:
+    ...(projectRootId ? { root_id: String(projectRootId) } : {}),
+  });
+
+  const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+  });
+  if (!res.ok) throw new Error(String(res.status));
+  const data = await res.json();
+
+  const mapped: Document[] = (data.documents || [])
+    .map(mapBackendDoc)
+    .filter(d => d.type === "folder");
+
+  setFolders(mapped);
+}, [token, projectRootId]);
+
+useEffect(() => { fetchFolderTree(); }, [fetchFolderTree]);
+
+
+  
   
 // guess the ext for the OnlyOffice config
 const guessOnlyOfficeExt = (doc: Document): 'docx' | 'xlsx' | 'pptx' => {
@@ -879,15 +913,22 @@ const handleRenameDocument = async (document: Document, newName: string) => {
   );
 
   const handleDocumentClick = (document: Document) => {
-    if (document.type === 'folder') {
-      // Navigate to folder view
-      navigate(`/?folderId=${document.id}`);
+    if (document.type === "folder") {
+      if (currentFolderId === document.id) {
+        // если второй раз нажали на ту же папку → уходим в корень
+        navigate("/");
+        setCurrentFolderId(null);
+      } else {
+        // первый клик по папке → заходим внутрь
+        navigate(`/?folderId=${document.id}`);
+        setCurrentFolderId(document.id);
+      }
     } else {
       setSelectedDocument(document);
       setShowSidebar(true);
     }
   };
-
+  
   const handleDocumentSelect = (document: Document) => {
     if (selectedDocumentIds.includes(document.id)) {
       setSelectedDocumentIds(selectedDocumentIds.filter(id => id !== document.id));
@@ -1154,11 +1195,17 @@ const handleToggleFavorite = async (doc: Document) => {
 //   if (!folderId) return inScope.filter(d => d.parent_id === null);
 //   return inScope.filter(d => d.parent_id === String(folderId));
 // }, [documents, folderId]);
-
-// стало: всегда показываем все неархивные документы
 const visibleDocuments = useMemo(() => {
-  return documents.filter(d => !d.archived);
-}, [documents]);
+  const inScope = documents.filter(d => !d.archived);
+
+  if (!folderId) {
+    // root → показываем документы без родителя
+    return inScope.filter(d => !d.parent_id || d.parent_id === "null");
+  }
+
+  return inScope.filter(d => d.parent_id === String(folderId));
+}, [documents, folderId]);
+
 
 
 
@@ -1280,102 +1327,97 @@ const toBytes = (size: string): number => {
     return 0;
   });
 }, [filteredDocuments, sortBy, sortOrder]);
-const folderTreeData: TreeNode[] = useMemo(() => {
-  const full = buildTree(folders); // только папки
-  return full;
-}, [folders]);
+const folderTreeData = useMemo(() => buildTree(folders), [folders]);
+const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' as const };
+
+const byId = useMemo(() => {
+  const m = new Map<string, Document>();
+  folders.forEach(f => m.set(f.id, f));
+  documents.forEach(d => m.set(d.id, d)); // files in current folder
+  return m;
+}, [folders, documents]);
+
+const getNode = (id: string) => byId.get(id);
 
 
 const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
-  // Special case: creating a root folder uses parent_id = null
-  const isRoot = nodeId === 'root';
-  const node = documents.find(d => d.id === nodeId);
-
-  // Axios instance-like headers
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' as const };
+  // If you still need some metadata (e.g., name for a toast), use getNode:
+  const node = getNode(nodeId);
 
   try {
     switch (action) {
-      // ---------- core metadata via PUT /api/v2/metadata/:id ----------
       case 'rename': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
         const newName = data?.newName?.trim();
         if (!newName) return { ok: false, message: 'Нет нового имени' };
-
         await axios.put(`/api/v2/metadata/${nodeId}`, { name: newName }, { headers });
-        await fetchDocuments();
+        await fetchFolderTree();   // refresh tree
+        if (folderId === node?.parent_id) await hardReloadDocuments(); // optional: refresh list if visible
         return { ok: true, message: 'Переименовано' };
       }
 
       case 'move': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
-        // null → в корень
         const targetFolderId = data?.targetFolderId ?? null;
         await axios.put(`/api/v2/metadata/${nodeId}`, { parent_id: targetFolderId }, { headers });
-        await fetchDocuments();
+        await fetchFolderTree();
+        if (folderId === node?.parent_id || folderId === targetFolderId) await hardReloadDocuments();
         return { ok: true, message: 'Перемещено' };
       }
 
-      // ---------- create subfolder ----------
-      case "create-subfolder": {
-        const folderName: string = data?.folderName?.trim();
-        if (!folderName) return { ok: false, message: "Имя папки пустое" };
-
-        // root => null, otherwise convert to number
-        const parent_id =
-          nodeId === "root" ? null : Number(nodeId);
-
-        if (parent_id !== null && Number.isNaN(parent_id)) {
-          return { ok: false, message: "Некорректный ID папки" };
-        }
-
-        await createFolderApi(token, { name: folderName, parent_id });
-        await fetchDocuments();
-        return { ok: true, message: "Папка создана" };
-      }
-      // ---------- share / download ----------
-      case 'share': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
-        handleShareNode(nodeId);
-        return { ok: true };
-      }
-
       case 'download': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
-        await handleDownloadFile(node);
+        // Don’t rely on a full Document object; download by id
+        const res = await fetch(`/api/v2/file/${encodeURIComponent(nodeId)}/download`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error(`Download failed (${res.status})`);
+        const blob = await res.blob();
+        const suggested = (res.headers.get("content-disposition") || "").match(/filename="([^"]+)"/)?.[1]
+          || (node?.name ? `${node.name}.zip` : 'download.zip');
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href; a.download = suggested; document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(href);
         return { ok: true };
       }
 
-      // ---------- archive / favorite / delete (use your existing helpers) ----------
       case 'archive': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
-        await handleArchiveDocument(node);
+        await archiveDocument(nodeId, token!);
+        await fetchFolderTree();
+        if (folderId === node?.parent_id) await hardReloadDocuments();
         return { ok: true, message: 'В архиве' };
       }
 
       case 'favorite': {
-        const doc = documents.find(d => d.id === nodeId);
-        if (!doc) return { ok: false, message: 'Документ не найден' };
-        await handleToggleFavorite(doc);
+        const res = await fetch(`/api/v2/metadata/${nodeId}/star`, { method: 'PUT', headers });
+        if (!res.ok) throw new Error('Toggle failed');
+        if (folderId === node?.parent_id) await hardReloadDocuments();
         return { ok: true, message: 'Избранное обновлено' };
       }
 
       case 'delete': {
-        if (!node) return { ok: false, message: 'Узел не найден' };
-        await handleDeleteDocument(node);
+        await axios.delete(`/api/v2/metadata/${nodeId}`, { headers });
+        await fetchFolderTree();
+        if (folderId === node?.parent_id) await hardReloadDocuments();
         return { ok: true, message: 'Удалено' };
       }
 
-      // ---------- not implemented ----------
-      case 'upload':
+      case 'create-subfolder': {
+        const folderName: string = data?.folderName?.trim();
+        if (!folderName) return { ok: false, message: 'Имя папки пустое' };
+        await createFolderApi(token, { name: folderName, parent_id: Number.isFinite(+nodeId) ? +nodeId : null });
+        await fetchFolderTree();
+        if (folderId === nodeId || (folderId == null && (node?.parent_id ?? null) == null)) {
+          await hardReloadDocuments();
+        }
+        return { ok: true, message: 'Папка создана' };
+      }
+
       default:
-        return false; // the row will show a "not implemented" toast
+        return { ok: false, message: 'Не реализовано' };
     }
   } catch (e: any) {
     return { ok: false, message: e?.message ?? 'Ошибка' };
   }
 };
-
   return (
  <div className="flex flex-col h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100">
     <div className=" border-b shrink-0 bg-white/90 backdrop-blur-sm shadow-sm">
