@@ -66,7 +66,7 @@ const FolderView = () => {
   const { folderId } = useParams<{ folderId: string }>();
   const navigate = useNavigate();
   const [category] = useState<CategoryType>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
@@ -84,13 +84,11 @@ const FolderView = () => {
 
   const token = localStorage.getItem('authToken');
 
-  // Fetch folder information and contents
   const fetchFolderContents = useCallback(async () => {
     if (!folderId) return;
     
     setIsLoading(true);
     try {
-      // Fetch folder information
       const folderResponse = await fetch(`/api/v2/metadata/${folderId}`, {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -102,7 +100,6 @@ const FolderView = () => {
         setCurrentFolder(folderData);
       }
 
-      // Fetch folder contents (children)
       const contentsResponse = await fetch(`/api/v2/folders/${folderId}/children`, {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -250,7 +247,7 @@ const FolderView = () => {
 
   const handleArchiveDocument = async (document: Document) => {
     try {
-      await archiveDocument(document.name, token!);
+      await archiveDocument(document.id, token!);
       toast({
         title: "Success",
         description: "Document archived successfully",
@@ -267,7 +264,7 @@ const FolderView = () => {
 
   const handleToggleFavorite = async (document: Document) => {
     try {
-      await toggleStar(document.name, token!);
+      await toggleStar(document.id, token!);
       toast({
         title: "Success",
         description: "Document favorited successfully",

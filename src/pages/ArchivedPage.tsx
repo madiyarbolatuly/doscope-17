@@ -129,7 +129,7 @@ const ArchivedPage = () => {
     if (!token) return;
     
     try {
-      await unarchiveDocument(document.name, token);
+      await unarchiveDocument(document.id, token);
       
       toast({
         title: "Success",

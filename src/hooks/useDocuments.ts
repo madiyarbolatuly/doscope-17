@@ -17,6 +17,10 @@ export interface DocumentMeta {
   status: DocumentStatus;
   file_hash: string | null;
   access_to: string[] | null;
+  parent_id: number | null; // Added parent_id
+  is_archived: boolean; // Added is_archived
+  is_favourited: boolean; // Added is_favourited
+  deleted_at: string | null; // Added deleted_at
 }
 
 export interface Document {
@@ -32,7 +36,7 @@ export interface Document {
   status?: 'pending' | 'approved' | 'rejected' | 'draft'; // <-- add status
 }
 
-export function useDocuments(category?: string, status?: string) {
+export function useDocuments(category?: string, status?: string, parentId?: string) {
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
@@ -49,6 +53,7 @@ export function useDocuments(category?: string, status?: string) {
 
       if (category) params.append('category', category);
       if (status) params.append('status', status);
+      if (parentId) params.append('parent_id', parentId);
 
       params.append('limit', limit.toString());
       params.append('offset', offset.toString());
@@ -100,7 +105,7 @@ export function useDocuments(category?: string, status?: string) {
     } finally {
       setLoading(false);
     }
-  }, [category, status]);
+  }, [category, status, parentId]);
 
   return { docs, loading, error, totalCount, refetch: fetchDocuments };
 }
@@ -124,9 +129,14 @@ export function useArchivedDocuments() {
       });
       
       setDocs(response.data);
-    } catch (err: any) {
-      setError(err.message);
-      console.error("Error fetching archived documents:", err);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+        console.error("Error fetching archived documents:", err);
+      } else {
+        setError("An unknown error occurred.");
+        console.error("Error fetching archived documents:", err);
+      }
     } finally {
       setLoading(false);
     }

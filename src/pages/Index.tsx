@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { createFolderApi } from "@/hooks/folders";
+import { DocumentMeta } from "@/hooks/useDocuments";
 
 
 import {
@@ -50,6 +51,13 @@ interface BackendDocument {
   deleted_at?: string | null; 
 }
 
+interface UploadStats {
+  totalBytes: number;
+  uploadedBytes: number;
+  startedAt: number;
+  speedBps: number;
+  etaSec: number;
+}
 
 const Index = () => {
   const [category] = useState<CategoryType>('all');
@@ -118,6 +126,34 @@ const clearFolderSelection = useCallback(() => {
   setCurrentProject(null);           // у тебя уже есть этот хелпер
   navigate("/", { replace: true });  // убираем ?folderId=...
 }, [navigate]);
+
+const mapBackendDoc = (doc: DocumentMeta): Document => ({
+  id: String(doc.id),
+  name: doc.name || "Unnamed Document",
+  type:
+    doc.file_type === "folder" ? "folder" :
+    doc.file_type?.includes("pdf") ? "pdf" :
+    doc.file_type?.includes("doc") ? "doc" :
+    doc.file_type?.includes("xls") ? "xlsx" :
+    doc.file_type?.includes("pptx") ? "pptx" :
+    doc.file_type?.includes("ppt") ? "ppt" :
+    doc.file_type?.includes("png") ? "png" :
+    doc.file_type?.includes("image") ? "image" :
+    doc.file_type?.includes("zip") ? "zip" : "file",
+  size: doc.file_type === "folder"
+    ? "--"
+    : doc.size != null
+      ? `${(Number(doc.size)/(1024*1024)).toFixed(2)} MB`
+      : "Unknown",
+  modified: doc.created_at,
+  owner: doc.owner_id,
+  category: doc.categories?.[0] || "uncategorized",
+  path: doc.file_path ?? null,
+  tags: doc.tags || [],
+  parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
+  archived: Boolean(doc.is_archived),
+  starred: Boolean(doc.is_favourited),
+});
 
 
 const formatBytes = (n: number) => {
@@ -223,20 +259,9 @@ useEffect(() => {
       if (!res.ok) throw new Error(String(res.status));
       const data = await res.json();
   
-      const mapped: Document[] = (data.documents || []).map((doc: any) => ({
-        id: String(doc.id),
-        name: doc.name || "Unnamed",
-        type: "folder", // guaranteed by backend
-        size: "--",
-        modified: doc.created_at,
-        owner: doc.owner_id,
-        category: doc.categories?.[0] || "uncategorized",
-        path: doc.file_path ?? null,
-        tags: doc.tags || [],
-        parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
-        archived: false,
-        starred: Boolean(doc.is_favourited),
-      }));
+      const mapped: Document[] = (data.documents || [])
+        .map(mapBackendDoc)
+        .filter(d => d.type === "folder"); 
       setFolders(mapped);
     } catch (e) {
       console.error(e);
@@ -275,34 +300,12 @@ useEffect(() => {
   try {
     const { rows, total } = await tryFetch();
 
-    const isArchived = (r: any) => r.is_archived === true || r.status === "archived";
-    const isDeleted  = (r: any) => !!r.deleted_at || r.status === "deleted";
-    const filtered = rows.filter((r: any) => !isArchived(r) && !isDeleted(r));
+    const isArchived = (r: DocumentMeta) => r.is_archived === true || r.status === "archived";
+    const isDeleted  = (r: DocumentMeta) => !!r.deleted_at || r.status === "deleted";
+    const filtered = rows.filter((r: DocumentMeta) => !isArchived(r) && !isDeleted(r));
 
-    const mapped: Document[] = filtered.map((doc: any) => ({
-      id: String(doc.id),
-      name: doc.name || "Unnamed Document",
-      type:
-        doc.file_type === "folder" ? "folder" :
-        doc.file_type?.includes("pdf") ? "pdf" :
-        doc.file_type?.includes("doc") ? "doc" :
-        doc.file_type?.includes("xls") ? "xlsx" :
-        doc.file_type?.includes("pptx") ? "pptx" :
-        doc.file_type?.includes("ppt") ? "ppt" :
-        doc.file_type?.includes("png") ? "png" :
-        doc.file_type?.includes("image") ? "image" :
-        doc.file_type?.includes("zip") ? "zip" : "file",
-      size: doc.file_type === "folder" ? "--" :
-            doc.size != null ? `${(Number(doc.size)/(1024*1024)).toFixed(2)} MB` : "Unknown",
-      modified: doc.created_at,
-      owner: doc.owner_id,
-      category: doc.categories?.[0] || "uncategorized",
-      path: doc.file_path ?? null,
-      tags: doc.tags || [],
-      parent_id: doc.parent_id != null ? String(doc.parent_id) : null,
-      archived: false,
-      starred: Boolean(doc.is_favourited),
-    }));
+    const mapped: Document[] = filtered.map(mapBackendDoc);
+
 
     setDocuments(prev => {
       const byId = new Map(prev.map(d => [d.id, d]));
@@ -316,11 +319,11 @@ useEffect(() => {
     const newOffset = offset + rows.length;
     setOffset(newOffset);
     setHasMore(newOffset < total);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
     toast({
       title: "Ошибка загрузки",
-      description: `Метаданные не получены (${e?.message ?? "unknown"}).`,
+      description: `Метаданные не получены (${e instanceof Error ? e.message : "unknown"}).`,
       variant: "destructive",
     });
   } finally {
@@ -410,10 +413,10 @@ const handleEdit = (doc: Document) => {
         }
       );
       toast({ title: "Успех", description: `Загружено: ${files.length} файл(ов)` });
-      fetchDocuments();
-    } catch (err: any) {
+      await hardReloadDocuments(); 
+    } catch (err: unknown) {
       console.error(err);
-      toast({ title: "Ошибка загрузки", description: err?.message ?? "Не удалось загрузить файлы", variant: "destructive" });
+      toast({ title: "Ошибка загрузки", description: err instanceof Error ? err.message : "Не удалось загрузить файлы", variant: "destructive" });
     } finally {
       setIsUploading(false);
       setOverallPct(0);
@@ -500,12 +503,12 @@ const handleEdit = (doc: Document) => {
       setPreviewUrl(url);
       setSelectedDocument(document);
       setShowSidebar(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast({
         title: 'Ошибка предпросмотра',
         description:
-          typeof err?.message === 'string' ? err.message : 'Не удалось загрузить предпросмотр',
+          err instanceof Error ? err.message : 'Не удалось загрузить предпросмотр',
         variant: 'destructive',
       });
     }
@@ -584,11 +587,11 @@ const handleEdit = (doc: Document) => {
       }
   
       throw new Error(`Download failed (${lastStatus}) via ${lastUrl}`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
       toast({
         title: "Ошибка",
-        description: e?.message || "Не удалось скачать",
+        description: e instanceof Error ? e.message : "Не удалось скачать",
         variant: "destructive",
       });
     }
@@ -604,7 +607,7 @@ const handleEdit = (doc: Document) => {
       if (item.isFile) {
         const fileEntry = item as FileSystemFileEntry;
         fileEntry.file((file) => {
-          (file as File & { relativePath?: string }).relativePath = path + file.name;
+          (file as any).relativePath = path + file.name;
           fileList.push(file);
           resolve();
         });
@@ -616,8 +619,8 @@ const handleEdit = (doc: Document) => {
           }
           resolve();
         });
-      }
-    });
+      
+    }});
   };
 
   const handleDropWithFolders = async (e: React.DragEvent<HTMLDivElement>) => {
@@ -632,8 +635,8 @@ const handleEdit = (doc: Document) => {
       for (let i = 0; i < items.length; i++) {
         const dtItem = items[i];
         const entry =
-          typeof (dtItem as any).webkitGetAsEntry === 'function'
-            ? (dtItem as any).webkitGetAsEntry()
+          typeof (dtItem as DataTransferItem).webkitGetAsEntry === 'function'
+            ? (dtItem as DataTransferItem).webkitGetAsEntry()
             : undefined;
         if (entry) {
           await traverseFileTree(entry, '', filesToUpload);
@@ -696,9 +699,9 @@ try {
 
   toast({ title: "Успех", description: `Загружено: ${filesToUpload.length} файл(ов)` });
   fetchDocuments();
-} catch (err: any) {
+} catch (err: unknown) {
   console.error(err);
-  toast({ title: "Ошибка загрузки", description: err?.message ?? "Не удалось загрузить папку", variant: "destructive" });
+  toast({ title: "Ошибка загрузки", description: err instanceof Error ? err.message : "Не удалось загрузить папку", variant: "destructive" });
 } finally {
   setIsUploading(false);
   setOverallPct(0);
@@ -752,11 +755,10 @@ try {
     try {
       // Encode the file name properly for the URL
       const encodedFileName = encodeURIComponent(document.name);
-      await axios.delete(`/api/v2/${encodedFileName}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      await axios.delete(`/api/v2/metadata/${document.id}`, {
+        headers: { "Authorization": `Bearer ${token}` }
       });
+      
 
       toast({
         title: "Success",
@@ -764,8 +766,7 @@ try {
       });
 
       // Refresh document list
-      fetchDocuments();
-
+      await hardReloadDocuments();
       // If this document was selected, clear selection
       if (selectedDocument && selectedDocument.id === document.id) {
         setSelectedDocument(null);
@@ -782,37 +783,23 @@ try {
   };
 
   // Archive document
-  const handleArchiveDocument = async (document: Document) => {
-    try {
-      await archiveDocument(document.name, token!);
-      
-      toast({
-        title: "Success",
-        description: `Document "${document.name}" archived successfully`,
-      });
+  // ✅ После архивации
+const handleArchiveDocument = async (document: Document) => {
+  try {
+    await archiveDocument(document.id, token!);
+    toast({ title: "Success", description: `Document "${document.name}" archived` });
+    await hardReloadDocuments();   // 👈
+  } catch (error: any) {
+    console.error(error);
+    toast({ title: "Error", description: error.message || "Failed to archive document", variant: "destructive" });
+  }
+};
 
-      // Refresh document list
-      fetchDocuments();
-
-      // If this document was selected, clear selection
-      if (selectedDocument && selectedDocument.id === document.id) {
-        setSelectedDocument(null);
-        setShowSidebar(false);
-      }
-    } catch (error: any) {
-      console.error('Error archiving document:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to archive document",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Unarchive document
   const handleUnarchiveDocument = async (document: Document) => {
     try {
-      await unarchiveDocument(document.name, token!);
+      await unarchiveDocument(document.id, token!);
       
       toast({
         title: "Success",
@@ -840,26 +827,18 @@ try {
   
 
   // Rename document
-  const handleRenameDocument = async (document: Document, newName: string) => {
-    try {
-      await renameDocument(document.id, newName, token!);
-      
-      toast({
-        title: "Success",
-        description: `Document renamed to "${newName}" successfully`,
-      });
+  // ✅ После переименования
+const handleRenameDocument = async (document: Document, newName: string) => {
+  try {
+    await renameDocument(document.id, newName, token!);
+    toast({ title: "Success", description: `Document renamed to "${newName}"` });
+    await hardReloadDocuments();   // 👈 обновляем список полностью
+  } catch (error: any) {
+    console.error(error);
+    toast({ title: "Error", description: error.message || "Failed to rename document", variant: "destructive" });
+  }
+};
 
-      // Refresh document list
-      fetchDocuments();
-    } catch (error: any) {
-      console.error('Error renaming document:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to rename document",
-        variant: "destructive"
-      });
-    }
-  };
 
   // Archive selected documents
   const handleArchiveSelected = async () => {
@@ -1079,7 +1058,7 @@ const handleToggleFavorite = async (doc: Document) => {
   
 
     fileList.forEach(file => {
-      formData.append('files', file, (file as File & { relativePath?: string }).relativePath || file.name);
+      formData.append('files', file, (file as File).relativePath || file.name);
     });
 
     try {
@@ -1107,6 +1086,23 @@ const handleToggleFavorite = async (doc: Document) => {
       });
     }
   };
+
+  const hardReloadDocuments = async () => {
+    setIsLoading(true);
+    try {
+      const { rows, total } = await tryFetch();
+      const filtered = rows.filter((r: any) => !r.is_archived && !r.deleted_at);
+      const mapped: Document[] = filtered.map(mapBackendDoc); // твой маппер
+      
+      setDocuments(mapped); // 👈 перезаписываем полностью, а не мерджим
+      setTotalCount(total);
+      setHasMore(mapped.length < total);
+      setOffset(mapped.length);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
 
   const handleCloseSidebar = () => {
     setSelectedDocument(null);

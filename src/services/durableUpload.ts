@@ -113,12 +113,14 @@ export async function durableUploadFolder(
   const uploadedRef = { bytes: 0 };          // завершённые батчи
   const inFlightRef = new Map<number, number>(); // partial per-batch loaded
 
-  const url =
-    urls.folderId
-      ? `${urls.base}/upload-folder-bulk?parent_id=${urls.folderId}`
-      : urls.projectRootId
-        ? `${urls.base}/upload-folder-bulk?parent_id=${urls.projectRootId}`
-        : `${urls.base}/upload-folder-bulk`;
+  let url = `${urls.base}/upload-folder-bulk`;
+  if (urls.folderId) {
+    url += `?parent_id=${urls.folderId}`;
+  } else if (urls.projectRootId) {
+    url += `?parent_id=${urls.projectRootId}`;
+  }
+  // else → root, без parent_id
+  
 
   // безопасный пересчёт общего прогресса с учётом параллельных батчей
   const report = () => {

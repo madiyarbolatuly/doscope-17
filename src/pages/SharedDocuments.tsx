@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import axios, { AxiosError } from 'axios';
 import { SearchBar } from '@/components/SearchBar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -52,8 +52,8 @@ interface SharedDocument extends Document {
   favorited?: boolean;
 }
 // Helpers to distinguish the union type you pass to handleDownload
-const isTreeNode = (x: any): x is TreeNode => typeof x?._nid === 'number';
-const isSharedDoc = (x: any): x is SharedDocument => typeof x?.documentId === 'number';
+const isTreeNode = (x: unknown): x is TreeNode => typeof (x as TreeNode)?._nid === 'number';
+const isSharedDoc = (x: unknown): x is SharedDocument => typeof (x as SharedDocument)?.documentId === 'number';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Utils
@@ -92,8 +92,8 @@ const formatExpirationDate = (expiration: string) => {
   });
 };
 
-const extractFilename = (headers: any, fallback: string) => {
-  const cd: string | undefined = headers?.['content-disposition'] || headers?.get?.('content-disposition');
+const extractFilename = (headers: Record<string, string> | Headers, fallback: string) => {
+  const cd: string | undefined = (headers as Record<string, string>)?.['content-disposition'] || (headers as Headers)?.get?.('content-disposition');
   if (!cd) return fallback;
   const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
   const raw = decodeURIComponent((match?.[1] || match?.[2] || '').trim());
@@ -111,48 +111,81 @@ const SharedDocuments: React.FC = () => {
   const token = localStorage.getItem('authToken') || '';
 
   // cache for each shared folder: full subtree docs array (flat) keyed by root numeric id
-  const [subtreeCache, setSubtreeCache] = useState<Record<number, any[]>>({});
+  const [subtreeCache, setSubtreeCache] = useState<Record<number, Document[]>>({});
 
-  const fetchSharedWithMe = async () => {
+  const fetchSharedWithMe = useCallback(async () => {
     setIsLoading(true);
     try {
-      const resp = await axios.get<SharedWithMeItem[]>(`${API_ROOT}/sharing/shared-with-me`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+      const response = await axios.get<SharedWithMeItem[]>(`${API_ROOT}/documents/shared-with-me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+      const enriched = await Promise.all(
+        response.data.map(async (item) => {
+          // For each shared item, try to fetch its metadata if it's a root folder
+          // so we can display its actual name and type, not just the share name
+          let actualDoc: Document | null = null;
+          try {
+            const docResponse = await axios.get<Document>(`${API_ROOT}/documents/${item.document_id}/metadata`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            actualDoc = docResponse.data;
+          } catch (docError) {
+            console.warn(`Could not fetch metadata for document ${item.document_id}:`, docError);
+            // If metadata fetching fails, fall back to the shared item's filename and a generic type
+          }
 
-      const now = new Date();
-      const mapped: SharedDocument[] = (resp.data || [])
-        .filter(item => new Date(item.expires_at) > now)
-        .map((item): SharedDocument => {
-          const type = fileTypeFromName(item.filename, item.file_type === 'folder');
           return {
             id: String(item.id),
-            name: item.filename,
-            type,
-            size: '—',
-            modified: item.created_at,
-            owner: item.shared_by,
-            category: '--',
-            path: '',
-            tags: [],
-            favorited: false,
+            name: actualDoc?.name || item.filename,
+            type: actualDoc?.file_type === 'folder' ? 'folder' : fileTypeFromName(item.filename),
+            size: '', // Placeholder, actual size would be from metadata
+            modified: actualDoc?.modified || item.created_at,
+            owner: actualDoc?.owner || item.shared_by,
+            owner_id: actualDoc?.owner_id || '',
+            category: 'shared',
+            shared: true,
+            favorited: actualDoc?.favorited || false,
+            thumbnail: actualDoc?.thumbnail || '',
+            path: actualDoc?.path || '',
+            file_path: actualDoc?.file_path || '',
+            dueDate: '',
+            engineer: '',
+            linkedAssets: [],
+            tags: actualDoc?.tags || [],
+            archived: actualDoc?.archived || false,
+            starred: actualDoc?.starred || false,
+            created_at: item.created_at,
+            parent_id: actualDoc?.parent_id || undefined,
+            version: actualDoc?.version || '',
+            file_type: actualDoc?.file_type || fileTypeFromName(item.filename),
+            status: actualDoc?.status || 'approved',
+
             sharedBy: item.shared_by,
             shareExpiration: item.expires_at,
             token: item.token,
             documentId: item.document_id,
+            previewUrl: '',
           };
-        });
-
-      setDocuments(mapped);
-    } catch (e: any) {
-      console.error('shared-with-me error:', e);
-      toast({ title: 'Ошибка', description: e?.response?.data?.detail || 'Не удалось загрузить «Поделенные со мной»', variant: 'destructive' });
+        })
+      );
+      setDocuments(enriched);
+    } catch (err: unknown) {
+      console.error('Error fetching shared documents:', err);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить документы, которыми поделились',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, toast]);
 
-  useEffect(() => { fetchSharedWithMe(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { fetchSharedWithMe(); }, [fetchSharedWithMe, token]);
 
   const filteredDocuments = useMemo(
     () => documents.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -162,38 +195,45 @@ const SharedDocuments: React.FC = () => {
   // ────────────────────────────────────────────────────────────────────────────
   // Tree helpers — строго показываем ТОЛЬКО поддерево расшаренной папки
   // ────────────────────────────────────────────────────────────────────────────
-  const fetchSubtreeOnce = async (rootId: number) => {
-    if (subtreeCache[rootId]) return subtreeCache[rootId];
-    const jwt = localStorage.getItem('authToken') || '';
-    const resp = await axios.get<{ documents: any[] }>(`${API_ROOT}/metadata`, {
-      headers: { Authorization: `Bearer ${jwt}`, Accept: 'application/json' },
-      params: { recursive: 'true', ancestor_id: rootId, limit: 1000, offset: 0 },
-    });
+  const fetchSubtreeOnce = async (rootId: number): Promise<Document[]> => {
+    if (subtreeCache[rootId]) {
+      return subtreeCache[rootId] as Document[]; // Already loaded
+    }
 
-    const docs = Array.isArray(resp.data?.documents) ? resp.data!.documents : [];
-
-    // даже если сервер вернул "всё из БД", мы будем рисовать ТОЛЬКО узлы, достижимые из rootId
-    setSubtreeCache(prev => ({ ...prev, [rootId]: docs }));
-    return docs;
+    try {
+      const response = await axios.get(`${API_ROOT}/documents/tree/${rootId}/subtree`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const docs = response.data.items as Document[];
+      // даже если сервер вернул "всё из БД", мы будем рисовать ТОЛЬКО узлы, достижимые из rootId
+      setSubtreeCache(prev => ({ ...prev, [rootId]: docs }));
+      return docs;
+    } catch (e: unknown) {
+      console.error('Error fetching subtree:', e);
+      const msg = (e instanceof AxiosError && e.response?.status === 404) ? 'Дерево документов не найдено' : (e instanceof Error ? e.message : 'Не удалось загрузить дерево документов');
+      toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
+      return [];
+    }
   };
 
   // получить прямых детей по parent_id из уже загруженного поддерева
-  const getChildrenFromCache = (rootId: number, parentNid: number): TreeNode[] => {
+  const getChildrenFromCache = (rootId: number, parentNids: (number | null)[]): TreeNode[] => {
     const docs = subtreeCache[rootId] || [];
-    const children = docs.filter((d: any) => d.parent_id === parentNid);
-    return children.map((d: any) => ({
+    const children = docs.filter((d: Document) => parentNids.includes(d.parent_id === undefined ? null : parseInt(d.parent_id)));
+    return children.map((d: Document) => ({
       id: String(d.id),
-      name: d.name || d.title || 'Без имени',
+      name: d.name || 'Без имени',
       type: d.file_type === 'folder' ? 'folder' : 'file',
-      documentId: d.document_number ?? d.id,
+      documentId: d.id, // Use d.id as documentId
       token: '',
-      _nid: d.id,
-      _parentId: d.parent_id ?? null,
+      _nid: parseInt(d.id), // Parse d.id to number for _nid
+      _parentId: d.parent_id === undefined ? null : parseInt(d.parent_id), // Parse d.parent_id to number or null
     }));
   };
 
-  // скачать один файл (по имени)
-// скачать один файл (ID → fallback name)
+  // скачать один файл (ID → fallback name)
 const handleDownload = async (doc: SharedDocument | TreeNode) => {
   try {
     // Prefer numeric ID:
@@ -209,13 +249,13 @@ const handleDownload = async (doc: SharedDocument | TreeNode) => {
     }
 
     // Fallback by name (exact name incl. extension, unique in user scope)
-    await downloadByFileName(doc.name, token);
-  } catch (e: any) {
+    await downloadByFileName((doc as SharedDocument).name, token);
+  } catch (e: unknown) {
     console.error('Error downloading document:', e);
     const msg =
-      e?.response?.status === 404
+      (e instanceof AxiosError && e.response?.status === 404)
         ? 'Файл не найден на сервере'
-        : (e?.message || 'Не удалось скачать файл');
+        : (e instanceof Error ? e.message : 'Не удалось скачать файл');
     toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
   }
 };
@@ -226,9 +266,13 @@ const handleDownload = async (doc: SharedDocument | TreeNode) => {
 const handleDownloadAll = async (rootDoc: SharedDocument) => {
   try {
     await downloadByFileId(rootDoc.documentId, token, `${rootDoc.name}.zip`);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('download-all failed', e);
-    toast({ title: 'Ошибка', description: 'Не удалось скачать папку как архив', variant: 'destructive' });
+    toast({
+      title: 'Ошибка',
+      description: (e instanceof AxiosError && e.response?.data?.detail) || 'Не удалось скачать папку как архив',
+      variant: 'destructive',
+    });
   }
 };
 
@@ -244,7 +288,7 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
         // гарантируем, что поддерево загружено
         await fetchSubtreeOnce(rootId);
         // берём ТОЛЬКО детей этого узла
-        const list = getChildrenFromCache(rootId, node._nid);
+        const list = getChildrenFromCache(rootId, [node._nid]);
         setChildren(list);
       }
       setExpanded(!expanded);
@@ -301,7 +345,7 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
         try {
           const flat = await fetchSubtreeOnce(doc.documentId);
           // корневые дети — where parent_id == doc.documentId
-          const direct = getChildrenFromCache(doc.documentId, doc.documentId);
+          const direct = getChildrenFromCache(doc.documentId, [doc.documentId, null]);
           setRootChildren(direct);
         } finally {
           setLoading(false);

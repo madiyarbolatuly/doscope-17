@@ -29,7 +29,7 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
 
   const mainNavItems: SidebarItem[] = [
     { id: 'all', label: 'Все документы', icon: <FileText size={18} />, path: '/'  },
-    { id: 'shared', label: 'Общие', icon: <Users size={18} /> },
+    { id: 'shared', label: 'Общие', icon: <Users size={18} /> , path: '/shared'},
     { id: 'favorites', label: 'Избранное', icon: <Star size={18} />, path: '/favorites' },
     { id: 'archive' as CategoryType, label: 'Архив', icon: <Archive size={18} />, path: '/archived' },
     { id: 'trash', label: 'Корзина', icon: <Trash2 size={18} />, path: '/trash' },

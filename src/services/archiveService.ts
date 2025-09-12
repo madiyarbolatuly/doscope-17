@@ -2,10 +2,10 @@ import axios from 'axios';
 import { API_ROOT } from '@/config/api';
 
 // Archive a document
-export const archiveDocument = async (fileName: string, token: string) => {
+export const archiveDocument = async (documentId: string, token: string) => {
   try {
     const response = await axios.post(
-      `${API_ROOT}/metadata/archive/${encodeURIComponent(fileName)}`,
+      `${API_ROOT}/metadata/archive/${documentId}`,
       {},
       {
         headers: {
@@ -24,10 +24,10 @@ export const archiveDocument = async (fileName: string, token: string) => {
 };
 
 // Unarchive a document
-export const unarchiveDocument = async (fileName: string, token: string) => {
+export const unarchiveDocument = async (documentId: string, token: string) => {
   try {
     const response = await axios.post(
-      `${API_ROOT}/metadata/un-archive/${encodeURIComponent(fileName)}`,
+      `${API_ROOT}/metadata/un-archive/${documentId}`,
       {},
       {
         headers: {
@@ -64,10 +64,10 @@ export const getArchivedDocuments = async (token: string) => {
 };
 
 // Toggle star/favorite status
-export const toggleStar = async (documentName: string, token: string) => {
+export const toggleStar = async (documentId: string, token: string) => {
   try {
     const response = await axios.put(
-      `${API_ROOT}/metadata/${encodeURIComponent(documentName)}/star`,
+      `${API_ROOT}/metadata/${documentId}/star`,
       {},
       {
         headers: {
@@ -101,7 +101,7 @@ export const renameDocument = async (documentId: string, newName: string, token:
   }
 };
 
-// Delete document
+// Delete document (move to bin)
 export const deleteDocument = async (documentId: string, token: string) => {
   try {
     const response = await axios.delete(
@@ -117,4 +117,4 @@ export const deleteDocument = async (documentId: string, token: string) => {
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to delete document');
   }
-}; 
+};

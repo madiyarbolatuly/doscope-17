@@ -131,14 +131,56 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   };
 
   const handleMove = async () => {
-    if (selectedTargetFolder) {
-      await runAction('move', {
-        targetFolderId: selectedTargetFolder === 'root' ? null : selectedTargetFolder,
-      });
-    }
-    setShowMoveDialog(false);
-    setSelectedTargetFolder('');
+  if (!selectedTargetFolder) return;
+
+  const targetFolderId = selectedTargetFolder === 'root' ? null : selectedTargetFolder;
+
+  // 1) Проверка: нельзя переместить в самого себя
+  if (targetFolderId === node.id) {
+    toast({ 
+      title: 'Ошибка', 
+      description: 'Нельзя переместить элемент в самого себя', 
+      variant: 'destructive' 
+    });
+    return;
+  }
+
+  // 2) Проверка: нельзя переместить в своего потомка
+  const isDescendant = (parent: TreeNode, childId: string): boolean => {
+    if (!parent.children) return false;
+    return parent.children.some(c => c.id === childId || isDescendant(c, childId));
   };
+  if (isDescendant(node, targetFolderId!)) {
+    toast({ 
+      title: 'Ошибка', 
+      description: 'Нельзя переместить элемент в собственную подпапку', 
+      variant: 'destructive' 
+    });
+    return;
+  }
+
+  // 3) Проверка на дубликат имени в папке назначения
+  const targetFolder = targetFolderId
+    ? allNodes.find(n => n.id === targetFolderId)
+    : { children: allNodes.filter(n => !n.parent_id) }; // корень
+  const hasDuplicate = targetFolder?.children?.some(
+    c => c.name.trim().toLowerCase() === node.name.trim().toLowerCase()
+  );
+  if (hasDuplicate) {
+    toast({
+      title: 'Ошибка',
+      description: `В целевой папке уже есть элемент с именем "${node.name}"`,
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  // Всё ок → выполняем действие
+  await runAction('move', { targetFolderId });
+  setShowMoveDialog(false);
+  setSelectedTargetFolder('');
+};
+
 
   const handleCreateFolder = async () => {
     const trimmed = newFolderName.trim();
