@@ -116,10 +116,8 @@ const SharedDocuments: React.FC = () => {
   const fetchSharedWithMe = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get<SharedWithMeItem[]>(`${API_ROOT}/documents/shared-with-me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await axios.get<SharedWithMeItem[]>(`${API_ROOT}/sharing/shared-with-me`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
       const enriched = await Promise.all(
         response.data.map(async (item) => {
