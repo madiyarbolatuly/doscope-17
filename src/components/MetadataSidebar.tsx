@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Document } from '@/types/document';
-import { MetadataCard } from './MetadataCard';
+import MetadataCard from '@/components/MetadataCard';
 import {
   FileText, File, FileSpreadsheet, FileImage, 
   Folder, X, Download, Share2, Star, Trash, Edit, Check, Download as DownloadIcon
@@ -30,7 +30,6 @@ export function MetadataSidebar({
   onClose,
   onDownload,
   onDelete,
-  onShare,
   onUpdateMetadata,
   onToggleFavorite,
   token

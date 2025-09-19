@@ -17,7 +17,6 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
-import { createFolderApi } from "@/hooks/folders";
 import { DocumentMeta } from "@/hooks/useDocuments";
 
 
@@ -1400,16 +1399,47 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
         return { ok: true, message: 'Удалено' };
       }
 
-      case 'create-subfolder': {
-        const folderName: string = data?.folderName?.trim();
-        if (!folderName) return { ok: false, message: 'Имя папки пустое' };
-        await createFolderApi(token, { name: folderName, parent_id: Number.isFinite(+nodeId) ? +nodeId : null });
-        await fetchFolderTree();
-        if (folderId === nodeId || (folderId == null && (node?.parent_id ?? null) == null)) {
-          await hardReloadDocuments();
-        }
-        return { ok: true, message: 'Папка создана' };
-      }
+     // inside handleTreeAction → case 'create-subfolder'
+// inside handleTreeAction → case 'create-subfolder' (localhost-friendly)
+case 'create-subfolder': {
+  const folderName = String(data?.folderName ?? '').trim();
+  if (!folderName) return { ok: false, message: 'Имя папки пустое' };
+
+  // Detect localhost and hit the real backend (NOT the Vite dev server on 8080)
+  const isLocalHost =
+    ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+
+  const BACKEND =
+    (import.meta as any)?.env?.VITE_BACKEND_ORIGIN?.replace(/\/+$/, '') ||
+    (isLocalHost ? 'http://localhost:8000' : 'http://77.245.107.136:8000');
+
+  // Swagger shows the exact path:
+  const url = `${BACKEND}/v2/api/v2/folders/`;
+
+  const payload = {
+    name: folderName,
+    // API expects numeric parent_id; 0 (or null, if your backend accepts) for root
+    parent_id: Number.isFinite(+nodeId) ? +nodeId : 0,
+  };
+
+  await axios.post(url, payload, {
+    headers: {
+      ...headers, // should already contain Authorization
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+  });
+
+  await fetchFolderTree();
+  if (folderId === nodeId || (folderId == null && (node?.parent_id ?? null) == null)) {
+    await hardReloadDocuments();
+  }
+  return { ok: true, message: 'Папка создана' };
+}
+
+      
+      
+      
 
       default:
         return { ok: false, message: 'Не реализовано' };

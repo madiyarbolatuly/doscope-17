@@ -21,9 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { ActivityItem } from '@/components/ActivityItem';
-import { MetadataCard } from '@/components/MetadataCard';
 import { Document, ActivityAction, Version, CategoryType } from '@/types/document';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

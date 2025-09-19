@@ -160,7 +160,7 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
                       </CardTitle>
                     </div>
                     <div className="flex items-center gap-1">
-                      {document.favorite && (
+                      {document.favorited && (
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>

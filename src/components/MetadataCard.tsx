@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { Document } from '@/types/document';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -17,7 +16,7 @@ export interface MetadataCardProps {
   items?: MetadataItem[];
 }
 
-export function MetadataCard({ document, title, items }: MetadataCardProps) {
+export default function MetadataCard({ document, title, items }: MetadataCardProps) {
   // Если передан document, используем его для генерации полей
   const getMetadataFields = () => {
     if (!document) return [];
