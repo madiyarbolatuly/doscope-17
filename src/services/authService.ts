@@ -46,6 +46,8 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthToke
   formData.append('password', credentials.password);
   formData.append('grant_type', 'password');
 
+  console.log("Login API URL:", AUTH_ENDPOINTS.LOGIN);
+
   const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'

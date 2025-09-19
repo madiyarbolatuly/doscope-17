@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EnhancedFolderTree } from '@/components/EnhancedFolderTree';
 import { useLocation } from 'react-router-dom';
+import { API_ROOT } from '@/config/api';
 
 
 interface BackendDocument {
@@ -1405,33 +1406,30 @@ case 'create-subfolder': {
   const folderName = String(data?.folderName ?? '').trim();
   if (!folderName) return { ok: false, message: 'Имя папки пустое' };
 
-  // Detect localhost and hit the real backend (NOT the Vite dev server on 8080)
-  const isLocalHost =
-    ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  // Use API_ROOT from config, which is configurable via VITE_API_ROOT
+  const url = `${API_ROOT}/api/v2/folders/`;
 
-  const BACKEND =
-    (import.meta as any)?.env?.VITE_BACKEND_ORIGIN?.replace(/\/+$/, '') ||
-    (isLocalHost ? 'http://localhost:8000' : 'http://192.168.8.121:8080');
-
-  // Swagger shows the exact path:
-  const url = `${BACKEND}/v2/api/v2/folders/`;
-
+  // parent_id: число либо null для корня (если бек это принимает)
   const payload = {
     name: folderName,
-    // API expects numeric parent_id; 0 (or null, if your backend accepts) for root
-    parent_id: Number.isFinite(+nodeId) ? +nodeId : 0,
+    parent_id: Number.isFinite(+nodeId) ? +nodeId : null,
   };
 
   await axios.post(url, payload, {
     headers: {
-      ...headers, // should already contain Authorization
+      ...headers,                 // уже содержит Authorization
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
   });
 
   await fetchFolderTree();
-  if (folderId === nodeId || (folderId == null && (node?.parent_id ?? null) == null)) {
+  // обновляем список, если мы сейчас в этой же папке
+  if (
+    folderId === nodeId ||
+    (folderId == null && (node?.parent_id ?? null) == null) ||
+    folderId === String(payload.parent_id ?? '')
+  ) {
     await hardReloadDocuments();
   }
   return { ok: true, message: 'Папка создана' };
