@@ -6,7 +6,7 @@ export const createFolderApi = async (
   payload: { name: string; parent_id: number | null }
 ) => {
   const { data } = await axios.post(
-    "http://localhost:8000/v2/api/v2/folders/",   // ← EXACT swagger path
+    "http://192.168.8.121:8000/v2/api/v2/folders/",   // ← EXACT swagger path
     payload,
     {
       headers: {
