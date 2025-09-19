@@ -1411,7 +1411,7 @@ case 'create-subfolder': {
 
   const BACKEND =
     (import.meta as any)?.env?.VITE_BACKEND_ORIGIN?.replace(/\/+$/, '') ||
-    (isLocalHost ? 'http://localhost:8000' : 'http://77.245.107.136:8000');
+    (isLocalHost ? 'http://localhost:8000' : 'http://192.168.8.121:8000');
 
   // Swagger shows the exact path:
   const url = `${BACKEND}/v2/api/v2/folders/`;
