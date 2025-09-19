@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ""; // e.g. "http://localhost:8000"
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 type Ext = "docx" | "xlsx" | "pptx";
 

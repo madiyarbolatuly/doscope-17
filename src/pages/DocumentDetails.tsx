@@ -200,7 +200,7 @@ const DocumentDetails = () => {
                   <div>
                     <CardTitle>{document?.name || 'Загрузка...'}</CardTitle>
                     <CardDescription>
-                      {document?.type.toUpperCase()} • {document?.size} • Обновлено {document?.modified ? new Date(document.modified).toLocaleDateString() : '...'}
+                      {document?.type.toUpperCase()} • {document?.size} • Обновлено {document?.created_at ? new Date(document.created_at).toLocaleDateString() : '...'}
                     </CardDescription>
                   </div>
                   <DropdownMenu>

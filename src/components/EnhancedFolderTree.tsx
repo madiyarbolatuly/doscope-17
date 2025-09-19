@@ -127,12 +127,9 @@ const handleRootUploadFolder = () => {
   input.click();
 };
 
-  
-
   const handleCreateRootFolder = async () => {
     const name = newFolderName.trim();
     if (!name) return;
-    // Convention: nodeId "root" means parent is null on the server
     await onAction('create-subfolder', 'root', { folderName: name });
     setNewFolderName('');
     setShowCreateFolderDialog(false);
@@ -163,8 +160,6 @@ const handleRootUploadFolder = () => {
     Папку
   </Button>
 </div>
-
-
       <div className="space-y-1">
         <div className="font-medium text-sm text-muted-foreground px-2 py-1">Папки</div>
         {sortedRoot.length === 0 ? (

@@ -25,14 +25,11 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  
-  // Get the path the user was trying to access
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
       await login({ username, password });
       toast({

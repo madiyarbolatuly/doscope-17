@@ -16,7 +16,6 @@ import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import DocumentDetails from './pages/DocumentDetails';
 import Dashboard from './pages/Dashboard';
-import Notifications from './pages/Notifications';
 import { PermissionGuard } from './components/PermissionGuard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Favorites from './pages/Favorites';

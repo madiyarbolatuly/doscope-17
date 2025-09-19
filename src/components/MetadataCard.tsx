@@ -28,7 +28,7 @@ export function MetadataCard({ document, title, items }: MetadataCardProps) {
       { label: 'Тип файла', value: fileExtension },
       { label: 'Размер', value: document.size || 'Неизвестно' },
       { label: 'Создан', value: document.owner },
-      { label: 'Изменен', value: format(new Date(document.modified), 'dd.MM.yyyy HH:mm') },
+      { label: 'Изменен', value: format(new Date(document.modified ?? document.created_at), 'dd.MM.yyyy HH:mm') },
       { label: 'Расположение', value: document.path || '/' },
       { label: 'Статус', value: 'Активен', type: 'badge' }
     ];

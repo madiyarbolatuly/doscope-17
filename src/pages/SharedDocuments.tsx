@@ -467,79 +467,54 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
         ) : (
            <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredDocuments.map((doc) => (
-              <Card key={doc.id} className="group hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 bg-white border-0 shadow-lg overflow-hidden">
-                <CardContent className="p-0">
-                  {/* Preview Section */}
-                  <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                    {doc.previewUrl ? (
-                      <img src={doc.previewUrl} alt={doc.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
-                    ) : (
-                      <div className="flex items-center justify-center h-full bg-gradient-to-br from-blue-50 to-purple-50">
-                        {getFileIcon(doc.type)}
-                      </div>
-                    )}
-
-                    {/* Favorite Button */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
+              <Card 
+              key={doc.id} 
+              className="group relative hover:shadow-xl transition-all duration-300 bg-white border rounded-2xl overflow-hidden"
+            >
+              <CardContent className="p-0">
+                {/* Preview */}
+                <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+                  {doc.previewUrl ? (
+                    <img src={doc.previewUrl} alt={doc.name} 
+                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      {getFileIcon(doc.type)}
+                    </div>
+                  )}
+            
+                  {/* Top actions */}
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="rounded-full bg-white/80 hover:bg-white"
                       onClick={() => handleToggleFavorite(doc)}
-                      className={`absolute top-3 right-3 w-10 h-10 rounded-full shadow-lg transition-all duration-300 ${doc.favorited ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-white/80 hover:bg-white text-gray-600 hover:text-red-500'}`}
                     >
-                      <Heart className={`h-5 w-5 ${doc.favorited ? 'fill-current' : ''}`} />
+                      <Heart className={`h-5 w-5 ${doc.favorited ? "text-red-500 fill-red-500" : "text-gray-600"}`} />
                     </Button>
-
-                    {/* Preview Overlay */}
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-                      <Button variant="secondary" size="lg" onClick={() => handlePreview(doc)} className="bg-white/90 hover:bg-white text-gray-900 font-semibold px-6 py-3 rounded-full shadow-lg">
-                        <Eye className="h-5 w-5 mr-2" /> Предпросмотр
-                      </Button>
-                    </div>
+            
+                    <Button size="icon" variant="ghost" className="rounded-full bg-white/80 hover:bg-white">
+                      <ChevronDown className="h-5 w-5" />
+                    </Button>
                   </div>
-
-                  {/* Content Section */}
-                  <div className="p-6 space-y-4">
-                    {/* File Name */}
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2" title={doc.name}>{doc.name}</h3>
-                      <p className="text-sm text-gray-500 font-medium">{doc.size}</p>
-                    </div>
-
-                    {/* Shared By */}
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={`https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face`} />
-                        <AvatarFallback className="text-xs bg-blue-100 text-blue-700">{(doc.sharedBy?.slice(0, 2) || 'U').toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm text-gray-600">Поделился</p>
-                        <p className="text-sm font-semibold text-gray-900">{doc.sharedBy}</p>
-                      </div>
-                    </div>
-
-                    {/* Expiration Date */}
-                    <div className="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl border border-green-200">
-                      <Calendar className="h-5 w-5 text-green-600" />
-                      <div className="text-center">
-                        <p className="text-xs text-gray-600 mb-1">Действует до</p>
-                        <p className="font-bold text-sm text-green-700">{formatExpirationDate(doc.shareExpiration)}</p>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    {doc.type === 'folder' ? (
-                      <FolderCardExtras doc={doc} />
-                    ) : (
-                      <Button
-                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                        onClick={() => handleDownload(doc)}
-                      >
-                        <Download className="h-5 w-5 mr-2" /> Скачать файл
-                      </Button>
-                    )}
+                </div>
+            
+                {/* Content */}
+                <div className="p-4 space-y-3">
+                  <h3 className="font-semibold text-gray-900 line-clamp-2">{doc.name}</h3>
+                  <p className="text-sm text-gray-500">{doc.sharedBy}</p>
+            
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">до {formatExpirationDate(doc.shareExpiration)}</span>
+                    <Button size="sm" onClick={() => handleDownload(doc)} className="bg-blue-500 text-white rounded-lg px-3">
+                      <Download className="h-4 w-4 mr-1" /> Скачать
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
+            
             ))}
           </div>
         )}

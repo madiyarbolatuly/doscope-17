@@ -75,30 +75,8 @@ export function ShareModal({ document, onClose }: ShareModalProps) {
 
         {/* Tabs */}
         <div className="flex border-b">
-          <button
-            onClick={() => setActiveTab('email')}
-            className={cn(
-              'flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'email'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            )}
-          >
-            <Mail className="h-4 w-4 inline mr-2" />
-            Электронная почта
-          </button>
-          <button
-            onClick={() => setActiveTab('link')}
-            className={cn(
-              'flex-1 py-2 px-4 text-sm font-medium border-b-2 transition-colors',
-              activeTab === 'link'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            )}
-          >
-            <LinkIcon className="h-4 w-4 inline mr-2" />
-            Ссылки
-          </button>
+        
+        
         </div>
 
         {/* Content */}

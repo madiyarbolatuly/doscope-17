@@ -19,6 +19,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { TreeNode } from '@/utils/buildTree';
 import { toast } from '@/hooks/use-toast';
+import axios from "axios";
+import { API_ROOT } from "@/config/api";
+import fetchDocuments from "@/pages/Index" 
 
 interface TreeViewItemProps {
   node: TreeNode;
@@ -46,11 +49,14 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
 }) => {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [newName, setNewName] = useState(node.name);
   const [newFolderName, setNewFolderName] = useState('');
   const [selectedTargetFolder, setSelectedTargetFolder] = useState<string>('');
 
+  
   const isSelected = selectedId === node.id;
   const isFolder = node.type === 'folder';
   const hasChildren = !!(node.children && node.children.length > 0);
@@ -110,6 +116,9 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
       case 'move':
         setShowMoveDialog(true);
         break;
+      case 'share':
+        setShowMoveDialog(true);
+        break;
       case 'add-subfolder':
         if (!isFolder) {
           toast({ title: 'Невозможно', description: 'Подпапка только в папке.' });
@@ -130,17 +139,28 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
     setShowRenameDialog(false);
   };
 
-  const handleMove = async () => {
+const handleMove = async () => {
   if (!selectedTargetFolder) return;
 
-  const targetFolderId = selectedTargetFolder === 'root' ? null : selectedTargetFolder;
+  const targetFolderId =
+    selectedTargetFolder === "root" ? null : selectedTargetFolder;
 
+    const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("authToken") || ""
+      : "";
+      
+      const refresh = async () => {
+        if (typeof fetchDocuments === "function") {
+          await fetchDocuments();
+        }
+      };
   // 1) Проверка: нельзя переместить в самого себя
   if (targetFolderId === node.id) {
-    toast({ 
-      title: 'Ошибка', 
-      description: 'Нельзя переместить элемент в самого себя', 
-      variant: 'destructive' 
+    toast({
+      title: "Ошибка",
+      description: "Нельзя переместить элемент в самого себя",
+      variant: "destructive",
     });
     return;
   }
@@ -148,37 +168,63 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   // 2) Проверка: нельзя переместить в своего потомка
   const isDescendant = (parent: TreeNode, childId: string): boolean => {
     if (!parent.children) return false;
-    return parent.children.some(c => c.id === childId || isDescendant(c, childId));
+    return parent.children.some(
+      (c) => c.id === childId || isDescendant(c, childId)
+    );
   };
-  if (isDescendant(node, targetFolderId!)) {
-    toast({ 
-      title: 'Ошибка', 
-      description: 'Нельзя переместить элемент в собственную подпапку', 
-      variant: 'destructive' 
+  if (targetFolderId && isDescendant(node, targetFolderId)) {
+    toast({
+      title: "Ошибка",
+      description: "Нельзя переместить элемент в собственную подпапку",
+      variant: "destructive",
     });
     return;
   }
 
   // 3) Проверка на дубликат имени в папке назначения
   const targetFolder = targetFolderId
-    ? allNodes.find(n => n.id === targetFolderId)
-    : { children: allNodes.filter(n => !n.parent_id) }; // корень
+    ? allNodes.find((n) => n.id === targetFolderId)
+    : { children: allNodes.filter((n) => !n.parent_id) };
   const hasDuplicate = targetFolder?.children?.some(
-    c => c.name.trim().toLowerCase() === node.name.trim().toLowerCase()
+    (c) =>
+      c.name.trim().toLowerCase() === node.name.trim().toLowerCase()
   );
   if (hasDuplicate) {
     toast({
-      title: 'Ошибка',
+      title: "Ошибка",
       description: `В целевой папке уже есть элемент с именем "${node.name}"`,
-      variant: 'destructive',
+      variant: "destructive",
     });
     return;
   }
 
-  // Всё ок → выполняем действие
-  await runAction('move', { targetFolderId });
-  setShowMoveDialog(false);
-  setSelectedTargetFolder('');
+  // Всё ок → выполняем запрос к API
+  try {
+    await axios.post(`${API_ROOT}/${node.id}/move`, {
+      document_id: node.id,
+      target_parent_id: targetFolderId,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    toast({
+      title: "Готово",
+      description: `«${node.name}» перемещён`,
+    });
+
+    // обновить дерево/список
+    refresh();
+  } catch (e: any) {
+    console.error(e);
+    toast({
+      title: "Ошибка",
+      description: "Не удалось переместить",
+      variant: "destructive",
+    });
+  } finally {
+    setShowMoveDialog(false);
+    setSelectedTargetFolder("");
+  }
 };
 
 
