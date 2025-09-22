@@ -105,7 +105,7 @@ export const renameDocument = async (documentId: string, newName: string, token:
 export const deleteDocument = async (documentId: string, token: string) => {
   try {
     const response = await axios.delete(
-      `${API_ROOT}/metadata/${documentId}`,
+      `${API_ROOT}/${documentId}`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -52,7 +52,7 @@ export function DocumentList({ category, status, onDocumentAction, onArchive, on
         ) : docs.length === 0 ? (
           <TableRow>
             <td colSpan={5} className="text-center p-4 text-muted-foreground">
-              No documents found
+              Loading documents...
             </td>
           </TableRow>
         ) : (

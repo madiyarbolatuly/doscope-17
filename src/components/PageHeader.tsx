@@ -1,29 +1,39 @@
-
 import React from 'react';
 import { SearchBar } from './SearchBar';
-import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Grid2X2, List, RefreshCw, Upload, Info } from 'lucide-react';
+import { Grid2X2, List, Info } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { NotificationBell } from './NotificationBell';
 import { UserButton } from './UserButton';
 import { ProjectSwitcher } from './ProjectSwitcher';
+import type { Project } from './ProjectSwitcher'; // тип для onProjectCreate
+import { cn } from "@/lib/utils";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   children?: React.ReactNode;
   categoryType?: CategoryType;
+
   searchQuery?: string;
   setSearchQuery?: (query: string) => void;
+
   viewMode?: 'grid' | 'list';
   setViewMode?: (mode: 'grid' | 'list') => void;
 
-  // ✅ NEW:
+  // проекты: только имена (id, name)
   projects?: Array<{ id: string; name: string; userEmail?: string }>;
   selectedProjectId?: string | null;
-  onProjectChange?: (id: string, name: string) => void;
+
+  // Смена проекта обязательна — свитчер её вызывает всегда
+  onProjectChange: (id: string, name: string) => void;
+
+  // Создание нового проекта (корневая папка)
+  onProjectCreate?: (p: Project) => void;
+
+  className?: string;
+  rightSlot?: React.ReactNode;
 }
 
 export function PageHeader({
@@ -35,11 +45,13 @@ export function PageHeader({
   setSearchQuery,
   viewMode,
   setViewMode,
+  onProjectCreate,
+  rightSlot,
 
-  // ✅ NEW:
   projects = [],
   selectedProjectId = null,
   onProjectChange,
+  className,
 }: PageHeaderProps) {
   const getCategoryDescription = (type?: CategoryType) => {
     if (!type) return description;
@@ -52,24 +64,27 @@ export function PageHeader({
       default:          return `Документы в категории ${type}`;
     }
   };
+
   const renderActions = () => {
     if (children) return children;
 
     return (
       <div className="flex gap-2 items-center">
-        {/* ✅ Wire the switcher here */}
         <ProjectSwitcher
           projects={projects}
-          selectedProjectId={selectedProjectId ?? undefined}
-          onProjectChange={(id, name) => onProjectChange?.(id, name)}
+          selectedProjectId={selectedProjectId}
+          onProjectChange={onProjectChange}
+          onProjectCreate={onProjectCreate}
         />
         <NotificationBell />
         <UserButton />
+        {rightSlot}
       </div>
     );
   };
+
   return (
-    <div className="pb-4 border-b border-blue-200 bg-blue-50 px-6 pt-4 shadow-sm rounded-b-md">
+    <div className={cn("pb-4 border-b border-blue-200 bg-blue-50 px-6 pt-4 shadow-sm rounded-b-md", className)}>
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -86,7 +101,9 @@ export function PageHeader({
               </Tooltip>
             </TooltipProvider>
           </div>
-          <p className="text-sm text-blue-600">{description || getCategoryDescription(categoryType)}</p>
+          <p className="text-sm text-blue-600">
+            {description || getCategoryDescription(categoryType)}
+          </p>
         </div>
         {renderActions()}
       </div>

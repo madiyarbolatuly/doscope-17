@@ -223,9 +223,10 @@ const tryFetch = useCallback(async () => {
     offset: String(offset),
     recursive: "false",
   });
-  if (folderId != null) qs.set("parent_id", String(folderId)); // root: no parent_id
 
-  // set up abort controller for this request
+  if (folderId != null) qs.set("parent_id", String(folderId));
+  if (projectRootId) qs.set("root_id", String(projectRootId)); // ⟵ ДОБАВИТЬ
+
   const controller = new AbortController();
   abortRef.current = controller;
 
@@ -235,11 +236,10 @@ const tryFetch = useCallback(async () => {
   });
   if (!res.ok) throw new Error(String(res.status));
   const data = await res.json();
-
   const rows = Array.isArray(data?.documents) ? data.documents : [];
   const total = typeof data?.total_count === "number" ? data.total_count : rows.length;
   return { rows, total };
-}, [PAGE_SIZE, offset, folderId, token]);
+}, [PAGE_SIZE, offset, folderId, projectRootId, token]);
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
@@ -357,7 +357,7 @@ useEffect(() => {
  // stays as a global fetch; re-run if project scope changes
 const fetchFolderTree = useCallback(async () => {
   const qs = new URLSearchParams({
-    limit: "5000",
+    limit: "5800",
     offset: "0",
     recursive: "true",
     only_folders: "true",
@@ -789,7 +789,7 @@ try {
     try {
       // Encode the file name properly for the URL
       const encodedFileName = encodeURIComponent(document.name);
-      await axios.delete(`/api/v2/metadata/${document.id}`, {
+      await axios.delete(`/api/v2/${document.id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -1394,7 +1394,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       }
 
       case 'delete': {
-        await axios.delete(`/api/v2/metadata/${nodeId}`, { headers });
+        await axios.delete(`/api/v2/${nodeId}`, { headers });
         await fetchFolderTree();
         if (folderId === node?.parent_id) await hardReloadDocuments();
         return { ok: true, message: 'Удалено' };
@@ -1407,7 +1407,7 @@ case 'create-subfolder': {
   if (!folderName) return { ok: false, message: 'Имя папки пустое' };
 
   // Use API_ROOT from config, which is configurable via VITE_API_ROOT
-  const url = `${API_ROOT}/api/v2/folders/`;
+  const url = `${API_ROOT}/folders/folders/`;
 
   // parent_id: число либо null для корня (если бек это принимает)
   const payload = {
@@ -1434,11 +1434,6 @@ case 'create-subfolder': {
   }
   return { ok: true, message: 'Папка создана' };
 }
-
-      
-      
-      
-
       default:
         return { ok: false, message: 'Не реализовано' };
     }
@@ -1463,11 +1458,17 @@ case 'create-subfolder': {
   projects={projects}
   selectedProjectId={projectRootId}
   onProjectChange={(id) => {
-    setCurrentProject(id);
-    setFolderId(id);
-    navigate(`/?folderId=${id}`);
-    // If your API supports server-side scoping (e.g., ?root_id=),
-    // you could trigger fetchDocuments() that queries only that tree.
+    setCurrentProject(id);         // фиксируем выбранный проект (localStorage)
+    setFolderId(id);               // открываем корневую папку проекта
+    navigate(`/?folderId=${id}`);  // обновляем URL
+  }}
+  onProjectCreate={(p) => {
+    // сразу перейти в новый проект
+    setCurrentProject(p.id);
+    setFolderId(p.id);
+    navigate(`/?folderId=${p.id}`);
+    // по желанию: жестко перезагрузить текущий список
+    // await hardReloadDocuments();
   }}
 />
 
@@ -1593,13 +1594,13 @@ case 'create-subfolder': {
                 {isLoading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center p-4">
-                      Loading documents...
+                     Загрузка документов…
                     </TableCell>
                   </TableRow>
                 ) : filteredDocuments.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center p-4 text-muted-foreground">
-                      No documents found
+                      Загрузка документов…
                     </TableCell>
                   </TableRow>
                 ) : (
