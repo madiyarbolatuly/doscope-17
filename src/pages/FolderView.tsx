@@ -504,7 +504,6 @@ const FolderView = () => {
                   documents={filteredDocuments}
                   onDocumentClick={handleDocumentClick}
                   onDocumentSelect={handleDocumentSelect}
-                  selectedDocumentIds={selectedDocumentIds}
                 />
               )}
             </div>

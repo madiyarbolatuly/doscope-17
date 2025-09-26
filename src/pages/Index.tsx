@@ -12,13 +12,14 @@ import { Button } from '@/components/ui/button';
 import { Share } from "lucide-react";
 import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
 import { durableUploadFolder } from "@/services/durableUpload";
+import { FOLDERS_ENDPOINTS } from '@/config/api';
 
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { DocumentMeta } from "@/hooks/useDocuments";
-
+import { DOCUMENT_ENDPOINTS } from '@/config/api';
 
 import {
   DropdownMenu,
@@ -129,6 +130,23 @@ useEffect(() => {
   }
 }, [location.search, projectRootId, navigate]); // ← note: no folderId here to avoid loops
 
+const makeOptimisticDocs = (files: File[], parentId: string | null): Document[] =>
+  files.map((f, i) => ({
+    id: `temp:${Date.now()}:${i}`,
+    name: (f as any).relativePath || f.name,             // для folder upload берём относительный путь
+    type: 'file',                                        // можно уточнять по f.type (mime)
+    size: `${(f.size/(1024*1024)).toFixed(2)} MB`,
+    modified: new Date().toISOString(),
+    owner: 'me',
+    category: 'uncategorized',
+    path: null,
+    tags: [],
+    parent_id: parentId,
+    archived: false,
+    starred: false,
+  
+    uploading: true,
+  }));
 
 const [isUploading, setIsUploading] = useState(false);
 const [uploadStats, setUploadStats] = useState({
@@ -312,14 +330,22 @@ useEffect(() => {
 // 3) Проверка, что папка существует
 useEffect(() => {
   if (!folderId) return;
-  let cancelled = false;
+  const controller = new AbortController();
 
   (async () => {
     try {
-      const res = await fetch(`/api/v2/metadata/${encodeURIComponent(folderId)}/detail`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      });
-      if (!res.ok && res.status === 404 && !cancelled) {
+      const res = await fetch(
+       DOCUMENT_ENDPOINTS.METADATA_DETAIL(String(folderId)),
+       {
+         headers: {
+           Authorization: `Bearer ${token}`,
+           Accept: "application/json",
+         },
+         signal: controller.signal,   // allow cancel
+       }
+     );
+     // treat 404 as “not found”, and 409 as “conflict / inaccessible”
+     if (!res.ok && (res.status === 404 || res.status === 409)) {
         toast({
           title: "Папка не найдена",
           description: `ID ${folderId} недействителен. Возвращаемся в корень.`,
@@ -327,12 +353,11 @@ useEffect(() => {
         });
         clearFolderSelection();
       }
-    } catch {
-      /* сеть упала — не мешаем основному fetchDocuments */
+    } catch (err) {
+       if ((err as any)?.name === "AbortError") return;  // aborted
     }
   })();
 
-  return () => { cancelled = true; };
 }, [folderId, token, clearFolderSelection]);
 
 
@@ -357,7 +382,7 @@ useEffect(() => {
  // stays as a global fetch; re-run if project scope changes
 const fetchFolderTree = useCallback(async () => {
   const qs = new URLSearchParams({
-    limit: "5800",
+    limit: "100000",
     offset: "0",
     recursive: "true",
     only_folders: "true",
@@ -662,9 +687,9 @@ const handleEdit = (doc: Document) => {
     e.stopPropagation();
   
     const filesToUpload: File[] = [];
-    const items = e.dataTransfer.items;
+    const items = e.dataTransfer?.items;
   
-    // traversal как был
+    // извлекаем файлы + заполняем relativePath (как у вас было)
     if (items && items.length > 0) {
       for (let i = 0; i < items.length; i++) {
         const dtItem = items[i];
@@ -677,8 +702,7 @@ const handleEdit = (doc: Document) => {
         } else {
           const file = dtItem.getAsFile?.();
           if (file) {
-            (file as any).relativePath =
-              (file as any).webkitRelativePath || file.name;
+            (file as any).relativePath = (file as any).webkitRelativePath || file.name;
             filesToUpload.push(file);
           }
         }
@@ -688,60 +712,73 @@ const handleEdit = (doc: Document) => {
     if (filesToUpload.length === 0) {
       const fallback = Array.from(e.dataTransfer.files || []);
       fallback.forEach((file) => {
-        (file as any).relativePath =
-          (file as any).webkitRelativePath || file.name;
+        (file as any).relativePath = (file as any).webkitRelativePath || file.name;
       });
       filesToUpload.push(...fallback);
     }
-  
     if (filesToUpload.length === 0) return;
   
-    // Подсчёт общего размера и запуск UI прогресса
-const totalBytes = filesToUpload.reduce((a, f) => a + (f.size || 0), 0);
-setIsUploading(true);
-setUploadStats({
-  totalBytes,
-  uploadedBytes: 0,
-  startedAt: Date.now(),
-  speedBps: 0,
-  etaSec: 0,
-});
-
-try {
-  await durableUploadFolder(
-    filesToUpload,
-    token!,
-    { base: '/api/v2', folderId, projectRootId },
-    {
-      targetBatchMB: 100,
-      maxFilesPerBatch: 250,
-      concurrency: 3,
-      timeoutMs: 10 * 60 * 1000,
-      onProgress: (pct) => {
-        setOverallPct(pct);
-        setUploadStats(prev => {
-          const uploadedBytes = Math.round(totalBytes * (pct / 100));
-          const elapsedSec = (Date.now() - (prev.startedAt || Date.now())) / 1000;
-          const speedBps = elapsedSec > 0 ? uploadedBytes / elapsedSec : 0;
-          const remaining = Math.max(totalBytes - uploadedBytes, 0);
-          const etaSec = speedBps > 0 ? Math.ceil(remaining / speedBps) : 0;
-          return { ...prev, uploadedBytes, speedBps, etaSec };
-        });
-      }
+    // ---------- OPTIMISTIC UI: показать сразу в текущей папке ----------
+    const optimistic = makeOptimisticDocs(filesToUpload, folderId ? String(folderId) : null);
+    setDocuments(prev => [...optimistic, ...prev]);
+  
+    // ---------- реальная загрузка (как у вас было) ----------
+    const totalBytes = filesToUpload.reduce((a, f) => a + (f.size || 0), 0);
+    setIsUploading(true);
+    setUploadStats({
+      totalBytes,
+      uploadedBytes: 0,
+      startedAt: Date.now(),
+      speedBps: 0,
+      etaSec: 0,
+    });
+  
+    try {
+      await durableUploadFolder(
+        filesToUpload,
+        token!,
+        { base: '/api/v2', folderId: folderId ?? undefined, projectRootId },
+        {
+          targetBatchMB: 100,
+          maxFilesPerBatch: 250,
+          concurrency: 3,
+          timeoutMs: 10 * 60 * 1000,
+          onProgress: (pct) => {
+            setOverallPct(pct);
+            setUploadStats(prev => {
+              const uploadedBytes = Math.round(totalBytes * (pct / 100));
+              const elapsedSec = (Date.now() - (prev.startedAt || Date.now())) / 1000;
+              const speedBps = elapsedSec > 0 ? uploadedBytes / elapsedSec : 0;
+              const remaining = Math.max(totalBytes - uploadedBytes, 0);
+              const etaSec = speedBps > 0 ? Math.ceil(remaining / speedBps) : 0;
+              return { ...prev, uploadedBytes, speedBps, etaSec };
+            });
+          }
+        }
+      );
+  
+      toast({ title: "Успех", description: `Загружено: ${filesToUpload.length} файл(ов)` });
+  
+      // ---------- жёсткий рефетч, чтобы подхватить реальные id/метаданные ----------
+      await hardReloadDocuments();
+  
+      // удалить оптимистичные «временные» документы
+      setDocuments(prev => prev.filter(d => !String(d.id).startsWith('temp:')));
+    } catch (err: unknown) {
+      // на ошибке убираем оптимистичные добавления
+      setDocuments(prev => prev.filter(d => !String(d.id).startsWith('temp:')));
+      console.error(err);
+      toast({
+        title: "Ошибка загрузки",
+        description: err instanceof Error ? err.message : "Не удалось загрузить",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+      setOverallPct(0);
     }
-  );
-
-  toast({ title: "Успех", description: `Загружено: ${filesToUpload.length} файл(ов)` });
-  fetchDocuments();
-} catch (err: unknown) {
-  console.error(err);
-  toast({ title: "Ошибка загрузки", description: err instanceof Error ? err.message : "Не удалось загрузить папку", variant: "destructive" });
-} finally {
-  setIsUploading(false);
-  setOverallPct(0);
-}
-
   };
+  
   
   // Rename/update document metadata
   const handleUpdateMetadata = async (documentId: string, newName: string, tags?: string[], categories?: string[]) => {
@@ -928,6 +965,19 @@ const handleRenameDocument = async (document: Document, newName: string) => {
       setShowSidebar(true);
     }
   };
+
+  const expandedKey = React.useMemo(
+    () => `expanded:${projectRootId ?? 'global'}`,
+    [projectRootId]
+  );
+  
+  const [expandedIds, setExpandedIds] = React.useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(expandedKey) || '[]'); } catch { return []; }
+  });
+  React.useEffect(() => {
+    localStorage.setItem(expandedKey, JSON.stringify(expandedIds));
+  }, [expandedIds, expandedKey]);
+  
   
   const handleDocumentSelect = (document: Document) => {
     if (selectedDocumentIds.includes(document.id)) {
@@ -1400,39 +1450,38 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
         return { ok: true, message: 'Удалено' };
       }
 
+      case 'share': {
+        if (!node) return { ok: false, message: 'Документ не найден' };
+        // Assuming TreeNode has enough properties to be treated as a Document for sharing
+        openShare(node as Document);
+        return { ok: true };
+      }
+
      // inside handleTreeAction → case 'create-subfolder'
 // inside handleTreeAction → case 'create-subfolder' (localhost-friendly)
+
 case 'create-subfolder': {
   const folderName = String(data?.folderName ?? '').trim();
   if (!folderName) return { ok: false, message: 'Имя папки пустое' };
 
-  // Use API_ROOT from config, which is configurable via VITE_API_ROOT
-  const url = `${API_ROOT}/folders/folders/`;
-
-  // parent_id: число либо null для корня (если бек это принимает)
+  // parent_id: число либо null для корня
   const payload = {
     name: folderName,
     parent_id: Number.isFinite(+nodeId) ? +nodeId : null,
   };
 
-  await axios.post(url, payload, {
+  await axios.post(FOLDERS_ENDPOINTS.CREATE, payload, {
     headers: {
-      ...headers,                 // уже содержит Authorization
+      ...headers, // Authorization
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
   });
+  
+  
 
   await fetchFolderTree();
-  // обновляем список, если мы сейчас в этой же папке
-  if (
-    folderId === nodeId ||
-    (folderId == null && (node?.parent_id ?? null) == null) ||
-    folderId === String(payload.parent_id ?? '')
-  ) {
-    await hardReloadDocuments();
-  }
-  return { ok: true, message: 'Папка создана' };
+  return { ok: true };
 }
       default:
         return { ok: false, message: 'Не реализовано' };
@@ -1482,6 +1531,7 @@ case 'create-subfolder': {
   <EnhancedFolderTree
   data={folderTreeData}
   selectedId={folderId}
+  expandedIds={expandedIds}                     // ⬅️ контролируем раскрытие
   onSelect={(id) => {
     setFolderId(id);
     navigate(`/?folderId=${id}`);
@@ -1551,8 +1601,7 @@ case 'create-subfolder': {
                     variant="outline"
                     size="sm"
                     onClick={handleShareSelected}
-                    className="flex items-center gap-2"
-                  >
+                    className="flex items-center gap-2">
                     <Share className="h-4 w-4" />
                     Поделиться
                   </Button>

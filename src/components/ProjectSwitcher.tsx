@@ -67,7 +67,7 @@ export function ProjectSwitcher({
     try {
       const token = localStorage.getItem("authToken");
       const res = await axios.post(
-        `${API_ROOT}/api/v2/folders/`,
+        `${API_ROOT}/folders/folders/`,
         { name: trimmed, parent_id: null },
         {
           headers: {

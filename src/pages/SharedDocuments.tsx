@@ -1,292 +1,280 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import axios, { AxiosError } from 'axios';
-import { SearchBar } from '@/components/SearchBar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios, { AxiosError } from "axios";
+import { SearchBar } from "@/components/SearchBar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
+  Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Share2, Download, FileText, File, FileImage, Folder, Eye, Calendar, Heart, ChevronRight, ChevronDown, FolderDown } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { API_ROOT } from '@/config/api';
-import type { Document } from '@/types/document';
-import { downloadByFileId, downloadByFileName } from '@/services/downloadService';
-
+import {
+  Share2, Download, FileText, File, FileImage, Folder, Calendar, ChevronRight, ChevronDown, FolderDown, Timer,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { API_ROOT } from "@/config/api";
+import { downloadByFileId } from "@/services/downloadService";
+import { api } from "@/services/apiclient";
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────────────────────────────────────────
-interface TreeNode {
-  id: string;                    // string id for React key
-  name: string;
-  type: 'folder' | 'file';
-  documentId: string | number;   // UUID or numeric id from backend
-  token: string;
-  _nid: number;                  // numeric id from backend
-  _parentId: number | null;      // numeric parent id
-}
-
 type SharedWithMeItem = {
   id: number;
   token: string;
   shared_with: string;
   filename: string;
-  expires_at: string;
-  document_id: number;           // numeric id of shared root
+  expires_at: string;     // ISO8601
+  document_id: number;    // numeric id of root shared doc
   shared_by: string;
   created_at: string;
-  file_type?: string;
+  file_type?: string;     // "folder" | ext-backed etc.
 };
 
-interface SharedDocument extends Document {
+interface SharedDocCard {
+  id: string;               // card id (from share id)
+  name: string;
+  type: "folder" | "file";
+  documentId: number;       // numeric id (for /children and downloads)
   sharedBy: string;
-  shareExpiration: string;   // ISO
+  createdAt: string;
+  expiresAt: string;        // ISO
   token: string;
-  documentId: number;        // numeric id of the root shared document
-  previewUrl?: string;
-  favorited?: boolean;
 }
-// Helpers to distinguish the union type you pass to handleDownload
-const isTreeNode = (x: unknown): x is TreeNode => typeof (x as TreeNode)?._nid === 'number';
-const isSharedDoc = (x: unknown): x is SharedDocument => typeof (x as SharedDocument)?.documentId === 'number';
+
+interface TreeNode {
+  id: string;
+  name: string;
+  type: "folder" | "file";
+  _nid: number;             // numeric id of this node
+  _parentId: number | null;
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Utils
 // ──────────────────────────────────────────────────────────────────────────────
-const fileTypeFromName = (name: string, forceFolder = false): Document['type'] => {
-  if (forceFolder) return 'folder';
-  const parts = name.split('.');
-  const last = parts[parts.length - 1].toLowerCase();
-  const knownExts = ['pdf','ppt','pptx','xls','xlsx','doc','docx','png','jpg','jpeg','gif','webp','bmp','tiff','zip'];
-  if (knownExts.includes(last)) {
-    if (['png','jpg','jpeg','gif','webp','bmp','tiff'].includes(last)) return 'image';
-    if (['xls','xlsx'].includes(last)) return 'xlsx';
-    if (['ppt','pptx'].includes(last)) return 'ppt';
-    if (['doc','docx'].includes(last)) return 'doc';
-    if (last === 'pdf') return 'pdf';
-    if (last === 'zip') return 'zip';
-    return 'file';
-  }
-  return 'folder';
+const fileTypeFromName = (name: string, forceFolder = false): "folder" | "file" => {
+  if (forceFolder) return "folder";
+  const lower = name.toLowerCase();
+  return /\.(pdf|pptx?|xlsx?|docx?|png|jpe?g|gif|webp|bmp|tiff|zip)$/.test(lower) ? "file" : "folder";
 };
 
 const getFileIcon = (type: string) => {
   switch (type) {
-    case 'pdf': return <FileText className="h-8 w-8 text-red-500" />;
-    case 'ppt': return <FileText className="h-8 w-8 text-orange-500" />;
-    case 'image': return <FileImage className="h-8 w-8 text-purple-500" />;
-    case 'folder': return <Folder className="h-8 w-8 text-yellow-500" />;
-    default: return <File className="h-8 w-8 text-gray-500" />;
+    case "pdf": return <FileText className="h-8 w-8" />;
+    case "image": return <FileImage className="h-8 w-8" />;
+    case "folder": return <Folder className="h-8 w-8" />;
+    default: return <File className="h-8 w-8" />;
   }
 };
 
-const formatExpirationDate = (expiration: string) => {
-  const expirationDate = new Date(expiration);
-  return expirationDate.toLocaleDateString('ru-RU', {
-    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
-};
+// ──────────────────────────────────────────────────────────────────────────────
+// Countdown (UI + logic)
+// ──────────────────────────────────────────────────────────────────────────────
+function useCountdown(targetIso: string) {
+  const [now, setNow] = useState<number>(Date.now());
+  const target = useMemo(() => {
+    // Expect ISO8601 with timezone, e.g. "...Z"
+    const t = Date.parse(targetIso); // returns ms since epoch or NaN
+    return Number.isFinite(t) ? t : 0;
+  }, [targetIso]);
+  useEffect(() => {
+    if (!target) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [target]);
+  const msLeft = Math.max(0, target - now);
+  const expired = msLeft <= 0;
+  const s = Math.floor(msLeft / 1000);
+  const dd = Math.floor(s / 86400);
+  const hh = Math.floor((s % 86400) / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return { expired, dd, hh, mm, ss };
+}
 
-const extractFilename = (headers: Record<string, string> | Headers, fallback: string) => {
-  const cd: string | undefined = (headers as Record<string, string>)?.['content-disposition'] || (headers as Headers)?.get?.('content-disposition');
-  if (!cd) return fallback;
-  const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
-  const raw = decodeURIComponent((match?.[1] || match?.[2] || '').trim());
-  return raw || fallback;
+const CountdownBadge: React.FC<{ iso: string }> = ({ iso }) => {
+  const { expired, dd, hh, mm, ss } = useCountdown(iso);
+  return (
+    <div
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
+        expired ? "bg-red-50 text-red-700 border-red-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+      }`}
+      title={new Date(iso).toLocaleString()}
+      aria-live="polite"
+    >
+      <Timer className="h-4 w-4" />
+      {expired ? "Ссылка истекла" : `Осталось: ${dd ? dd + "д " : ""}${hh}ч ${mm}м ${ss}с`}
+    </div>
+  );
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Component
 // ──────────────────────────────────────────────────────────────────────────────
 const SharedDocuments: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [documents, setDocuments] = useState<SharedDocument[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const token = localStorage.getItem('authToken') || '';
+  const token = localStorage.getItem("authToken") || "";
+  const authHeaders = { Authorization: `Bearer ${token}` };
 
-  // cache for each shared folder: full subtree docs array (flat) keyed by root numeric id
-  const [subtreeCache, setSubtreeCache] = useState<Record<number, Document[]>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [cards, setCards] = useState<SharedDocCard[]>([]);
 
-  const fetchSharedWithMe = useCallback(async () => {
+  // cache children per folder id
+  const [childrenCache, setChildrenCache] = useState<Record<number, TreeNode[]>>({});
+
+  const fetchSharedWithMe = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
-      const response = await axios.get<SharedWithMeItem[]>(`${API_ROOT}/sharing/shared-with-me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const enriched = await Promise.all(
-        response.data.map(async (item) => {
-          // For each shared item, try to fetch its metadata if it's a root folder
-          // so we can display its actual name and type, not just the share name
-          let actualDoc: Document | null = null;
-          try {
-            const docResponse = await axios.get<Document>(`${API_ROOT}/documents/${item.document_id}/metadata`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-            actualDoc = docResponse.data;
-          } catch (docError) {
-            console.warn(`Could not fetch metadata for document ${item.document_id}:`, docError);
-            // If metadata fetching fails, fall back to the shared item's filename and a generic type
-          }
-
-          return {
-            id: String(item.id),
-            name: actualDoc?.name || item.filename,
-            type: actualDoc?.file_type === 'folder' ? 'folder' : fileTypeFromName(item.filename),
-            size: '', // Placeholder, actual size would be from metadata
-            modified: actualDoc?.modified || item.created_at,
-            owner: actualDoc?.owner || item.shared_by,
-            owner_id: actualDoc?.owner_id || '',
-            category: 'shared',
-            shared: true,
-            favorited: actualDoc?.favorited || false,
-            thumbnail: actualDoc?.thumbnail || '',
-            path: actualDoc?.path || '',
-            file_path: actualDoc?.file_path || '',
-            dueDate: '',
-            engineer: '',
-            linkedAssets: [],
-            tags: actualDoc?.tags || [],
-            archived: actualDoc?.archived || false,
-            starred: actualDoc?.starred || false,
-            created_at: item.created_at,
-            parent_id: actualDoc?.parent_id || undefined,
-            version: actualDoc?.version || '',
-            file_type: actualDoc?.file_type || fileTypeFromName(item.filename),
-            status: actualDoc?.status || 'approved',
-
-            sharedBy: item.shared_by,
-            shareExpiration: item.expires_at,
-            token: item.token,
-            documentId: item.document_id,
-            previewUrl: '',
-          };
-        })
-      );
-      setDocuments(enriched);
-    } catch (err: unknown) {
-      console.error('Error fetching shared documents:', err);
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить документы, которыми поделились',
-        variant: 'destructive',
-      });
+      const { data } = await api.get<SharedWithMeItem[]>(`/sharing/shared-with-me`);
+      const mapped: SharedDocCard[] = data.map((x) => ({
+        id: String(x.id),
+        name: x.filename,
+        type: (x.file_type === "folder") ? "folder" : fileTypeFromName(x.filename),
+        documentId: x.document_id,
+        sharedBy: x.shared_by,
+        createdAt: x.created_at,
+        expiresAt: x.expires_at,
+        token: x.token,
+      }));
+      setCards(mapped.sort((a,b) => (a.type===b.type ? a.name.localeCompare(b.name) : a.type==="folder" ? -1 : 1)));
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Ошибка", description: "Не удалось загрузить поделенные элементы", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
-  }, [token, toast]);
+  }, [token]);
 
-  useEffect(() => { fetchSharedWithMe(); }, [fetchSharedWithMe, token]);
+  useEffect(() => { 
+    const controller = new AbortController();
+    fetchSharedWithMe(controller.signal);
+    return () => controller.abort();
+  }, [fetchSharedWithMe]);
 
-  const filteredDocuments = useMemo(
-    () => documents.filter(d => d.name.toLowerCase().includes(searchQuery.toLowerCase())),
-    [documents, searchQuery]
+  const filtered = useMemo(
+    () => cards.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())),
+    [cards, searchQuery]
   );
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // Tree helpers — строго показываем ТОЛЬКО поддерево расшаренной папки
-  // ────────────────────────────────────────────────────────────────────────────
-  const fetchSubtreeOnce = async (rootId: number): Promise<Document[]> => {
-    if (subtreeCache[rootId]) {
-      return subtreeCache[rootId] as Document[]; // Already loaded
-    }
+  const CardItem: React.FC<{
+    card: SharedDocCard;
+    fetchChildrenCached: (parentId: number) => Promise<TreeNode[]>;
+    onDownload: (card: SharedDocCard, expired: boolean) => Promise<void>;
+  }> = ({ card, fetchChildrenCached, onDownload }) => {
+    const { expired } = useCountdown(card.expiresAt); // ✅ hook at top level of a component
+    const isFolder = card.type === "folder";
+  
+    return (
+      <Card className="group bg-white border-0 shadow-lg hover:shadow-2xl transition-all overflow-hidden">
+        <CardContent className="p-0">
+          {/* Preview */}
+          <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            {isFolder ? <Folder className="h-12 w-12 text-yellow-500" /> : <File className="h-12 w-12 text-gray-500" />}
+            <div className="absolute top-3 left-3">
+              <CountdownBadge iso={card.expiresAt} />
+            </div>
+            {expired && (
+              <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center text-red-700 font-semibold">
+                Срок доступа истёк
+              </div>
+            )}
+          </div>
+  
+          <div className="p-6 space-y-4">
+            <div>
+              <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2" title={card.name}>
+                {card.name}
+              </h3>
+              <div className="text-sm text-gray-500">
+                Поделился: <span className="font-medium">{card.sharedBy}</span>
+              </div>
+            </div>
+  
+            {/* Actions (download-only) */}
+            <div className="space-y-3">
+              <Button
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
+                disabled={expired}
+                aria-disabled={expired}
+                onClick={() => onDownload(card, expired)}
+              >
+                <Download className="h-5 w-5 mr-2" />
+                {isFolder ? "Скачать всё (.zip)" : "Скачать файл"}
+              </Button>
+  
+              {isFolder && (
+                <FolderContents
+                  rootId={card.documentId}
+                  expired={expired}
+                  fetchChildrenCached={fetchChildrenCached}
+                />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  // children loader (direct children for a given folder id)
+  const mapDocsToTree = (arr: any[]): TreeNode[] =>
+    (arr || []).map((d: any) => ({
+      id: String(d.id),
+      name: d.name || d.title || "Без имени",
+      type: (d.file_type === "folder") ? "folder" : "file",
+      _nid: Number(d.id),
+      _parentId: d.parent_id == null ? null : Number(d.parent_id),
+    }));
 
+  const fetchChildren = async (parentId: number): Promise<TreeNode[]> => {
+    const controller = new AbortController();
     try {
-      const response = await axios.get(`${API_ROOT}/documents/tree/${rootId}/subtree`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const docs = response.data.items as Document[];
-      // даже если сервер вернул "всё из БД", мы будем рисовать ТОЛЬКО узлы, достижимые из rootId
-      setSubtreeCache(prev => ({ ...prev, [rootId]: docs }));
-      return docs;
-    } catch (e: unknown) {
-      console.error('Error fetching subtree:', e);
-      const msg = (e instanceof AxiosError && e.response?.status === 404) ? 'Дерево документов не найдено' : (e instanceof Error ? e.message : 'Не удалось загрузить дерево документов');
-      toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
+      const res = await api.get(`/children/${parentId}`)
+      const data = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return mapDocsToTree(data);
+    } catch (e) {
+      console.error("children fetch failed", e);
+      const msg = (e instanceof AxiosError && e.response?.status === 404)
+        ? "Дерево документов не найдено" : "Не удалось загрузить содержимое папки";
+      toast({ title: "Ошибка", description: msg, variant: "destructive" });
       return [];
     }
   };
 
-  // получить прямых детей по parent_id из уже загруженного поддерева
-  const getChildrenFromCache = (rootId: number, parentNids: (number | null)[]): TreeNode[] => {
-    const docs = subtreeCache[rootId] || [];
-    const children = docs.filter((d: Document) => parentNids.includes(d.parent_id === undefined ? null : parseInt(d.parent_id)));
-    return children.map((d: Document) => ({
-      id: String(d.id),
-      name: d.name || 'Без имени',
-      type: d.file_type === 'folder' ? 'folder' : 'file',
-      documentId: d.id, // Use d.id as documentId
-      token: '',
-      _nid: parseInt(d.id), // Parse d.id to number for _nid
-      _parentId: d.parent_id === undefined ? null : parseInt(d.parent_id), // Parse d.parent_id to number or null
-    }));
+  const fetchChildrenCached = async (parentId: number) => {
+    if (childrenCache[parentId]) return childrenCache[parentId];
+    const nodes = await fetchChildren(parentId);
+    setChildrenCache(prev => ({ ...prev, [parentId]: nodes }));
+    return nodes;
   };
 
-  // скачать один файл (ID → fallback name)
-const handleDownload = async (doc: SharedDocument | TreeNode) => {
-  try {
-    // Prefer numeric ID:
-    // - TreeNode: use _nid (DB id of that node)
-    // - SharedDocument (root file share): use documentId
-    if (isTreeNode(doc)) {
-      await downloadByFileId(doc._nid, token, doc.name);
-      return;
+  // downloads (download-only mode)
+  const handleDownloadNode = async (node: TreeNode, expired: boolean) => {
+    if (expired) return;
+    try { await downloadByFileId(node._nid, token, node.name); }
+    catch (e) {
+      console.error("node download failed", e);
+      toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
     }
-    if (isSharedDoc(doc)) {
-      await downloadByFileId(doc.documentId, token, doc.name);
-      return;
+  };
+  const handleDownloadCard = async (card: SharedDocCard, expired: boolean) => {
+    if (expired) return;
+    try {
+      // if folder, let backend zip it; if file, just stream file
+      const suggested = card.type === "folder" ? `${card.name}.zip` : card.name;
+      await downloadByFileId(card.documentId, token, suggested);
+    } catch (e) {
+      console.error("card download failed", e);
+      toast({ title: "Ошибка", description: "Не удалось скачать", variant: "destructive" });
     }
+  };
 
-    // Fallback by name (exact name incl. extension, unique in user scope)
-    await downloadByFileName((doc as SharedDocument).name, token);
-  } catch (e: unknown) {
-    console.error('Error downloading document:', e);
-    const msg =
-      (e instanceof AxiosError && e.response?.status === 404)
-        ? 'Файл не найден на сервере'
-        : (e instanceof Error ? e.message : 'Не удалось скачать файл');
-    toast({ title: 'Ошибка', description: msg, variant: 'destructive' });
-  }
-};
-
-
-  // скачать всё (ZIP) — серверный маршрут(ы)
-  // скачать всю папку (сервер сам вернёт .zip)
-const handleDownloadAll = async (rootDoc: SharedDocument) => {
-  try {
-    await downloadByFileId(rootDoc.documentId, token, `${rootDoc.name}.zip`);
-  } catch (e: unknown) {
-    console.error('download-all failed', e);
-    toast({
-      title: 'Ошибка',
-      description: (e instanceof AxiosError && e.response?.data?.detail) || 'Не удалось скачать папку как архив',
-      variant: 'destructive',
-    });
-  }
-};
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Tree UI: используем ТОЛЬКО дочерние элементы от текущего узла
-  // ────────────────────────────────────────────────────────────────────────────
-  const FolderTree: React.FC<{ rootId: number; node: TreeNode }> = ({ rootId, node }) => {
-    const [expanded, setExpanded] = React.useState(false);
-    const [children, setChildren] = React.useState<TreeNode[]>([]);
-
-    const toggleExpand = async () => {
-      if (!expanded && node.type === 'folder' && children.length === 0) {
-        // гарантируем, что поддерево загружено
-        await fetchSubtreeOnce(rootId);
-        // берём ТОЛЬКО детей этого узла
-        const list = getChildrenFromCache(rootId, [node._nid]);
+  // folder tree
+  const FolderTree: React.FC<{ rootId: number; node: TreeNode; expired: boolean }> = ({ rootId, node, expired }) => {
+    const [expanded, setExpanded] = useState(false);
+    const [children, setChildren] = useState<TreeNode[]>([]);
+    const toggle = async () => {
+      if (!expanded && node.type === "folder" && children.length === 0) {
+        const list = await fetchChildrenCached(node._nid);
         setChildren(list);
       }
       setExpanded(!expanded);
@@ -295,22 +283,23 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
     return (
       <div className="ml-2">
         <div className="flex items-center gap-2 py-1">
-          {node.type === 'folder' ? (
-            <button onClick={toggleExpand} className="flex items-center gap-1 text-left hover:bg-gray-100 rounded px-1 py-0.5">
+          {node.type === "folder" ? (
+            <button onClick={toggle} className="flex items-center gap-1 text-left hover:bg-gray-100 rounded px-1 py-0.5">
               {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               <Folder className="h-5 w-5 text-yellow-500" />
               <span className="font-medium truncate max-w-[18rem]">{node.name}</span>
             </button>
           ) : (
-            <div className="flex items-center gap-2 group">
-              {(() => {
-                const lower = node.name.toLowerCase();
-                if (lower.endsWith('.pdf')) return <FileText className="h-5 w-5 text-red-500" />;
-                if (/\.(png|jpg|jpeg|gif|webp|bmp|tiff)$/.test(lower)) return <FileImage className="h-5 w-5 text-purple-500" />;
-                return <File className="h-5 w-5 text-gray-500" />;
-              })()}
+            <div className="flex items-center gap-2">
+              <File className="h-5 w-5 text-gray-500" />
               <span className="truncate max-w-[18rem]">{node.name}</span>
-              <Button size="sm" className="ml-2 opacity-90 group-hover:opacity-100" onClick={() => handleDownload(node)}>
+              <Button
+                size="sm"
+                variant={expired ? "secondary" : "default"}
+                className="ml-2"
+                disabled={expired}
+                onClick={() => handleDownloadNode(node, expired)}
+              >
                 <Download className="h-4 w-4 mr-1" /> Скачать
               </Button>
             </div>
@@ -318,102 +307,21 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
         </div>
         {expanded && children.length > 0 && (
           <div className="ml-4">
-            {children.map((child) => (
-              <FolderTree key={child.id} rootId={rootId} node={child} />
+            {children.map((c) => (
+              <FolderTree key={c.id} rootId={rootId} node={c} expired={expired} />
             ))}
           </div>
         )}
-        {expanded && node.type === 'folder' && children.length === 0 && (
+        {expanded && node.type === "folder" && children.length === 0 && (
           <div className="ml-6 text-sm text-gray-500 py-1">Пусто</div>
         )}
       </div>
     );
   };
 
-  // карточная секция для папки: две кнопки (скачать всё + показать содержимое) и дерево
-  const FolderCardExtras: React.FC<{ doc: SharedDocument }> = ({ doc }) => {
-    const [open, setOpen] = React.useState(false);
-    const [rootChildren, setRootChildren] = React.useState<TreeNode[] | null>(null);
-    const [loading, setLoading] = React.useState(false);
-    const [downloadingAll, setDownloadingAll] = React.useState(false);
-
-    const toggle = async () => {
-      if (!open && !rootChildren) {
-        setLoading(true);
-        try {
-          const flat = await fetchSubtreeOnce(doc.documentId);
-          // корневые дети — where parent_id == doc.documentId
-          const direct = getChildrenFromCache(doc.documentId, [doc.documentId, null]);
-          setRootChildren(direct);
-        } finally {
-          setLoading(false);
-        }
-      }
-      setOpen(!open);
-    };
-
-    const onDownloadAll = async () => {
-      try {
-        setDownloadingAll(true);
-        await handleDownloadAll(doc);
-      } finally {
-        setDownloadingAll(false);
-      }
-    };
-
-    return (
-      <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Button
-            className="w-full bg-gradient-to-r from-emerald-500 to-blue-600 hover:from-emerald-600 hover:to-blue-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            onClick={onDownloadAll}
-            disabled={downloadingAll}
-          >
-            <FolderDown className="h-5 w-5 mr-2" />
-            {downloadingAll ? 'Готовим архив…' : 'Скачать всё (.zip)'}
-          </Button>
-          <Button
-            variant="secondary"
-            className="w-full bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 rounded-xl border border-gray-200 shadow-sm hover:shadow transition-all duration-300"
-            onClick={toggle}
-          >
-            {open ? 'Скрыть содержимое' : 'Показать содержимое папки'}
-          </Button>
-        </div>
-
-        {open && (
-          <div className="w-full mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3 max-h-[60vh] overflow-auto">            {loading ? (
-              <div className="text-sm text-gray-500">Загрузка…</div>
-            ) : rootChildren && rootChildren.length > 0 ? (
-              rootChildren.map((child) => (
-                <FolderTree key={child.id} rootId={doc.documentId} node={child} />
-              ))
-            ) : (
-              <div className="text-sm text-gray-500">Папка пуста</div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const handlePreview = (document: SharedDocument) => {
-    toast({ title: 'Предпросмотр', description: `Открытие ${document.name}` });
-    console.log('Preview shared doc:', document);
-  };
-
-  const handleToggleFavorite = (document: SharedDocument) => {
-    setDocuments(prev => prev.map(d => d.id === document.id ? { ...d, favorited: !d.favorited } : d));
-    const fav = !document.favorited;
-    toast({ title: fav ? 'Добавлено в избранное' : 'Удалено из избранного', description: `${document.name} ${fav ? 'добавлен в' : 'удалён из'} избранного` });
-  };
-
-  // ────────────────────────────────────────────────────────────────────────────
-  // Render (весь текущий стиль сохранён)
-  // ────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-<div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <Breadcrumb className="mb-6">
@@ -423,27 +331,29 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage className="text-gray-700">Поделенные документы</BreadcrumbPage>
+                <BreadcrumbPage className="text-gray-700">Поделенные (только скачивание)</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
 
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-3">Поделенные файлы</h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">Здесь отображаются файлы и папки, которыми с вами поделились</p>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Здесь отображается только содержимое, которым с вами поделились. Доступ ограничен по времени.
+            </p>
           </div>
 
           <div className="w-full">
             <SearchBar
               query={searchQuery}
               setQuery={setSearchQuery}
-              placeholder="Поиск файлов..."
+              placeholder="Поиск по названию…"
               showFilterButton={false}
             />
           </div>
         </div>
 
-        {/* Скелет/пустой/список */}
+        {/* Content */}
         {isLoading ? (
           <div className="text-center py-16">
             <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
@@ -454,71 +364,143 @@ const handleDownloadAll = async (rootDoc: SharedDocument) => {
               <p className="text-gray-600">Пожалуйста, подождите</p>
             </div>
           </div>
-        ) : filteredDocuments.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <div className="bg-white rounded-2xl shadow-lg p-12 max-w-md mx-auto">
               <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Share2 className="h-10 w-10 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Файлы не найдены</h3>
-              <p className="text-gray-600">Поделенные с вами активные файлы будут отображаться здесь</p>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Нет доступных ссылок</h3>
+              <p className="text-gray-600">Активные поделенные папки и файлы появятся здесь</p>
             </div>
           </div>
         ) : (
-           <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredDocuments.map((doc) => (
-              <Card 
-              key={doc.id} 
-              className="group relative hover:shadow-xl transition-all duration-300 bg-white border rounded-2xl overflow-hidden"
-            >
-              <CardContent className="p-0">
-                {/* Preview */}
-                <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
-                  {doc.previewUrl ? (
-                    <img src={doc.previewUrl} alt={doc.name} 
-                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  ) : (
-                    <div className="flex items-center justify-center h-full">
-                      {getFileIcon(doc.type)}
-                    </div>
-                  )}
-            
-                  {/* Top actions */}
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      className="rounded-full bg-white/80 hover:bg-white"
-                      onClick={() => handleToggleFavorite(doc)}
-                    >
-                      <Heart className={`h-5 w-5 ${doc.favorited ? "text-red-500 fill-red-500" : "text-gray-600"}`} />
-                    </Button>
-            
-                    <Button size="icon" variant="ghost" className="rounded-full bg-white/80 hover:bg-white">
-                      <ChevronDown className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
-            
-                {/* Content */}
-                <div className="p-4 space-y-3">
-                  <h3 className="font-semibold text-gray-900 line-clamp-2">{doc.name}</h3>
-                  <p className="text-sm text-gray-500">{doc.sharedBy}</p>
-            
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">до {formatExpirationDate(doc.shareExpiration)}</span>
-                    <Button size="sm" onClick={() => handleDownload(doc)} className="bg-blue-500 text-white rounded-lg px-3">
-                      <Download className="h-4 w-4 mr-1" /> Скачать
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
+          <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filtered.map((card) => (
+              <CardItem
+                key={card.id}
+                card={card}
+                fetchChildrenCached={fetchChildrenCached}
+                onDownload={handleDownloadCard}
+              />
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+const FolderContents: React.FC<{
+  rootId: number;
+  expired: boolean;
+  fetchChildrenCached: (parentId: number) => Promise<TreeNode[]>;
+}> = ({ rootId, expired, fetchChildrenCached }) => {
+  const [open, setOpen] = useState(false);
+  const [rootChildren, setRootChildren] = useState<TreeNode[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const toggle = async () => {
+    if (!open && !rootChildren) {
+      setLoading(true);
+      try {
+        const direct = await fetchChildrenCached(rootId);
+        setRootChildren(direct);
+      } finally {
+        setLoading(false);
+      }
+    }
+    setOpen(!open);
+  };
+
+  return (
+    <div className="space-y-3">
+      <Button
+        variant="secondary"
+        className="w-full bg-white hover:bg-gray-50 text-gray-900 font-semibold py-3 rounded-xl border border-gray-200 shadow-sm hover:shadow transition-all duration-300"
+        onClick={toggle}
+      >
+        {open ? "Скрыть содержимое" : "Показать содержимое папки"}
+      </Button>
+
+      {open && (
+        <div className="w-full mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3 max-h-[50vh] overflow-auto">
+          {loading ? (
+            <div className="text-sm text-gray-500">Загрузка…</div>
+          ) : rootChildren && rootChildren.length > 0 ? (
+            rootChildren.map((child) => (
+              <FolderTree key={child.id} node={child} expired={expired} fetchChildrenCached={fetchChildrenCached} />
+            ))
+          ) : (
+            <div className="text-sm text-gray-500">Папка пуста</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FolderTree: React.FC<{
+  node: TreeNode;
+  expired: boolean;
+  fetchChildrenCached: (parentId: number) => Promise<TreeNode[]>;
+}> = ({ node, expired, fetchChildrenCached }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [children, setChildren] = useState<TreeNode[]>([]);
+  const { toast } = useToast();
+
+  const toggle = async () => {
+    if (!expanded && node.type === "folder" && children.length === 0) {
+      const list = await fetchChildrenCached(node._nid);
+      setChildren(list);
+    }
+    setExpanded(!expanded);
+  };
+
+  const onDownload = async () => {
+    if (expired) return;
+    try { await downloadByFileId(node._nid, localStorage.getItem("authToken") || "", node.name); }
+    catch (e) {
+      console.error(e);
+      toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="ml-2">
+      <div className="flex items-center gap-2 py-1">
+        {node.type === "folder" ? (
+          <button onClick={toggle} className="flex items-center gap-1 text-left hover:bg-gray-100 rounded px-1 py-0.5">
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <Folder className="h-5 w-5 text-yellow-500" />
+            <span className="font-medium truncate max-w-[18rem]">{node.name}</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <File className="h-5 w-5 text-gray-500" />
+            <span className="truncate max-w-[18rem]">{node.name}</span>
+            <Button
+              size="sm"
+              variant={expired ? "secondary" : "default"}
+              className="ml-2"
+              disabled={expired}
+              onClick={onDownload}
+            >
+              <Download className="h-4 w-4 mr-1" /> Скачать
+            </Button>
+          </div>
+        )}
+      </div>
+      {expanded && children.length > 0 && (
+        <div className="ml-4">
+          {children.map((c) => (
+            <FolderTree key={c.id} node={c} expired={expired} fetchChildrenCached={fetchChildrenCached} />
+          ))}
+        </div>
+      )}
+      {expanded && node.type === "folder" && children.length === 0 && (
+        <div className="ml-6 text-sm text-gray-500 py-1">Пусто</div>
+      )}
     </div>
   );
 };

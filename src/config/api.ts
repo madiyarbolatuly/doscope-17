@@ -1,44 +1,74 @@
+// src/config/api.ts
+export const API_ROOT    = import.meta.env.VITE_API_ROOT || "/api";
+export const API_VERSION = "/v2";
+export const API_BASE    = `${API_ROOT}${API_VERSION}`;
 
-// API configuration
-export const API_ROOT = import.meta.env.VITE_API_ROOT || "/api/v2";
-
-// Authentication endpoints
+// ── Auth
 export const AUTH_ENDPOINTS = {
-  SIGNUP: `${API_ROOT}/u/signup`,
-  LOGIN: `${API_ROOT}/u/login`,
-  ME: `${API_ROOT}/u/me`,
+  SIGNUP: `${API_BASE}/u/signup`,
+  LOGIN:  `${API_BASE}/u/login`,
+  ME:     `${API_BASE}/u/me`,
 };
 
-// Document endpoints
+// ── Documents (metadata & file operations)
 export const DOCUMENT_ENDPOINTS = {
-  UPLOAD: `${API_ROOT}/upload`,
-  DOWNLOAD: (fileName: string) => `${API_ROOT}/file/${encodeURIComponent(fileName)}/download`,
-  DELETE: (fileName: string) => `${API_ROOT}/${encodeURIComponent(fileName)}`,
-  PREVIEW: (fileName: string) => `${API_ROOT}/preview/${encodeURIComponent(fileName)}`,
-  METADATA: `${API_ROOT}/metadata`,
-  METADATA_DETAIL: (documentId: string) => `${API_ROOT}/metadata/${documentId}/detail`,
-  SEARCH: `${API_ROOT}/filter`,
-  SHARE: (documentId: string) => `${API_ROOT}/share/${documentId}`,
-  SHARE_LINK: (documentId: string) => `${API_ROOT}/share-link/${documentId}`,
-  ARCHIVE: (fileName: string) => `${API_ROOT}/metadata/archive/${encodeURIComponent(fileName)}`,
-  ARCHIVE_LIST: `${API_ROOT}/metadata/archive/list`,
-  UNARCHIVE: (fileName: string) => `${API_ROOT}/metadata/un-archive/${encodeURIComponent(fileName)}`,
+  // uploads & listing
+  UPLOAD:        `${API_BASE}/upload`,
+  METADATA:      `${API_BASE}/metadata`,
+  METADATA_DETAIL: (documentId: string | number) =>
+    `${API_BASE}/metadata/${encodeURIComponent(String(documentId))}/detail`,
+  SEARCH:        `${API_BASE}/filter`,
+  FAVORITES_LIST:`${API_BASE}/metadata/favorites/list`,
+
+  // per-doc actions (по ID)
+  STAR:   (documentId: string | number) =>
+    `${API_BASE}/metadata/${encodeURIComponent(String(documentId))}/star`,
+  RENAME: (documentId: string | number) =>
+    `${API_BASE}/metadata/${encodeURIComponent(String(documentId))}/rename`,
+  DELETE_BY_ID: (documentId: string | number) =>
+    `${API_BASE}/metadata/${encodeURIComponent(String(documentId))}`,
+
+  // archive (по ИМЕНИ файла — так требует ваш бэкенд)
+  ARCHIVE:      (fileName: string) => `${API_BASE}/metadata/archive/${encodeURIComponent(fileName)}`,
+  UNARCHIVE:    (fileName: string) => `${API_BASE}/metadata/un-archive/${encodeURIComponent(fileName)}`,
+  ARCHIVE_LIST: `${API_BASE}/metadata/archive/list`,
+
+  // file operations
+  DOWNLOAD_BY_ID: (fileId: number | string) => `${API_BASE}/file/${fileId}/download`,
+  MOVE: (id: string | number) => `${API_BASE}/${encodeURIComponent(String(id))}/move`,
+  PREVIEW: (doc: string) => `${API_BASE}/preview/${encodeURIComponent(doc)}`, // без /name/
 };
 
-// Trash endpoints
+// ── Trash
 export const TRASH_ENDPOINTS = {
-  LIST: `${API_ROOT}/trash`,
-  EMPTY: `${API_ROOT}/trash`,
-  DELETE: (fileName: string) => `${API_ROOT}/trash/${encodeURIComponent(fileName)}`,
-  RESTORE: (fileName: string) => `${API_ROOT}/restore/${encodeURIComponent(fileName)}`,
+  LIST:   `${API_BASE}/trash`,
+  EMPTY:  `${API_BASE}/trash`,
+  DELETE: (fileName: string) => `${API_BASE}/trash/${encodeURIComponent(fileName)}`,
+  RESTORE:(fileName: string) => `${API_BASE}/restore/${encodeURIComponent(fileName)}`,
 };
 
-// Notification endpoints
+// ── Notifications
 export const NOTIFICATION_ENDPOINTS = {
-  LIST: `${API_ROOT}/notifications`,
-  CLEAR: `${API_ROOT}/notifications`,
-  UPDATE: (notificationId: string) => `${API_ROOT}/notifications/${notificationId}`,
+  LIST:  `${API_BASE}/notifications`,
+  CLEAR: `${API_BASE}/notifications`,
+  UPDATE:(notificationId: string) => `${API_BASE}/notifications/${encodeURIComponent(notificationId)}`,
 };
 
-// OpenAPI spec endpoint
-export const OPENAPI_SPEC_URL = "/api/openapi.json";
+// ── Sharing
+export const SHARING_ENDPOINTS = {
+  SHARE_LINK_BY_ID: (fileId: number | string) => `${API_BASE}/sharing/share-link/id/${fileId}`,
+  SHARE_LINK:       (document: string) => `${API_BASE}/sharing/share-link/${encodeURIComponent(document)}`,
+  SHARED_WITH_ME:   `${API_BASE}/sharing/shared-with-me`,
+  SHARED_BY_ME:     `${API_BASE}/sharing/shared-by-me`,
+};
+
+// ── Folders
+export const FOLDERS_ENDPOINTS = {
+  CREATE: `${API_BASE}/folders/folders/`,  // было /folders/, должно быть /folders/folders/
+  CHILDREN:(parentId: number | string, recursive = false) =>
+    `${API_BASE}/folders/folders/${parentId}/children?recursive=${recursive}`,
+};
+
+
+// OpenAPI spec
+export const OPENAPI_SPEC_URL = `${API_ROOT}/openapi.json`;

@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
-
+import axios from "axios";
+import { SHARING_ENDPOINTS } from "@/config/api";
+import { toast } from "@/hooks/use-toast"; 
 
 interface MetadataSidebarProps {
   document?: Document;
@@ -71,6 +73,56 @@ export function MetadataSidebar({
     setIsEditingName(true);
   };
 
+  const handleShareClick = async () => {
+    // If parent supplied custom sharing logic, use it.
+    if (typeof onShare === "function") {
+      onShare();
+      return;
+    }
+  
+    try {
+      // 1) Try to get a shareable link from backend (by ID).
+      let shareUrl = `${location.origin}/d/${encodeURIComponent(String(document.id))}`;
+      try {
+        const token = (typeof window !== "undefined" && localStorage.getItem("authToken")) || "";
+        const { data } = await axios.post(
+          SHARING_ENDPOINTS.SHARE_LINK_BY_ID(document.id),
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Expect backend to return e.g. { url: "https://..." } or similar
+        if (data?.url) shareUrl = data.url;
+      } catch {
+        // If the share-link endpoint isn’t available, we’ll fall back to a guess.
+      }
+  
+      // 2) Web Share API (mobile-friendly)
+      if (navigator.share) {
+        await navigator.share({
+          title: document.name,
+          text: "Поделиться документом",
+          url: shareUrl,
+        });
+        return;
+      }
+  
+      // 3) Clipboard API (secure contexts only)
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: "Ссылка скопирована в буфер обмена" });
+        return;
+      }
+  
+      // 4) Ultimate fallback
+      window.prompt("Скопируйте ссылку:", shareUrl);
+    } catch (err: any) {
+      toast({
+        title: "Не удалось поделиться",
+        description: err?.message || "Попробуйте ещё раз",
+        variant: "destructive",
+      });
+    }
+  };
   
 
   const handleSaveEdit = async () => {
@@ -183,13 +235,8 @@ export function MetadataSidebar({
               Скачать
             </Button>
           )}
-            <Button 
-              variant="outline" 
-          
-              className="flex items-center gap-1">
-                <Share2 size={16} />
-                <span className="hidden md:inline">Поделиться</span>
-             </Button>
+         
+
             
              <Button
                 variant="outline"

@@ -14,51 +14,40 @@ import {
 import { Document } from '@/types/document';
 import { Archive, RotateCcw, Grid2X2, List, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
-import { API_ROOT } from '@/config/api';
 
+import axios from "axios";
+import { TRASH_ENDPOINTS } from "@/config/api";
 // ---------- ЛОКАЛЬНЫЕ СЕРВИС-ФУНКЦИИ ----------
+const api = axios.create({
+  // baseURL можно оставить пустым, т.к. мы формируем абсолютные URL в константах
+  // но если хотите — baseURL: API_BASE
+});
 
-// Получить список документов в корзине
+// Список документов в корзине
 const getTrashedDocumentsApi = async (token: string) => {
-  const response = await axios.get(`${API_ROOT}/trash`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
+  const response = await api.get(TRASH_ENDPOINTS.LIST, {
+    headers: { Authorization: `Bearer ${token}` },
   });
   return response.data;
 };
 
-// Восстановить документ из корзины (по имени файла)
+// Восстановление по имени
 const recoverDocument = async (fileName: string, token: string) => {
-  const response = await axios.post(
-    `${API_ROOT}/restore/${encodeURIComponent(fileName)}`,
+  const response = await api.post(
+    TRASH_ENDPOINTS.RESTORE(fileName),
     {},
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    }
+    { headers: { Authorization: `Bearer ${token}` } }
   );
   return response.data;
 };
 
-// Удалить документ из корзины навсегда (по имени файла)
+// Удаление навсегда по имени
 const permanentDeleteDocument = async (fileName: string, token: string) => {
-  const response = await axios.delete(
-    `${API_ROOT}/trash/${encodeURIComponent(fileName)}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    }
-  );
+  const response = await api.delete(TRASH_ENDPOINTS.DELETE(fileName), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return response.data;
 };
-
 // ---------- КОМПОНЕНТ КОРЗИНЫ ----------
 const TrashBin: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,24 +71,24 @@ const TrashBin: React.FC = () => {
 
       if (docsKey && Array.isArray(data[docsKey]) && data[docsKey].length > 0) {
         const transformed: Document[] = data[docsKey].map((doc: any) => ({
-          id: doc.id,
-          // НЕ декодируем name — он нужен как есть для REST-эндпоинтов
+          id: String(doc.id), // ← так корректно для выбора и mock-id
           name: doc.name || 'Unnamed Document',
-          type: doc.file_type
-            ? (doc.file_type.includes('pdf') ? 'pdf'
-              : doc.file_type.includes('doc') ? 'doc'
-              : doc.file_type.includes('xls') ? 'xlsx'
-              : doc.file_type.includes('ppt') ? 'ppt'
-              : doc.file_type.includes('image') ? 'image'
-              : 'file')
-            : 'file',
+          type: doc.file_type === 'folder'
+            ? 'folder'
+            : (/\.(pdf)$/i.test(doc.name) ? 'pdf'
+              : /\.(docx?|rtf)$/i.test(doc.name) ? 'doc'
+              : /\.(xlsx?|csv)$/i.test(doc.name) ? 'xlsx'
+              : /\.(pptx?)$/i.test(doc.name) ? 'ppt'
+              : /\.(png|jpe?g|gif|bmp|webp|tif?f)$/i.test(doc.name) ? 'image'
+              : 'file'),
           size: doc.size ? `${(doc.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown',
           modified: doc.created_at,
           owner: doc.owner_name || doc.owner_id,
-          category: doc.categories && doc.categories.length > 0 ? doc.categories[0] : '--',
+          category: Array.isArray(doc.categories) && doc.categories.length ? doc.categories[0] : '--',
           path: doc.file_path,
           tags: doc.tags || [],
         }));
+        
         setDocuments(transformed);
       } else {
         setDocuments([]);
@@ -118,7 +107,6 @@ const TrashBin: React.FC = () => {
 
   useEffect(() => {
     fetchTrashedDocuments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredDocuments = documents.filter((d) =>

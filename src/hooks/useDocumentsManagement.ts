@@ -106,7 +106,8 @@ export function useDocumentsManagement({
   const handleToggleFavorite = useCallback(async (documentId: string) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch(`/api/v2/metadata/${documentId}/star?repo_cls=document`, {
+      const response = await fetch(`/api/
+        documentId}/star?repo_cls=document`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -9,10 +9,6 @@ export interface CreateFolderPayload {
 const RAW_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? "";
 const API_BASE = String(RAW_BASE).replace(/\/+$/, ""); // trim trailing slashes
 
-// Build a few candidate endpoints to handle odd deployments:
-// - normal:           /api/v2/folders/
-// - swagger-shown:    /v2/api/v2/folders/
-// - if API_BASE ends with /api/v2 → use /folders/
 function buildFolderUrls(base: string): string[] {
   const urls: string[] = [];
   const endsWithApiV2 = /\/api\/v\d+$/i.test(base);

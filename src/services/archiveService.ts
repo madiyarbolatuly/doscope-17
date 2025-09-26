@@ -1,120 +1,60 @@
+// archiveService.ts
 import axios from 'axios';
-import { API_ROOT } from '@/config/api';
+import { DOCUMENT_ENDPOINTS } from '@/config/api';
 
-// Archive a document
-export const archiveDocument = async (documentId: string, token: string) => {
+const auth = (token: string) => ({ headers: { Authorization: `Bearer ${token}` } });
+const pickError = (e: any) =>
+  (typeof e?.response?.data === 'string' ? e.response.data : e?.response?.data?.detail) ||
+  e?.message || 'Request failed';
+
+// Архивировать по ИМЕНИ
+export const archiveDocument = async (fileName: string, token: string) => {
   try {
-    const response = await axios.post(
-      `${API_ROOT}/metadata/archive/${documentId}`,
-      {},
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.status === 409) {
-      throw new Error('Document is already archived');
-    }
-    throw new Error(error.response?.data?.detail || 'Failed to archive document');
-  }
+    const { data } = await axios.post(DOCUMENT_ENDPOINTS.ARCHIVE(fileName), {}, auth(token));
+    return data;
+  } catch (e: any) { throw new Error(pickError(e)); }
 };
 
-// Unarchive a document
-export const unarchiveDocument = async (documentId: string, token: string) => {
+// Разархивировать по ИМЕНИ
+export const unarchiveDocument = async (fileName: string, token: string) => {
   try {
-    const response = await axios.post(
-      `${API_ROOT}/metadata/un-archive/${documentId}`,
-      {},
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.status === 409) {
-      throw new Error('Document is not archived');
-    }
-    throw new Error(error.response?.data?.detail || 'Failed to unarchive document');
-  }
+    const { data } = await axios.post(DOCUMENT_ENDPOINTS.UNARCHIVE(fileName), {}, auth(token));
+    return data;
+  } catch (e: any) { throw new Error(pickError(e)); }
 };
 
-// Get archived documents list
+// Список архивных
 export const getArchivedDocuments = async (token: string) => {
   try {
-    const response = await axios.get(
-      `${API_ROOT}/metadata/archive/list`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to get archived documents');
-  }
+    const { data } = await axios.get(DOCUMENT_ENDPOINTS.ARCHIVE_LIST, auth(token));
+    return data;
+  } catch (e: any) { throw new Error(pickError(e)); }
 };
 
-// Toggle star/favorite status
-export const toggleStar = async (documentId: string, token: string) => {
+// Избранное (по ID)
+export const toggleStar = async (documentId: string | number, token: string) => {
   try {
-    const response = await axios.put(
-      `${API_ROOT}/metadata/${documentId}/star`,
-      {},
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to toggle star status');
-  }
+    const { data } = await axios.put(DOCUMENT_ENDPOINTS.STAR(documentId), {}, auth(token));
+    return data;
+  } catch (e: any) { throw new Error(pickError(e)); }
 };
 
-// Rename document
-export const renameDocument = async (documentId: string, newName: string, token: string) => {
+// Переименовать (по ID)
+export const renameDocument = async (documentId: string | number, newName: string, token: string) => {
   try {
-    const response = await axios.put(
-      `${API_ROOT}/metadata/${documentId}/rename`,
+    const { data } = await axios.put(
+      DOCUMENT_ENDPOINTS.RENAME(documentId),
       { name: newName },
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
+      { ...auth(token), headers: { ...auth(token).headers, 'Content-Type': 'application/json' } }
     );
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to rename document');
-  }
+    return data;
+  } catch (e: any) { throw new Error(pickError(e)); }
 };
 
-// Delete document (move to bin)
-export const deleteDocument = async (documentId: string, token: string) => {
+// Удалить (в корзину) по ID
+export const deleteDocument = async (documentId: string | number, token: string) => {
   try {
-    const response = await axios.delete(
-      `${API_ROOT}/${documentId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.detail || 'Failed to delete document');
-  }
+    const { data } = await axios.delete(DOCUMENT_ENDPOINTS.DELETE_BY_ID(documentId), auth(token));
+    return data;
+  } catch (e: any) { throw new Error(pickError(e)); }
 };
