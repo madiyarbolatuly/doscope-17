@@ -18,6 +18,14 @@
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
+[data-lovable],
+#lovable-banner,
+#lovable-badge,
+.lovable-banner,
+.lovable-badge {
+  display: none !important;
+}
+
 @keyframes logo-spin {
   from {
     transform: rotate(0deg);

@@ -20,6 +20,7 @@ import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from
 import { format } from 'date-fns';
 import { DocumentMeta } from "@/hooks/useDocuments";
 import { DOCUMENT_ENDPOINTS } from '@/config/api';
+import { buildDwgOpenUrl } from "@/utils/openInAcad";
 
 import {
   DropdownMenu,
@@ -1728,15 +1729,21 @@ case 'create-subfolder': {
                               {document.archived ? 'Разархивировать' : 'Архивировать'}
                             </DropdownMenuItem>
                             {document.type !== 'folder' && (
-                             <DropdownMenuItem
-                             onSelect={(e) => {
-                               e.preventDefault();    // keep the menu from stealing focus
-                               e.stopPropagation();   // avoid row onClick
-                               handleEdit(document);  // navigate to /edit/:id?ext=...&title=...
-                             }}
-                           >
-                             Редактировать
-                           </DropdownMenuItem>
+
+                          <DropdownMenuItem
+                            asChild
+                          >
+                            <a
+                              href={buildDwgOpenUrl(document)}
+                              // keep the menu from hijacking the click / parent row handlers
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              rel="noopener"
+                            >
+                              Редактировать
+                            </a>
+                          </DropdownMenuItem>
                           
                             )}
                               <DropdownMenuItem onClick={() => handleToggleFavorite(document)}>
