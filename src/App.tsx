@@ -1,10 +1,10 @@
+// App.tsx
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Index from './pages/Index';
 import TrashBin from './pages/TrashBin';
-import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from '@/context/AuthContext';
+import { Toaster } from '@/components/ui/toaster';
 import Login from './pages/Login';
 import { AppLayout } from './components/AppLayout';
 import ArchivedPage from './pages/ArchivedPage';
@@ -21,130 +21,60 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import Favorites from './pages/Favorites';
 import SharedDocuments from './pages/SharedDocuments';
 import FolderView from './pages/FolderView';
-import EditDocumentPage from "@/pages/EditDocument";
-
+import EditDocumentPage from '@/pages/EditDocument';
+import ViewerRedirect from './components/ViewerRedirect';
+import { useAuth } from '@/context/AuthContext';
 
 function App() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const pathname = useLocation().pathname;
+
+  // Optional: you can remove this useEffect if you rely purely on <ViewerRedirect />
+  useEffect(() => {
+    if (!loading && user?.role === 'viewer' && pathname !== '/shared') {
+      navigate('/shared', { replace: true });
+    }
+  }, [user, loading, pathname, navigate]);
+
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public route - Login */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* Protected routes - All other routes */}
-          <Route element={<ProtectedRoute />}>
-            {/* Root documents */}
-            <Route path="/" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/">
-                  <Index />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            
-            {/* Folder navigation routes */}
-                        {/* Folder navigation routes */}
-            <Route path="/folder/:folderId" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/folder">
-                  <FolderView />
-                </PermissionGuard>
-              </AppLayout>
-            } />
+    <>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-            {/* Document details route */}
-            <Route path="/document/:documentId" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/document">
-                  <DocumentDetails />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            
-            {/* Existing routes */}
-            <Route path="/shared" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/shared">
-                  <SharedDocuments />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/archived" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/archived">
-                  <ArchivedPage />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/notifications" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/notifications">
-                  <NotificationsPage />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/fileupload" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/fileupload">
-                  <FileUpload />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/usersmanagement" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/usersmanagement">
-                  <UserManagement />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/approvals" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/approvals">
-                  <Approvals />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/settings" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/settings">
-                  <Settings />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/notfound" element={<AppLayout><NotFound /></AppLayout>} />
-            <Route path="/trash" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/trash">
-                  <TrashBin />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/dashboard" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/dashboard">
-                  <Dashboard />
-                </PermissionGuard>
-              </AppLayout>
-            } />
-            <Route path="/favorites" element={
-              <AppLayout>
-                <PermissionGuard pagePath="/favorites">
-                  <Favorites />
-                </PermissionGuard>
-              </AppLayout>
-            } />
+        <Route element={<ProtectedRoute />}>
+          {/* everyone can see /shared */}
+          <Route path="/shared" element={
+            <AppLayout>
+              <PermissionGuard pagePath="/shared">
+                <SharedDocuments />
+              </PermissionGuard>
+            </AppLayout>
+          } />
+
+          {/* everything else goes through the viewer guard */}
+          <Route element={<ViewerRedirect />}>
+            <Route path="/" element={<AppLayout><PermissionGuard pagePath="/"><Index/></PermissionGuard></AppLayout>} />
+            <Route path="/folder/:folderId" element={<AppLayout><PermissionGuard pagePath="/folder"><FolderView/></PermissionGuard></AppLayout>} />
+            <Route path="/document/:documentId" element={<AppLayout><PermissionGuard pagePath="/document"><DocumentDetails/></PermissionGuard></AppLayout>} />
+            <Route path="/archived" element={<AppLayout><PermissionGuard pagePath="/archived"><ArchivedPage/></PermissionGuard></AppLayout>} />
+            <Route path="/notifications" element={<AppLayout><PermissionGuard pagePath="/notifications"><NotificationsPage/></PermissionGuard></AppLayout>} />
+            <Route path="/fileupload" element={<AppLayout><PermissionGuard pagePath="/fileupload"><FileUpload/></PermissionGuard></AppLayout>} />
+            <Route path="/usersmanagement" element={<AppLayout><PermissionGuard pagePath="/usersmanagement"><UserManagement/></PermissionGuard></AppLayout>} />
+            <Route path="/approvals" element={<AppLayout><PermissionGuard pagePath="/approvals"><Approvals/></PermissionGuard></AppLayout>} />
+            <Route path="/settings" element={<AppLayout><PermissionGuard pagePath="/settings"><Settings/></PermissionGuard></AppLayout>} />
+            <Route path="/trash" element={<AppLayout><PermissionGuard pagePath="/trash"><TrashBin/></PermissionGuard></AppLayout>} />
+            <Route path="/dashboard" element={<AppLayout><PermissionGuard pagePath="/dashboard"><Dashboard/></PermissionGuard></AppLayout>} />
+            <Route path="/favorites" element={<AppLayout><PermissionGuard pagePath="/favorites"><Favorites/></PermissionGuard></AppLayout>} />
           </Route>
-          <Route
-              path="/edit/:id"
-              element={<EditDocumentPage />}
+        </Route>
 
-            />
-        
-        </Routes>
-        <Toaster />
-      </Router>
-    </AuthProvider>
+        <Route path="/edit/:id" element={<EditDocumentPage />} />
+        <Route path="*" element={<Navigate to="/shared" replace />} />
+      </Routes>
+
+      <Toaster />
+    </>
   );
 }
 
