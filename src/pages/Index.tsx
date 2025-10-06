@@ -589,9 +589,9 @@ const handleEdit = (doc: Document) => {
     try {
       // Prefer download by numeric ID (server zips folders automatically)
       const candidates: string[] = [
-        `/api/v2/file/${encodeURIComponent(doc.id)}/download`,               // by id  (file OR folder→zip)
-        `/api/v2/file/${encodeURIComponent(doc.name)}/download`,             // by name (if still supported)
-        doc.path ? `/api/v2/file/download?path=${encodeURIComponent(doc.path)}` : ""
+        `/file/${encodeURIComponent(doc.id)}/download`,               // by id  (file OR folder→zip)
+        `/file/${encodeURIComponent(doc.name)}/download`,             // by name (if still supported)
+        doc.path ? `/file/download?path=${encodeURIComponent(doc.path)}` : ""
       ].filter(Boolean);
   
       let lastStatus = 0, lastUrl = "";
@@ -1416,7 +1416,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
 
       case 'download': {
         // Don’t rely on a full Document object; download by id
-        const res = await fetch(`/api/v2/file/${encodeURIComponent(nodeId)}/download`, {
+        const res = await fetch(`/file/${encodeURIComponent(nodeId)}/download`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error(`Download failed (${res.status})`);

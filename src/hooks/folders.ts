@@ -1,4 +1,4 @@
-// api/folders.ts
+// src/api/folders.ts
 import axios from "axios";
 
 export interface CreateFolderPayload {
@@ -7,26 +7,26 @@ export interface CreateFolderPayload {
 }
 
 const RAW_BASE = (import.meta as any)?.env?.VITE_API_BASE ?? "";
-const API_BASE = String(RAW_BASE).replace(/\/+$/, ""); // trim trailing slashes
+const API_BASE = String(RAW_BASE || window.location.origin).replace(/\/+$/, ""); // trim trailing slashes
 
 function buildFolderUrls(base: string): string[] {
   const urls: string[] = [];
   const endsWithApiV2 = /\/api\/v\d+$/i.test(base);
 
   if (endsWithApiV2) {
+    // If base already ends with /api/v2
     urls.push(`${base}/folders/`);
     const host = base.replace(/\/api\/v\d+$/i, "");
     urls.push(`${host}/v2/api/v2/folders/`);
   } else {
+    // Common backends
     urls.push(`${base}/api/v2/folders/`);
     urls.push(`${base}/v2/api/v2/folders/`);
   }
-
-  // De-duplicate while preserving order
   return Array.from(new Set(urls.filter(Boolean)));
 }
 
-const CANDIDATE_URLS = buildFolderUrls(API_BASE || window.location.origin);
+const CANDIDATE_URLS = buildFolderUrls(API_BASE);
 
 export const createFolderApi = async (
   token: string,
@@ -54,9 +54,9 @@ export const createFolderApi = async (
     } catch (err: any) {
       lastErr = err;
       const status = err?.response?.status;
-      // If it's clearly the wrong route (404/405), try the next candidate.
+      // If wrong route pattern (404/405), try next candidate.
       if (status === 404 || status === 405) continue;
-      break; // other errors are likely real (401/403/422/500) → stop
+      break; // real errors (401/403/422/500) → stop
     }
   }
 
@@ -66,8 +66,5 @@ export const createFolderApi = async (
     lastErr?.message ||
     "Failed to create folder";
 
-  // Helpful context for debugging
-  throw new Error(
-    `${detail} (tried: ${CANDIDATE_URLS.join(", ")})`
-  );
+  throw new Error(`${detail} (tried: ${CANDIDATE_URLS.join(", ")})`);
 };

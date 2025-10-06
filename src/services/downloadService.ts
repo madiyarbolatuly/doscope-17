@@ -92,9 +92,9 @@ export async function downloadDocument(params: {
   const { token, id, name, path, defaultName } = params;
 
   const candidates: string[] = [
-    id != null ? `${API_ROOT}/file/${encodeURIComponent(String(id))}/download` : '',
-    name ? `${API_ROOT}/file/${encodeURIComponent(name)}/download` : '',
-    path ? `${API_ROOT}/file/download?path=${encodeURIComponent(path)}` : '',
+    id != null ? `/file/${encodeURIComponent(String(id))}/download` : '',
+    name ? `/file/${encodeURIComponent(name)}/download` : '',
+    path ? `/file/download?path=${encodeURIComponent(path)}` : '',
   ].filter(Boolean);
 
   let lastErr: unknown = null;
