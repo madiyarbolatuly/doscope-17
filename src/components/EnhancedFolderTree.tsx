@@ -217,7 +217,7 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
       <div className="space-y-1">
         <div className="font-medium text-sm text-muted-foreground px-2 py-1">Папки</div>
         {sortedRoot.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">Нет папок</div>
+          <div className="text-center py-8 text-muted-foreground">Загрузка папок...</div>
         ) : (
           <div className="group">
             {sortedRoot.map((node) => {
