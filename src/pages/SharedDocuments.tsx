@@ -185,7 +185,7 @@ const SharedDocuments: React.FC = () => {
                 {card.name}
               </h3>
               <div className="text-sm text-gray-500">
-                Поделился: <span className="font-medium">{card.sharedBy}</span>
+                Поделился: <span className="font-medium">admin</span>
               </div>
             </div>
   
