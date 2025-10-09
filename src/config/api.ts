@@ -1,6 +1,5 @@
 // src/config/api.ts
-// src/config/api.ts
-export const API_ROOT    = import.meta.env.VITE_API_ROOT || "http://localhost:8000"; // ← was "/api"
+export const API_ROOT    = import.meta.env.VITE_API_ROOT || "/api";
 export const API_VERSION = "/v2";
 export const API_BASE    = `${API_ROOT}${API_VERSION}`;
 
