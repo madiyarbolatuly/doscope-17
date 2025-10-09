@@ -1,7 +1,6 @@
 // services/downloadService.ts
 import axios, { AxiosError } from 'axios';
-import { API_ROOT } from '@/config/api';
-
+import { API_BASE } from '@/config/api';
 /** Parse filename from Content-Disposition header (RFC 5987 and plain). */
 function filenameFromContentDisposition(cd?: string): string | undefined {
   if (!cd) return;
@@ -92,10 +91,10 @@ export async function downloadDocument(params: {
   const { token, id, name, path, defaultName } = params;
 
   const candidates: string[] = [
-    id != null ? `/file/${encodeURIComponent(String(id))}/download` : '',
-    name ? `/file/${encodeURIComponent(name)}/download` : '',
-    path ? `/file/download?path=${encodeURIComponent(path)}` : '',
-  ].filter(Boolean);
+    id != null ? `${API_BASE}/file/${encodeURIComponent(String(id))}/download` : '',
+    name ? `${API_BASE}/file/${encodeURIComponent(name)}/download` : '',
+    path ? `${API_BASE}/file/download?path=${encodeURIComponent(path)}` : '',
+      ].filter(Boolean);
 
   let lastErr: unknown = null;
 

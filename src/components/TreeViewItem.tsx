@@ -317,10 +317,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               <Edit3 className="h-4 w-4 mr-2" />
               Переименовать
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => handleAction('share', e)}>
-              <ShareIcon className="h-4 w-4 mr-2" />
-              Поделиться
-            </DropdownMenuItem>
+          
             <DropdownMenuItem onClick={(e) => handleAction('favorite', e)}>
               <Star className="h-4 w-4 mr-2" />
               Добавить в избранное
