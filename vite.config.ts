@@ -16,13 +16,14 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
+        rewrite: p => p.replace(/^\/api/, ''),
+    },
     }
   },
   plugins: [
     react(),
-    mode === 'development'
+    mode === 'development' &&
+    componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {

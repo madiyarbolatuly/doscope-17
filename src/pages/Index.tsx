@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Share } from "lucide-react";
 import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
 import { durableUploadFolder } from "@/services/durableUpload";
-import { FOLDERS_ENDPOINTS } from '@/config/api';
+import { API_BASE, FOLDERS_ENDPOINTS } from '@/config/api';
 
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -576,7 +576,7 @@ const handleEdit = (doc: Document) => {
   
 
   function filenameFromDisposition(h: Headers, fallback: string) {
-    const cd = h.get("content-disposition") || "";
+    const cd = h.get("content-disposition") || "";1
     // examples: attachment; filename="foo.pdf"; filename*=UTF-8''foo.pdf
     const mStar = cd.match(/filename\*\s*=\s*[^']*''([^;]+)/i);
     if (mStar) {
@@ -589,11 +589,10 @@ const handleEdit = (doc: Document) => {
     try {
       // Prefer download by numeric ID (server zips folders automatically)
       const candidates: string[] = [
-        `/file/${encodeURIComponent(doc.id)}/download`,               // by id  (file OR folder→zip)
-        `/file/${encodeURIComponent(doc.name)}/download`,             // by name (if still supported)
-        doc.path ? `/file/download?path=${encodeURIComponent(doc.path)}` : ""
+        `${API_BASE}/file/${encodeURIComponent(doc.id)}/download`,       // by ID
+        `${API_BASE}/file/${encodeURIComponent(doc.name)}/download`,     // by name (if backend supports)
+        doc.path ? `${API_BASE}/file/download?path=${encodeURIComponent(doc.path)}` : "",
       ].filter(Boolean);
-  
       let lastStatus = 0, lastUrl = "";
   
       for (const url of candidates) {
@@ -827,8 +826,8 @@ const handleEdit = (doc: Document) => {
     try {
       // Encode the file name properly for the URL
       const encodedFileName = encodeURIComponent(document.name);
-      await axios.delete(`/api/v2/${document.id}`, {
-        headers: { "Authorization": `Bearer ${token}` }
+      await axios.delete(`/api/v2/${encodedFileName}`, {  // ← name, not id
+        headers: { Authorization: `Bearer ${token}` }
       });
       
 

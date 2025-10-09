@@ -12,7 +12,7 @@ export function useArchiveDocuments() {
     setLoading(true);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/v2/metadata/archive/list', {
+  const response = await fetch(apiUrl('/v2/metadata/archive/list'), {
         headers: {
           Authorization: `Bearer ${token}`,
         },

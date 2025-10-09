@@ -12,7 +12,7 @@ export function useFavoriteDocuments() {
     setLoading(true);
     try {
       const token = localStorage.getItem('authToken');
-      const response = await fetch('/api/v2/metadata/favorites/list', {
+  const response = await fetch(apiUrl('/v2/metadata/favorites/list'), {
         headers: {
           Authorization: `Bearer ${token}`,
         },

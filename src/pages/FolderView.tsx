@@ -6,12 +6,11 @@ import { Document, CategoryType } from '@/types/document';
 import { toast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
-import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
 import { buildTree, TreeNode } from '@/utils/buildTree';
 import { useShare } from '@/hooks/useShare';
 import { Button } from '@/components/ui/button';
-import { Plus, Share, ArrowLeft, Folder } from "lucide-react";
+import { ArrowLeft, Folder } from "lucide-react";
 import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
 
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -89,7 +88,7 @@ const FolderView = () => {
     
     setIsLoading(true);
     try {
-      const folderResponse = await fetch(`/api/v2/metadata/${folderId}`, {
+const folderResponse = await fetch(apiUrl(`/v2/metadata/${folderId}`), {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -153,7 +152,7 @@ const FolderView = () => {
 
     while (currentId) {
       try {
-        const response = await fetch(`/api/v2/metadata/${currentId}`, {
+const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -504,6 +503,7 @@ const FolderView = () => {
                   documents={filteredDocuments}
                   onDocumentClick={handleDocumentClick}
                   onDocumentSelect={handleDocumentSelect}
+                  selectedDocumentIds={selectedDocumentIds}
                 />
               )}
             </div>

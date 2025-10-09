@@ -1,7 +1,10 @@
 // src/config/api.ts
+
 export const API_ROOT    = import.meta.env.VITE_API_ROOT || "/api";
 export const API_VERSION = "/v2";
 export const API_BASE    = `${API_ROOT}${API_VERSION}`;
+export const OPENAPI_SPEC_URL = `${API_ROOT}/openapi.json`;
+
 
 // ── Auth
 export const AUTH_ENDPOINTS = {
