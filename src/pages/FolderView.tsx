@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+// src/pages/FolderView.tsx
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { DocumentGrid } from '@/components/DocumentGrid';
 import { PageHeader } from '@/components/PageHeader';
-import { Document, CategoryType } from '@/types/document';
+import { Document as UIDocument, CategoryType } from '@/types/document';
 import { toast } from '@/hooks/use-toast';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { ShareModal } from '@/components/ShareModal';
 import { buildTree, TreeNode } from '@/utils/buildTree';
-import { useShare } from '@/hooks/useShare';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Folder } from "lucide-react";
-import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
-
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { ArrowLeft, Folder, FileText, File, FileSpreadsheet, FileImage, MoreVertical } from "lucide-react";
+import { archiveDocument, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
+import { Table, TableHeader, TableRow, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FileText, File, FileSpreadsheet, FileImage, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   DropdownMenu,
@@ -26,6 +24,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EnhancedFolderTree } from '@/components/EnhancedFolderTree';
 import { BreadcrumbNavigation } from '@/components/BreadcrumbNavigation';
+
+// НОВОЕ: берём ленивая подгрузка документов
+import { useDocuments } from '@/hooks/useDocuments';
+
+// Если у тебя есть helper apiUrl — оставляю, иначе замени на константы из config/api
+declare function apiUrl(p: string): string;
 
 interface BackendDocument {
   owner_id: string;
@@ -50,114 +54,122 @@ interface FolderInfo {
   file_path: string;
 }
 
-// Add size formatting function
+// Размер в человекочитаемом виде
 const formatFileSize = (bytes: number | null | undefined): string => {
   if (!bytes || bytes === 0) return '0 B';
-  
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 const FolderView = () => {
   const { folderId } = useParams<{ folderId: string }>();
   const navigate = useNavigate();
+
   const [category] = useState<CategoryType>('all');
   const [searchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+
+  const [selectedDocument, setSelectedDocument] = useState<UIDocument | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
- 
-  const [shareDoc] = useState<Document | null>(null);
+
+  const [shareDoc] = useState<UIDocument | null>(null);
   const [setIsShareOpen] = useState(false);
-  const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
+
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   const [currentFolder, setCurrentFolder] = useState<FolderInfo | null>(null);
   const [breadcrumbPath, setBreadcrumbPath] = useState<FolderInfo[]>([]);
+  const [metaLoading, setMetaLoading] = useState(false);
 
   const token = localStorage.getItem('authToken');
 
-  const fetchFolderContents = useCallback(async () => {
-    if (!folderId) return;
-    
-    setIsLoading(true);
-    try {
-const folderResponse = await fetch(apiUrl(`/v2/metadata/${folderId}`), {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+  // НОВОЕ: ленивая подгрузка документов из папки (по курсору)
+  const {
+    docs: lazyDocs,            // документы из хука (твоя «ленивая» пагинация)
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    loading: docsLoading,
+    refetch,                   // использовать после действий (archive/delete/rename)
+  } = useDocuments(undefined, undefined, folderId);
 
+  // НОВОЕ: "сторожок" для IntersectionObserver
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    });
+    io.observe(sentinelRef.current);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Маппинг документов из хука → тип, который ожидает текущий экран (UIDocument)
+  const documents: UIDocument[] = useMemo(() => {
+    return (lazyDocs ?? []).map((d) => {
+      // d.modified может быть строкой — конвертим в Date
+      const mod = d.modified ? new Date(d.modified) : new Date();
+      return {
+        id: d.id,
+        name: d.name,
+        title: d.name,
+        type: (d as any).type ?? 'file', // если в хуке поле называется type
+        size: (d as any).size ?? 'Unknown',
+        created: mod,                    // нет отдельного created — используем modified
+        modified: mod,
+        tags: [],
+        categories: (d as any).category ? [(d as any).category] : [],
+        status: (d as any).status ?? 'draft',
+        isArchived: (d as any).archived ?? false,
+        favorited: (d as any).starred ?? false,
+        path: '',
+        parentId: null,
+      } as UIDocument;
+    });
+  }, [lazyDocs]);
+
+  // Дерево для сайдбара
+  const treeData: TreeNode[] = useMemo(() => buildTree(documents), [documents]);
+
+  // Загрузка метаданных папки и хлебных крошек (оставляем твой подход)
+  const fetchFolderMeta = useCallback(async () => {
+    if (!folderId) {
+      setCurrentFolder(null);
+      setBreadcrumbPath([]);
+      return;
+    }
+
+    setMetaLoading(true);
+    try {
+      const folderResponse = await fetch(apiUrl(`/v2/metadata/${folderId}`), {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (folderResponse.ok) {
         const folderData = await folderResponse.json();
         setCurrentFolder(folderData);
       }
-
-      const contentsResponse = await fetch(`/api/v2/folders/${folderId}/children`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (contentsResponse.ok) {
-        const contentsData = await contentsResponse.json();
-        const docsKey = Object.keys(contentsData).find(key => Array.isArray(contentsData[key]));
-        const docs = docsKey ? contentsData[docsKey] : [];
-        
-        const transformedDocs: Document[] = docs.map((doc: BackendDocument) => ({
-          id: doc.id,
-          name: doc.name,
-          title: doc.name,
-          type: doc.file_type,
-          size: formatFileSize(doc.size), // Use proper size formatting
-          created: new Date(doc.created_at),
-          modified: new Date(doc.created_at),
-          tags: doc.tags || [],
-          categories: doc.categories || [],
-          status: doc.status,
-          isArchived: doc.status === 'archived',
-          favorited: false, // Use correct property name
-          path: doc.file_path,
-          parentId: doc.parent_id,
-        }));
-
-        setDocuments(transformedDocs);
-      }
-
-      // Build breadcrumb path
       await buildBreadcrumbPath(folderId);
-
-    } catch (error) {
-      console.error('Error fetching folder contents:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load folder contents",
-        variant: "destructive",
-      });
+    } catch (e) {
+      console.error('Error fetching folder meta:', e);
     } finally {
-      setIsLoading(false);
+      setMetaLoading(false);
     }
   }, [folderId, token]);
 
-  // Build breadcrumb path by traversing up the folder hierarchy
   const buildBreadcrumbPath = async (currentFolderId: string) => {
     const path: FolderInfo[] = [];
     let currentId = currentFolderId;
-
     while (currentId) {
       try {
-const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
+        const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
+          headers: { "Authorization": `Bearer ${token}` }
         });
-
         if (response.ok) {
           const folderData = await response.json();
           path.unshift(folderData);
@@ -170,39 +182,37 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
         break;
       }
     }
-
     setBreadcrumbPath(path);
   };
 
   useEffect(() => {
-    fetchFolderContents();
-  }, [fetchFolderContents]);
+    fetchFolderMeta();
+    // при смене папки стоит очистить выбор
+    setSelectedDocumentIds([]);
+  }, [fetchFolderMeta]);
 
-  // Navigation handlers
-  const handleFolderClick = (folder: Document) => {
+  // Навигация
+  const handleFolderClick = (folder: UIDocument) => {
     if (folder.type === 'folder') {
       navigate(`/?folderId=${folder.id}`);
     }
   };
-  
+
   const handleFolderSelect = (id: string) => {
     navigate(`/?folderId=${id}`);
   };
-  
+
   const handleBackToRoot = () => {
     navigate('/');
   };
-  
-  const handleBreadcrumbClick = (folderId: string) => {
-    if (folderId === 'root') {
-      navigate('/');
-    } else {
-      navigate(`/?folderId=${folderId}`);
-    }
+
+  const handleBreadcrumbClick = (id: string) => {
+    if (id === 'root') navigate('/');
+    else navigate(`/?folderId=${id}`);
   };
 
-  // Reuse existing handlers from Index.tsx
-  const handleDocumentClick = (document: Document) => {
+  // Клики по документам
+  const handleDocumentClick = (document: UIDocument) => {
     if (document.type === 'folder') {
       handleFolderClick(document);
     } else {
@@ -211,9 +221,9 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
     }
   };
 
-  const handleDocumentSelect = (document: Document) => {
-    setSelectedDocumentIds(prev => 
-      prev.includes(document.id) 
+  const handleDocumentSelect = (document: UIDocument) => {
+    setSelectedDocumentIds(prev =>
+      prev.includes(document.id)
         ? prev.filter(id => id !== document.id)
         : [...prev, document.id]
     );
@@ -223,75 +233,46 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
     setSelectedDocumentIds(documents.map(doc => doc.id));
   };
 
-  const handleClearSelection = () => {
-    setSelectedDocumentIds([]);
-  };
+  const handleClearSelection = () => setSelectedDocumentIds([]);
 
-  const handleDeleteDocument = async (document: Document) => {
+  // Действия (после каждого — refetch(), чтобы подтянуть актуальную страницу)
+  const handleDeleteDocument = async (document: UIDocument) => {
     try {
       await deleteDocument(document.id, token!);
-      toast({
-        title: "Success",
-        description: "Document deleted successfully",
-      });
-      fetchFolderContents(); // Refresh the list
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete document",
-        variant: "destructive",
-      });
+      toast({ title: "Success", description: "Document deleted successfully" });
+      await refetch();
+    } catch {
+      toast({ title: "Error", description: "Failed to delete document", variant: "destructive" });
     }
   };
 
-  const handleArchiveDocument = async (document: Document) => {
+  const handleArchiveDocument = async (document: UIDocument) => {
     try {
       await archiveDocument(document.id, token!);
-      toast({
-        title: "Success",
-        description: "Document archived successfully",
-      });
-      fetchFolderContents(); // Refresh the list
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to archive document",
-        variant: "destructive",
-      });
+      toast({ title: "Success", description: "Document archived successfully" });
+      await refetch();
+    } catch {
+      toast({ title: "Error", description: "Failed to archive document", variant: "destructive" });
     }
   };
 
-  const handleToggleFavorite = async (document: Document) => {
+  const handleToggleFavorite = async (document: UIDocument) => {
     try {
       await toggleStar(document.id, token!);
-      toast({
-        title: "Success",
-        description: "Document favorited successfully",
-      });
-      fetchFolderContents(); // Refresh the list
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to favorite document",
-        variant: "destructive",
-      });
+      toast({ title: "Success", description: "Document favorited successfully" });
+      await refetch();
+    } catch {
+      toast({ title: "Error", description: "Failed to favorite document", variant: "destructive" });
     }
   };
 
-  const handleRenameDocument = async (document: Document, newName: string) => {
+  const handleRenameDocument = async (document: UIDocument, newName: string) => {
     try {
       await renameDocument(document.id, newName, token!);
-      toast({
-        title: "Success",
-        description: "Document renamed successfully",
-      });
-      fetchFolderContents(); // Refresh the list
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to rename document",
-        variant: "destructive",
-      });
+      toast({ title: "Success", description: "Document renamed successfully" });
+      await refetch();
+    } catch {
+      toast({ title: "Error", description: "Failed to rename document", variant: "destructive" });
     }
   };
 
@@ -300,14 +281,14 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
-  const sortedDocuments = React.useMemo(() => {
+  const sortedDocuments = useMemo(() => {
     return [...documents].sort((a, b) => {
-      let aValue: any = a[sortBy as keyof Document];
-      let bValue: any = b[sortBy as keyof Document];
+      let aValue: any = (a as any)[sortBy as keyof UIDocument];
+      let bValue: any = (b as any)[sortBy as keyof UIDocument];
 
       if (sortBy === 'created' || sortBy === 'modified') {
-        aValue = aValue.getTime();
-        bValue = bValue.getTime();
+        aValue = (aValue as Date)?.getTime?.() ?? 0;
+        bValue = (bValue as Date)?.getTime?.() ?? 0;
       }
 
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
@@ -316,9 +297,9 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
     });
   }, [documents, sortBy, sortOrder]);
 
-  const filteredDocuments = React.useMemo(() => {
+  const filteredDocuments = useMemo(() => {
     if (!searchQuery) return sortedDocuments;
-    return sortedDocuments.filter(doc => 
+    return sortedDocuments.filter(doc =>
       doc.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [sortedDocuments, searchQuery]);
@@ -345,7 +326,8 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
     }
   };
 
-  if (isLoading) {
+  // Скелетон загрузки
+  if (docsLoading && documents.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
@@ -355,7 +337,7 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Breadcrumb Navigation */}
+      {/* Хлебные крошки */}
       <div className="flex items-center space-x-2 p-4 border-b">
         <Button
           variant="ghost"
@@ -366,8 +348,8 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
           <ArrowLeft className="h-4 w-4" />
           <span>Root</span>
         </Button>
-        
-        {breadcrumbPath.map((folder, index) => (
+
+        {breadcrumbPath.map((folder) => (
           <React.Fragment key={folder.id}>
             <span className="text-gray-400">/</span>
             <Button
@@ -382,13 +364,13 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
         ))}
       </div>
 
-      {/* Page Header */}
+      {/* Заголовок */}
       <PageHeader
         title={currentFolder?.name || 'Folder'}
         description={`Contents of ${currentFolder?.name || 'folder'}`}
       />
 
-      {/* Main Content */}
+      {/* Контент */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={75}>
@@ -416,87 +398,76 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
                   </div>
 
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12"></TableHead>
-                        <TableHead 
-                          className="cursor-pointer"
-                          onClick={() => handleSort('name')}
-                        >
-                          Name
-                        </TableHead>
-                        <TableHead 
-                          className="cursor-pointer"
-                          onClick={() => handleSort('type')}
-                        >
-                          Type
-                        </TableHead>
-                        <TableHead 
-                          className="cursor-pointer"
-                          onClick={() => handleSort('size')}
-                        >
-                          Size
-                        </TableHead>
-                        <TableHead 
-                          className="cursor-pointer"
-                          onClick={() => handleSort('created')}
-                        >
-                          Created
-                        </TableHead>
-                        <TableHead className="w-12">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredDocuments.map((document) => (
-                        <TableRow
-                          key={document.id}
-                          className={`cursor-pointer hover:bg-gray-50 ${
-                            selectedDocumentIds.includes(document.id) ? 'bg-blue-50' : ''
-                          }`}
-                          onClick={() => handleDocumentClick(document)}
-                        >
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedDocumentIds.includes(document.id)}
-                              onCheckedChange={() => handleDocumentSelect(document)}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </TableCell>
-                          <TableCell className="flex items-center space-x-2">
-                            {renderIcon(document.type)}
-                            <span className="font-medium">{document.name}</span>
-                          </TableCell>
-                          <TableCell className="capitalize">{document.type}</TableCell>
-                          <TableCell>{document.size}</TableCell>
-                          <TableCell>{format(new Date(document.created_at || document.modified), 'MMM dd, yyyy')}</TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleToggleFavorite(document)}>
-                                  {document.favorited ? 'Remove from Favorites' : 'Add to Favorites'}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleArchiveDocument(document)}>
-                                  Archive
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => handleDeleteDocument(document)}
-                                  className="text-red-600"
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+  <TableHeader>…твой header…</TableHeader>
+
+  {/* Виртуализируем только строки */}
+  <DocList
+    items={filteredDocuments}
+    rowHeight={56}
+    overscan={12}
+    onNearEnd={() => {
+      // Вместо отдельного sentinel: догружаем следующую страницу,
+      // когда остаётся 10 элементов до конца
+      if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+    }}
+    renderRow={(document) => (
+      <TableRow
+        key={document.id}
+        className={`cursor-pointer hover:bg-gray-50 ${
+          selectedDocumentIds.includes(document.id) ? 'bg-blue-50' : ''
+        }`}
+        onClick={() => handleDocumentClick(document)}
+      >
+        <TableCell>
+          <Checkbox
+            checked={selectedDocumentIds.includes(document.id)}
+            onCheckedChange={() => handleDocumentSelect(document)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </TableCell>
+        <TableCell className="flex items-center space-x-2">
+          {renderIcon(document.type)}
+          <span className="font-medium">{document.name}</span>
+        </TableCell>
+        <TableCell className="capitalize">{document.type}</TableCell>
+        <TableCell>{document.size}</TableCell>
+        <TableCell>
+          {document.created ? format(document.created, 'MMM dd, yyyy') : '—'}
+        </TableCell>
+        <TableCell>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleToggleFavorite(document)}>
+                {document.favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleArchiveDocument(document)}>
+                Archive
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => handleDeleteDocument(document)}
+                className="text-red-600"
+              >
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
+    )}
+  />
+</Table>
+
+                  {/* НОВОЕ: сторожок для ленивой подгрузки */}
+                  <div ref={sentinelRef} style={{ height: 1 }} />
+                  {isFetchingNextPage && (
+                    <div className="p-3 text-sm opacity-70">Loading more…</div>
+                  )}
                 </div>
               ) : (
                 <DocumentGrid
@@ -540,4 +511,4 @@ const response = await fetch(apiUrl(`/v2/metadata/${currentId}`), {
   );
 };
 
-export default FolderView; 
+export default FolderView;

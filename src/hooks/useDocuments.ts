@@ -1,8 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+// src/hooks/useDocuments.ts
+import { useInfiniteQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { DOCUMENT_ENDPOINTS } from "@/config/api";
 
-export type DocumentStatus = "public" | "private" | "shared" | "deleted" | "archived" | "pending" | "approved" | "rejected";
+// ──────────────────────────────────────────────────────────────────────────────
+// Типы
+// ──────────────────────────────────────────────────────────────────────────────
+export type DocumentStatus =
+  | "public"
+  | "private"
+  | "shared"
+  | "deleted"
+  | "archived"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "draft";
 
 export interface DocumentMeta {
   id: string;
@@ -17,10 +30,10 @@ export interface DocumentMeta {
   status: DocumentStatus;
   file_hash: string | null;
   access_to: string[] | null;
-  parent_id: number | null; // Added parent_id
-  is_archived: boolean; // Added is_archived
-  is_favourited: boolean; // Added is_favourited
-  deleted_at: string | null; // Added deleted_at
+  parent_id: number | null;
+  is_archived: boolean;
+  is_favourited: boolean;
+  deleted_at: string | null;
 }
 
 export interface Document {
@@ -33,148 +46,187 @@ export interface Document {
   category: string;
   archived: boolean;
   starred: boolean;
-  status?: 'pending' | 'approved' | 'rejected' | 'draft'; // <-- add status
+  status?: "pending" | "approved" | "rejected" | "draft";
 }
 
-export function useDocuments(category?: string, status?: string, parentId?: string) {
-  const [docs, setDocs] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>();
-  const [totalCount, setTotalCount] = useState(0);
-
-
-  const fetchDocuments = useCallback(async (limit = 10, offset = 0) => {
-    setLoading(true);
-    setError(undefined);
-
-    try {
-      let url = DOCUMENT_ENDPOINTS.METADATA;
-      const params = new URLSearchParams();
-
-      if (category) params.append('category', category);
-      if (status) params.append('status', status);
-      if (parentId) params.append('parent_id', parentId);
-
-      params.append('limit', limit.toString());
-      params.append('offset', offset.toString());
-
-      url = `${url}?${params.toString()}`;
-
-      // Get the auth token from localStorage
-      const token = localStorage.getItem('authToken');
-
-      const response = await axios.get<Record<string, DocumentMeta[]>>(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-
-      // Extract documents from the response
-      const docsArray: DocumentMeta[] = [];
-      let count = 0;
-
-      Object.values(response.data).forEach(docArray => {
-        if (Array.isArray(docArray)) {
-          docsArray.push(...docArray);
-          count += docArray.length;
-        }
-      });
-
-      const transformedDocuments: Document[] = docsArray.map((doc: DocumentMeta) => ({
-        id: doc.id,
-        name: doc.name,
-        type: doc.file_type || "unknown",
-        size: doc.size ? `${doc.size} bytes` : "Unknown",
-        modified: doc.created_at,
-        owner: doc.owner_id,
-        category: doc.categories?.[0] || "uncategorized",
-        archived: doc.status === 'archived',
-        starred: false, // or set your own logic here if needed
-        // Mapping status as well
-        status: doc.status as 'pending' | 'approved' | 'rejected' | 'draft' | undefined,
-      }));
-
-      setDocs(transformedDocuments);
-      setTotalCount(count);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-        console.error("Error fetching documents:", err);
-      } else {
-        setError("An unknown error occurred.");
-        console.error("Error fetching documents:", err);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [category, status, parentId]);
-
-  return { docs, loading, error, totalCount, refetch: fetchDocuments };
-}
-
-// Hook for archived documents
-export function useArchivedDocuments() {
-  const [docs, setDocs] = useState<DocumentMeta[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>();
-
-  const fetchArchivedDocuments = async () => {
-    setLoading(true);
-    setError(undefined);
-    
-    try {
-      // Get the auth token from localStorage
-      const token = localStorage.getItem('authToken');
-      
-      const response = await axios.get(DOCUMENT_ENDPOINTS.ARCHIVE_LIST, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      setDocs(response.data);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-        console.error("Error fetching archived documents:", err);
-      } else {
-        setError("An unknown error occurred.");
-        console.error("Error fetching archived documents:", err);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchArchivedDocuments();
-  }, []);
-
-  return { docs, loading, error, refetch: fetchArchivedDocuments };
-}
-
-// Function to archive a document
-export const archiveDocument = async (fileName: string) => {
-  const token = localStorage.getItem('authToken');
-  
-  const response = await axios.post(
-    DOCUMENT_ENDPOINTS.ARCHIVE(fileName),
-    {},
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    }
-  );
-  
-  return response.data;
+type PageResp = {
+  documents: DocumentMeta[];
+  next_cursor: string | null;
+  total_count: number | null;
 };
 
-// Function to unarchive a document
+// ──────────────────────────────────────────────────────────────────────────────
+/** Маппер метаданных бэкенда → UI-модель */
+const toDocument = (doc: DocumentMeta): Document => ({
+  id: doc.id,
+  name: doc.name,
+  type: doc.file_type ?? "unknown",
+  size: doc.size != null ? `${doc.size} bytes` : "Unknown",
+  modified: doc.created_at,
+  owner: doc.owner_id,
+  category: doc.categories?.[0] ?? "uncategorized",
+  archived: doc.status === "archived" || !!doc.is_archived,
+  starred: !!doc.is_favourited,
+  status:
+    (["pending", "approved", "rejected", "draft"].includes(doc.status)
+      ? (doc.status as Document["status"])
+      : undefined),
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// API: курсорная навигация (backward-compatible нормализация)
+// ──────────────────────────────────────────────────────────────────────────────
+async function fetchDocumentsPage(params: {
+  parentId: number | null;
+  limit: number;
+  cursor?: string | null;
+  category?: string;
+  status?: string;
+}): Promise<PageResp> {
+  const sp = new URLSearchParams();
+  if (params.parentId != null) sp.set("parent_id", String(params.parentId));
+  sp.set("limit", String(params.limit));
+  if (params.cursor) sp.set("cursor", params.cursor);
+  if (params.category) sp.set("category", params.category);
+  if (params.status) sp.set("status", params.status);
+
+  const token = localStorage.getItem("authToken");
+  const { data } = await axios.get(`${DOCUMENT_ENDPOINTS.METADATA}?${sp.toString()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  // Современный формат: { documents, next_cursor, total_count }
+  if (data && Array.isArray(data.documents)) {
+    return {
+      documents: data.documents as DocumentMeta[],
+      next_cursor: data.next_cursor ?? null,
+      total_count: data.total_count ?? null,
+    };
+  }
+
+  // Legacy-формат: объект с массивами под произвольными ключами — разворачиваем.
+  const docsArray: DocumentMeta[] = [];
+  let count = 0;
+  if (data && typeof data === "object") {
+    Object.values(data as Record<string, unknown>).forEach((v) => {
+      if (Array.isArray(v)) {
+        docsArray.push(...(v as DocumentMeta[]));
+        count += v.length;
+      }
+    });
+  }
+
+  return {
+    documents: docsArray,
+    next_cursor: null,
+    total_count: count,
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Хук: ленивый список документов по курсору (без offset)
+// ──────────────────────────────────────────────────────────────────────────────
+export function useDocuments(
+  category?: string,
+  status?: string,
+  parentId?: string
+) {
+  const pageSize = 100; // подберите 50–200 под UX
+
+  const query = useInfiniteQuery({
+    queryKey: ["docs", category ?? null, status ?? null, parentId ?? null, pageSize],
+    queryFn: async ({ pageParam }) => {
+      const page = await fetchDocumentsPage({
+        parentId: parentId ? Number(parentId) : null,
+        limit: pageSize,
+        cursor: pageParam ?? null,
+        category,
+        status,
+      });
+      return {
+        documents: (page.documents ?? []) as DocumentMeta[],
+        next_cursor: page.next_cursor ?? null,
+        total_count: page.total_count ?? null,
+      };
+    },
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    initialPageParam: null as string | null,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const docs: Document[] =
+    (query.data?.pages ?? []).flatMap((p) => (p.documents ?? []).map(toDocument)) ?? [];
+
+  // total_count может быть null (мы не считаем дорого на бэке)
+  const totalCount =
+    query.data?.pages?.[query.data.pages.length - 1]?.total_count ??
+    query.data?.pages?.[0]?.total_count ??
+    0;
+
+  return {
+    docs,
+    totalCount,
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : undefined,
+    hasNextPage: query.hasNextPage,
+    fetchNextPage: query.fetchNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
+    refetch: () => query.refetch(),
+    reset: () => query.remove(),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Хук: список архивных документов (можно оставить «как есть»)
+// ──────────────────────────────────────────────────────────────────────────────
+export function useArchivedDocuments() {
+  const q = useInfiniteQuery({
+    queryKey: ["archived"],
+    // Если у вас нет курсора у архива — грузим один раз
+    queryFn: async () => {
+      const token = localStorage.getItem("authToken");
+      const { data } = await axios.get(DOCUMENT_ENDPOINTS.ARCHIVE_LIST, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      return { documents: data as DocumentMeta[] };
+    },
+    // без постранички
+    getNextPageParam: () => undefined,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const docs = (q.data?.pages?.[0]?.documents ?? []) as DocumentMeta[];
+
+  return {
+    docs,
+    loading: q.isLoading,
+    error: q.error ? (q.error as Error).message : undefined,
+    refetch: () => q.refetch(),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Действия: архив / разархив
+// ──────────────────────────────────────────────────────────────────────────────
+export const archiveDocument = async (fileName: string) => {
+  const token = localStorage.getItem("authToken");
+  const { data } = await axios.post(
+    DOCUMENT_ENDPOINTS.ARCHIVE(fileName),
+    {},
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+  );
+  return data;
+};
+
 export const unarchiveDocument = async (fileName: string) => {
-  const token = localStorage.getItem('authToken');
-  
-  const response = await axios.post(
+  const token = localStorage.getItem("authToken");
+  const { data } = await axios.post(
     DOCUMENT_ENDPOINTS.UNARCHIVE(fileName),
     {},
-    {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    }
+    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
   );
-  
-  return response.data;
+  return data;
 };

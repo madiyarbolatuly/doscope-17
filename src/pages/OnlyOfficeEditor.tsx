@@ -49,17 +49,15 @@ export default function OnlyOfficeEditorPage() {
     const scriptUrl = `${cfg.documentServerUrl}/web-apps/apps/api/documents/api.js`;
 
     let cancelled = false;
-    let s = document.createElement("script");
+    const s = document.createElement("script");
     s.src = scriptUrl;
     s.async = true;
     s.onload = () => {
       if (cancelled) return;
-      // @ts-ignore
       if (!window.DocsAPI) {
         setErr("DocsAPI not available");
         return;
       }
-      // @ts-ignore
       editorRef.current = new window.DocsAPI.DocEditor(holderRef.current!, cfg.config);
     };
     s.onerror = () => setErr(`Failed to load ${scriptUrl}`);
@@ -68,8 +66,7 @@ export default function OnlyOfficeEditorPage() {
     return () => {
       cancelled = true;
       try {
-        // @ts-ignore
-        editorRef.current?.destroyEditor && editorRef.current.destroyEditor();
+       editorRef.current?.destroyEditor && editorRef.current.destroyEditor();
       } catch {}
       document.body.removeChild(s);
     };
