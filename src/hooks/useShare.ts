@@ -4,6 +4,7 @@ interface CreateLinkParams {
   visits: number;
   share_to: string[];
 }
+
 interface ShareUsersParams {
   share_to: string[];
 }
@@ -12,14 +13,19 @@ export function useShare() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ----------------------------
+  // CREATE SHARE LINK
+  // ----------------------------
   async function createShareLink(
     docId: string,
     params: CreateLinkParams
   ): Promise<{ personal_url: string; share_this: any }> {
     setLoading(true);
     setError(null);
+
     try {
       const token = localStorage.getItem('authToken');
+
       const res = await fetch(`/api/v2/share-link/${docId}`, {
         method: 'POST',
         headers: {
@@ -28,12 +34,17 @@ export function useShare() {
         },
         body: JSON.stringify(params),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
       return await res.json();
     } catch (err: any) {
       console.error('createShareLink error:', err);
       setError(err.message);
-      // Return dummy successful response
+
+      // fallback response
       return {
         personal_url: '',
         share_this: null,
@@ -43,14 +54,19 @@ export function useShare() {
     }
   }
 
+  // ----------------------------
+  // SHARE WITH USERS
+  // ----------------------------
   async function shareWithUsers(
     docId: string,
     params: ShareUsersParams
   ): Promise<void> {
     setLoading(true);
     setError(null);
+
     try {
       const token = localStorage.getItem('authToken');
+
       const res = await fetch(`/api/v2/sharing/share-link/${docId}`, {
         method: 'POST',
         headers: {
@@ -59,7 +75,10 @@ export function useShare() {
         },
         body: JSON.stringify(params),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
     } catch (err: any) {
       console.error('shareWithUsers error:', err);
       setError(err.message);
@@ -67,6 +86,11 @@ export function useShare() {
       setLoading(false);
     }
   }
-  
-  return { createShareLink, shareWithUsers, loading, error };
+
+  return {
+    createShareLink,
+    shareWithUsers,
+    loading,
+    error,
+  };
 }

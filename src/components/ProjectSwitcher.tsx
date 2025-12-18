@@ -13,15 +13,15 @@ type FolderNode = { id: string; name: string };
 
 export interface ProjectSwitcherProps {
   className?: string;
-  /** Выбранный проект (второй уровень). */
+  /** Выбранный узел (правый столбец, подпапка). */
   selectedProjectId?: string | null;
-  /** Коллбек выбора проекта. */
-  onProjectChange: (id: string, name: string, yearId: string, yearName: string) => void;
-  /** Опционально стартовый выбранный год. */
-  initialYearId?: string | null;
+  /** Коллбек выбора подпапки: (childId, childName, parentId, parentName). */
+  onProjectChange: (id: string, name: string, parentId: string, parentName: string) => void;
+  /** (опц.) предварительно выбранный родитель (левый столбец). */
+  initialYearId?: string | null; // сохраним пропс для обратной совместимости
 }
 
-/** Показывает 2 узла: слева — ГОДЫ (root folders), справа — ПРОЕКТЫ (дети выбранного года). */
+/** Слева — корневые папки (root folders), справа — их подпапки. Без привязки к названиям типа “2025/Projects”. */
 export function ProjectSwitcher({
   className,
   selectedProjectId,
@@ -30,99 +30,100 @@ export function ProjectSwitcher({
 }: ProjectSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [years, setYears] = useState<FolderNode[]>([]);
-  const [yearsLoading, setYearsLoading] = useState(false);
-  const [projectsByYear, setProjectsByYear] = useState<Map<string, FolderNode[]>>(new Map());
-  const [loadingYearId, setLoadingYearId] = useState<string | null>(null);
-  const [activeYearId, setActiveYearId] = useState<string | null>(initialYearId);
-  const activeYearRef = useRef<string | null>(initialYearId);
+  const [roots, setRoots] = useState<FolderNode[]>([]);
+  const [rootsLoading, setRootsLoading] = useState(false);
+  const [childrenByRoot, setChildrenByRoot] = useState<Map<string, FolderNode[]>>(new Map());
+  const [loadingRootId, setLoadingRootId] = useState<string | null>(null);
+  const [activeRootId, setActiveRootId] = useState<string | null>(initialYearId ?? null);
+  const activeRootRef = useRef<string | null>(initialYearId ?? null);
 
   const token = useMemo(() => localStorage.getItem("authToken"), []);
 
-  // ——— Helpers ———
-  const authHeaders = useMemo(
-    () => ({
-      Authorization: token ? `Bearer ${token}` : undefined,
-      Accept: "application/json",
-    }),
-    [token]
-  );
+  // Формируем заголовки без undefined
+  const authHeaders = useMemo(() => {
+    const h: Record<string, string> = { Accept: "application/json" };
+    if (token) h.Authorization = `Bearer ${token}`;
+    return h;
+  }, [token]);
 
-  async function fetchYears() {
-    setYearsLoading(true);
+  // ---- API ----
+  async function fetchRoots() {
+    setRootsLoading(true);
+    const ctrl = new AbortController();
     try {
       const url = `${API_ROOT}/v2/metadata?only_folders=true&recursive=false&limit=500`;
-      const res = await axios.get(url, { headers: authHeaders });
+      const res = await axios.get(url, { headers: authHeaders, signal: ctrl.signal as any });
       const docs = (res.data?.documents ?? []) as any[];
       const mapped: FolderNode[] = docs.map((d) => ({ id: String(d.id), name: d.name }));
-      // Можно сортировать по убыванию имени, если это годы: 2025, 2024...
-      mapped.sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
-      setYears(mapped);
-      if (!activeYearRef.current && mapped.length > 0) {
-        activeYearRef.current = mapped[0].id;
-        setActiveYearId(mapped[0].id);
-        // сразу подгрузим проекты первого года для быстрой первой отрисовки
-        void fetchProjects(mapped[0].id);
+      // Алфавит (естественная сортировка), без предположений про “годы”
+      mapped.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      setRoots(mapped);
+
+      // Если ничего не выбрано — можно (опционально) выбрать первый корень
+      if (!activeRootRef.current && mapped.length > 0) {
+        activeRootRef.current = mapped[0].id;
+        setActiveRootId(mapped[0].id);
+        void fetchChildren(mapped[0].id);
       }
     } catch (e) {
-      console.error("fetchYears failed:", e);
+      console.error("fetchRoots failed:", e);
     } finally {
-      setYearsLoading(false);
+      setRootsLoading(false);
     }
+    return () => ctrl.abort();
   }
 
-  async function fetchProjects(yearId: string) {
-    if (projectsByYear.has(yearId)) return; // уже кэшировано
-    setLoadingYearId(yearId);
+  async function fetchChildren(parentId: string) {
+    if (childrenByRoot.has(parentId)) return; // кэш
+    setLoadingRootId(parentId);
+    const ctrl = new AbortController();
     try {
       const url = `${API_ROOT}/v2/metadata?only_folders=true&recursive=false&limit=500&parent_id=${encodeURIComponent(
-        yearId
+        parentId
       )}`;
-      const res = await axios.get(url, { headers: authHeaders });
+      const res = await axios.get(url, { headers: authHeaders, signal: ctrl.signal as any });
       const docs = (res.data?.documents ?? []) as any[];
       const mapped: FolderNode[] = docs.map((d) => ({ id: String(d.id), name: d.name }));
       mapped.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-      setProjectsByYear((prev) => new Map(prev).set(yearId, mapped));
+      setChildrenByRoot((prev) => new Map(prev).set(parentId, mapped));
     } catch (e) {
-      console.error("fetchProjects failed:", e);
+      console.error("fetchChildren failed:", e);
     } finally {
-      setLoadingYearId(null);
+      setLoadingRootId(null);
     }
+    return () => ctrl.abort();
   }
 
-  // Подгрузить годы только при первом открытии
   useEffect(() => {
-    if (open && years.length === 0 && !yearsLoading) void fetchYears();
-  }, [open, years.length, yearsLoading]);
+    if (open && roots.length === 0 && !rootsLoading) void fetchRoots();
+  }, [open, roots.length, rootsLoading]);
 
-  // Фильтрация
-  const filteredYears = useMemo(() => {
+  const filteredRoots = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return years;
-    return years.filter((y) => y.name.toLowerCase().includes(q));
-  }, [years, search]);
+    if (!q) return roots;
+    return roots.filter((r) => r.name.toLowerCase().includes(q));
+  }, [roots, search]);
 
-  const activeYear = useMemo(
-    () => years.find((y) => y.id === activeYearId) || null,
-    [years, activeYearId]
+  const activeRoot = useMemo(
+    () => roots.find((r) => r.id === activeRootId) || null,
+    [roots, activeRootId]
   );
 
-  const projectsOfActiveYear = useMemo(() => {
-    const list = (activeYearId && projectsByYear.get(activeYearId)) || [];
+  const childrenOfActiveRoot = useMemo(() => {
+    const list = (activeRootId && childrenByRoot.get(activeRootId)) || [];
     const q = search.trim().toLowerCase();
     if (!q) return list;
     return list.filter((p) => p.name.toLowerCase().includes(q));
-  }, [projectsByYear, activeYearId, search]);
+  }, [childrenByRoot, activeRootId, search]);
 
-  // Текст на кнопке (хлебные крошки)
   const buttonLabel = useMemo(() => {
-    const yearName = activeYear?.name ?? "Год";
-    if (!selectedProjectId) return `${yearName} / Проект`;
-    const prj =
-      (activeYearId && projectsByYear.get(activeYearId)?.find((p) => p.id === selectedProjectId)) ||
+    const parentName = activeRoot?.name ?? "Папка";
+    if (!selectedProjectId) return `${parentName} / Подпапка`;
+    const child =
+      (activeRootId && childrenByRoot.get(activeRootId)?.find((p) => p.id === selectedProjectId)) ||
       null;
-    return prj ? `${yearName} / ${prj.name}` : `${yearName} / Проект`;
-  }, [activeYear, selectedProjectId, activeYearId, projectsByYear]);
+    return child ? `${parentName} / ${child.name}` : `${parentName} / Подпапка`;
+  }, [activeRoot, selectedProjectId, activeRootId, childrenByRoot]);
 
   return (
     <div className={cn("flex items-center space-x-2", className)}>
@@ -143,7 +144,7 @@ export function ProjectSwitcher({
           <Command shouldFilter={false}>
             <div className="flex items-center border-b px-3">
               <CommandInput
-                placeholder="Поиск по годам и проектам…"
+                placeholder="Поиск по папкам…"
                 value={search}
                 onValueChange={setSearch}
                 className="border-0 bg-transparent focus:ring-0"
@@ -151,33 +152,32 @@ export function ProjectSwitcher({
             </div>
 
             <div className="grid grid-cols-2 gap-0">
-              {/* Левая колонка — ГОДЫ */}
+              {/* Левая колонка — КОРНЕВЫЕ ПАПКИ */}
               <CommandList className="max-h-72">
-                {yearsLoading ? (
+                {rootsLoading ? (
                   <div className="p-3 text-sm text-muted-foreground flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Загрузка лет…
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Загрузка папок…
                   </div>
                 ) : (
                   <>
-                    {filteredYears.length === 0 && <CommandEmpty>Нет папок-лет.</CommandEmpty>}
-                    <CommandGroup heading="Годы">
-                      {filteredYears.map((y) => (
+                    {filteredRoots.length === 0 && <CommandEmpty>Нет папок.</CommandEmpty>}
+                    <CommandGroup heading="Корневые папки">
+                      {filteredRoots.map((r) => (
                         <CommandItem
-                          key={y.id}
-                          value={y.name}
-                          onSelect={async () => {
-                            setActiveYearId(y.id);
-                            activeYearRef.current = y.id;
-                            // лениво подгружаем проекты выбранного года
-                            void fetchProjects(y.id);
+                          key={r.id}
+                          value={r.name}
+                          onSelect={() => {
+                            setActiveRootId(r.id);
+                            activeRootRef.current = r.id;
+                            void fetchChildren(r.id);
                           }}
                           className="flex items-center justify-between cursor-pointer"
                         >
-                          <span className="truncate">{y.name}</span>
+                          <span className="truncate">{r.name}</span>
                           <Check
                             className={cn(
                               "ml-2 h-4 w-4",
-                              activeYearId === y.id ? "opacity-100" : "opacity-0"
+                              activeRootId === r.id ? "opacity-100" : "opacity-0"
                             )}
                           />
                         </CommandItem>
@@ -187,27 +187,27 @@ export function ProjectSwitcher({
                 )}
               </CommandList>
 
-              {/* Правая колонка — ПРОЕКТЫ выбранного года */}
+              {/* Правая колонка — ПОДПАПКИ выбранного корня */}
               <CommandList className="max-h-72 border-l">
-                {!activeYearId ? (
-                  <div className="p-3 text-sm text-muted-foreground">Выберите год слева</div>
-                ) : loadingYearId === activeYearId ? (
+                {!activeRootId ? (
+                  <div className="p-3 text-sm text-muted-foreground">Выберите папку слева</div>
+                ) : loadingRootId === activeRootId ? (
                   <div className="p-3 text-sm text-muted-foreground flex items-center">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Загрузка проектов…
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Загрузка подпапок…
                   </div>
                 ) : (
                   <>
-                    {projectsOfActiveYear.length === 0 && (
-                      <CommandEmpty>Проектов нет.</CommandEmpty>
+                    {childrenOfActiveRoot.length === 0 && (
+                      <CommandEmpty>Подпапок нет.</CommandEmpty>
                     )}
-                    <CommandGroup heading={activeYear?.name ?? "Проекты"}>
-                      {projectsOfActiveYear.map((p) => (
+                    <CommandGroup heading={activeRoot?.name ?? "Подпапки"}>
+                      {childrenOfActiveRoot.map((p) => (
                         <CommandItem
                           key={p.id}
                           value={p.name}
                           onSelect={() => {
-                            if (!activeYear) return;
-                            onProjectChange(p.id, p.name, activeYear.id, activeYear.name);
+                            if (!activeRoot) return;
+                            onProjectChange(p.id, p.name, activeRoot.id, activeRoot.name);
                             setOpen(false);
                             setSearch("");
                           }}

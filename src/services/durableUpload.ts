@@ -1,96 +1,91 @@
 // src/services/durableUpload.ts
 import axios, { AxiosError } from "axios";
 
+/** Колбэк прогресса: 0..100 (%) */
 export type ProgressCb = (percent: number) => void;
 
-type UploadUrls = { base: string; folderId?: string | null; projectRootId?: string | null };
-
-type DurableOpts = {
-  targetBatchMB?: number;         // целевой размер батча
-  maxFilesPerBatch?: number;      // лимит по количеству файлов в батче
-  concurrency?: number;           // параллельные запросы
-  onProgress?: ProgressCb;        // общий прогресс 0..100
-  timeoutMs?: number;             // таймаут одного запроса
+/** Куда грузим */
+export type UploadUrls = {
+  base: string | number;           // например: "/api/v2"
+  folderId?: string | number;      // id целевой папки
+  projectRootId?: string | number; // альтернативный корневой id (если так удобнее)
 };
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
+/** Настройки загрузчика */
+type DurableOpts = {
+  targetBatchMB?: number;    // целевой размер пачки, по умолчанию 100 МБ
+  maxFilesPerBatch?: number; // максимум файлов в одной пачке, по умолчанию 250
+  concurrency?: number;      // параллельных запросов, по умолчанию 3 (1..6)
+  onProgress?: ProgressCb;   // общий прогресс в процентах
+  timeoutMs?: number;        // таймаут запроса, по умолчанию 10 мин
+};
 
-function makeBatches(
-  files: File[],
-  targetBytes: number,
-  maxFilesPerBatch: number
-): File[][] {
-  const batches: File[][] = [];
-  let cur: File[] = [];
-  let acc = 0;
-  for (const f of files) {
-    const s = f.size || 0;
-    if (
-      cur.length > 0 &&
-      (acc + s > targetBytes || cur.length >= maxFilesPerBatch)
-    ) {
-      batches.push(cur);
-      cur = [];
-      acc = 0;
+/* ────────────────────────────────────────────────────────────────────────────
+   Простые утилиты
+   ──────────────────────────────────────────────────────────────────────────── */
+const clamp = (v: number, min = 0, max = 100) => Math.min(max, Math.max(min, v));
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Повтор с экспоненциальной паузой и джиттером */
+async function withBackoff<T>(
+  fn: () => Promise<T>,
+  retries = 4,
+  onRetryReset?: () => Promise<void> | void
+): Promise<T> {
+  let delay = 500; // 0.5 c старт
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      await onRetryReset?.();
+      // джиттер: 50–150% от текущей задержки
+      const wait = delay * (0.5 + Math.random());
+      await sleep(wait);
+      delay = Math.min(delay * 2, 8000); // верхняя граница 8 c
     }
-    cur.push(f);
-    acc += s;
   }
-  if (cur.length) batches.push(cur);
-  return batches;
 }
 
-function splitBatch(batch: File[]): [File[], File[]] {
-  if (batch.length <= 1) return [batch, []];
-  const mid = Math.floor(batch.length / 2);
+/** Разбить массив пополам (для 413 Payload Too Large) */
+function splitBatch<T>(batch: T[]): [T[], T[]] {
+  const mid = Math.max(1, Math.floor(batch.length / 2));
   return [batch.slice(0, mid), batch.slice(mid)];
 }
 
-function shouldRetry(e: any): { retry: boolean; hard?: boolean } {
-  const err = e as AxiosError;
-  const status = err.response?.status;
+/** Сформировать пачки по размеру и количеству */
+function makeBatches(
+  files: File[],
+  targetBatchBytes: number,
+  maxFilesPerBatch: number
+): File[][] {
+  const batches: File[][] = [];
+  let current: File[] = [];
+  let currentBytes = 0;
 
-  // сетевые / таймауты
-  if (err.code === "ECONNABORTED" || err.message?.includes("Network Error")) {
-    return { retry: true };
-  }
+  for (const f of files) {
+    const size = f.size || 0;
+    const tooManyFiles = current.length >= maxFilesPerBatch;
+    const tooBigBySize = currentBytes + size > targetBatchBytes;
 
-  // 5xx и 408/429 — пробуем ретрай
-  if (status && (status >= 500 || status === 408 || status === 429)) {
-    return { retry: true };
-  }
-
-  // 401 — токен умер, это «жёсткая» ошибка (прерываем с инфо)
-  if (status === 401) {
-    return { retry: false, hard: true };
-  }
-
-  // остальное — не ретраим
-  return { retry: false };
-}
-
-async function withBackoff<T>(
-  fn: () => Promise<T>,
-  maxRetries: number,
-  onBeforeRetry?: (attempt: number, err: any) => Promise<void> | void
-): Promise<T> {
-  let attempt = 0;
-  // jittered exponential backoff: 0.5s, 1s, 2s, 4s...
-  while (true) {
-    try {
-      return await fn();
-    } catch (e) {
-      const { retry, hard } = shouldRetry(e);
-      if (!retry || attempt >= maxRetries || hard) throw e;
-      const delay = (500 * 2 ** attempt) + Math.floor(Math.random() * 250);
-      await onBeforeRetry?.(attempt, e);
-      await sleep(delay);
-      attempt++;
+    if ((tooManyFiles || tooBigBySize) && current.length > 0) {
+      batches.push(current);
+      current = [];
+      currentBytes = 0;
     }
+
+    // Даже если файл сам больше targetBatchBytes — кладем его один в пачку
+    current.push(f);
+    currentBytes += size;
   }
+
+  if (current.length > 0) batches.push(current);
+  return batches;
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Основная функция: надежная загрузка папки/набора файлов пачками
+   ──────────────────────────────────────────────────────────────────────────── */
 export async function durableUploadFolder(
   files: File[],
   token: string,
@@ -98,106 +93,111 @@ export async function durableUploadFolder(
   opts?: DurableOpts
 ) {
   const targetBatchBytes = (opts?.targetBatchMB ?? 100) * 1024 * 1024;
-  const maxFilesPerBatch = opts?.maxFilesPerBatch ?? 250; // 5000 файлов => ~20 батчей
+  const maxFilesPerBatch = opts?.maxFilesPerBatch ?? 250;
   const concurrency = clamp(opts?.concurrency ?? 3, 1, 6);
-  const timeoutMs = opts?.timeoutMs ?? 10 * 60 * 1000; // 10 минут на батч
+  const timeoutMs = opts?.timeoutMs ?? 10 * 60 * 1000;
   const onOverall = opts?.onProgress;
 
-  const sessionId = crypto?.randomUUID?.() ?? String(Date.now());
+  // Идентификатор сессии + общий объем
+  const sessionId =
+    (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
   const allBytes = files.reduce((s, f) => s + (f.size || 0), 0);
 
-  // формируем батчи по размеру и количеству
+  // Разбивка на пачки
   let batches = makeBatches(files, targetBatchBytes, maxFilesPerBatch);
 
-  // прогресс: общий загруженный объём
-  const uploadedRef = { bytes: 0 };          // завершённые батчи
-  const inFlightRef = new Map<number, number>(); // partial per-batch loaded
+  // Прогресс: сколько уже ушло и сколько в процессе
+  const uploadedRef = { bytes: 0 };
+  const inFlightRef = new Map<number, number>(); // batchIndex -> загружено байт
 
-  let url = `${urls.base}/upload-folder-bulk`;
-  if (urls.folderId) {
-    url += `?parent_id=${urls.folderId}`;
-  } else if (urls.projectRootId) {
-    url += `?parent_id=${urls.projectRootId}`;
-  }
-  // else → root, без parent_id
-  
+  // Формируем URL
+  const base = String(urls.base).replace(/\/$/, "");
+  const fid = urls.folderId != null ? String(urls.folderId) : undefined;
+  const pid = urls.projectRootId != null ? String(urls.projectRootId) : undefined;
 
-  // безопасный пересчёт общего прогресса с учётом параллельных батчей
+  let url = `${base}/upload-folder-bulk`;
+  const qs = new URLSearchParams();
+  if (fid) qs.set("parent_id", fid);
+  else if (pid) qs.set("parent_id", pid);
+  if (qs.toString()) url += `?${qs.toString()}`;
+
+  // Сообщить общий прогресс
   const report = () => {
     const partial = Array.from(inFlightRef.values()).reduce((a, b) => a + b, 0);
-    const pct = allBytes ? Math.round(((uploadedRef.bytes + partial) / allBytes) * 100) : 0;
+    const pct = allBytes
+      ? Math.round(((uploadedRef.bytes + partial) / allBytes) * 100)
+      : (files.length ? Math.round(((batches.length - inFlightRef.size) / batches.length) * 100) : 100);
     onOverall?.(clamp(pct, 0, 100));
   };
 
+  /** Загрузка одной пачки с ретраями и расколом при 413 */
   async function postBatch(batch: File[], batchIndex: number): Promise<void> {
     const batchBytes = batch.reduce((s, f) => s + (f.size || 0), 0);
     const idempotencyKey = `${sessionId}:${batchIndex}:${batchBytes}`;
 
     const fd = new FormData();
     for (const f of batch) {
-      const rp = (f as any).relativePath || (f as any).webkitRelativePath || f.name;
+      const rp =
+        (f as any).relativePath ||
+        (f as any).webkitRelativePath ||
+        f.name;
       fd.append("files", f, rp);
     }
 
-    // пер-батч прогресс → общий прогресс
     inFlightRef.set(batchIndex, 0);
     report();
 
     try {
       await withBackoff(
         async () => {
-          await axios.post(url, fd, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-              "X-Upload-Session": sessionId,       // сервер может логировать
-              "Idempotency-Key": idempotencyKey,   // точно-однажды семантика при ретраях
-            },
-            timeout: timeoutMs,
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            onUploadProgress: (p) => {
-              const loaded = p.loaded ?? 0;
-              inFlightRef.set(batchIndex, loaded);
-              report();
-            },
-            // IMPORTANT: если используешь AbortController — добавь signal
-          })
-          .then(res => {
-            // минимальная валидация ответа
-            const ok = res.status >= 200 && res.status < 300;
-            const accepted = (res.data?.accepted ?? batch.length);
-            if (!ok || accepted < batch.length) {
-              const msg = `Server accepted ${accepted}/${batch.length} files`;
-              const err: any = new Error(msg);
-              err.response = { status: res.status };
+          await axios
+            .post(url, fd, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "multipart/form-data",
+                "X-Upload-Session": sessionId,
+                "Idempotency-Key": idempotencyKey,
+              },
+              timeout: timeoutMs,
+              maxBodyLength: Infinity,
+              maxContentLength: Infinity,
+              onUploadProgress: (p) => {
+                const loaded = p.loaded ?? 0;
+                inFlightRef.set(batchIndex, loaded);
+                report();
+              },
+            })
+            .then((res) => {
+              const ok = res.status >= 200 && res.status < 300;
+              const accepted = res.data?.accepted ?? batch.length;
+              if (!ok || accepted < batch.length) {
+                const err: any = new Error(
+                  `Сервер принял ${accepted}/${batch.length} файлов`
+                );
+                err.response = { status: res.status };
+                throw err;
+              }
+            })
+            .catch(async (err: AxiosError) => {
+              // Слишком большой запрос — делим пачку и пробуем по частям
+              if (err.response?.status === 413 && batch.length > 1) {
+                const [a, b] = splitBatch(batch);
+                await postBatch(a, batchIndex * 2);
+                await postBatch(b, batchIndex * 2 + 1);
+                inFlightRef.delete(batchIndex);
+                return;
+              }
               throw err;
-            }
-          })
-          .catch(async (err: AxiosError) => {
-            // 413 — слишком большой батч => делим пополам (адаптивное разбиение)
-            if (err.response?.status === 413) {
-              const [a, b] = splitBatch(batch);
-              if (b.length === 0) throw err;
-              // рекурсивно грузим две половинки последовательно
-              await postBatch(a, batchIndex * 2); // уникализируем индексы
-              await postBatch(b, batchIndex * 2 + 1);
-              // пометим как завершённый (этот узел «разложился» на два)
-              inFlightRef.delete(batchIndex);
-              return;
-            }
-            throw err;
-          });
+            });
         },
-        4, // максимум 5 попыток
-        async (attempt, _err) => {
-          // перед ретраем обнулим локальный прогресс батча, чтобы не «зависал»
+        4,
+        async () => {
+          // Сбросим счетчик «в полете» перед новой попыткой
           inFlightRef.set(batchIndex, 0);
           report();
         }
       );
 
-      // если дошли сюда, батч (или его рекурсивные половинки) загружены
       uploadedRef.bytes += batchBytes;
     } finally {
       inFlightRef.delete(batchIndex);
@@ -205,22 +205,39 @@ export async function durableUploadFolder(
     }
   }
 
-  // пул воркеров
-  let cursor = 0;
-  const workers: Promise<void>[] = [];
-  for (let c = 0; c < concurrency; c++) {
-    workers.push((async function worker() {
-      while (cursor < batches.length) {
-        const i = cursor++;
-        const chunk = batches[i];
-        if (!chunk) break;
-        await postBatch(chunk, i);
-      }
-    })());
+  /** Простой пул: параллельно грузим до `concurrency` пачек */
+  async function runBatches(): Promise<void> {
+    if (batches.length === 0) {
+      onOverall?.(100);
+      return;
+    }
+
+    let next = 0;
+    let active = 0;
+    let resolved = 0;
+
+    return new Promise<void>((resolve, reject) => {
+      const launch = () => {
+        while (active < concurrency && next < batches.length) {
+          const idx = next++;
+          active++;
+          postBatch(batches[idx], idx)
+            .then(() => {
+              active--;
+              resolved++;
+              if (resolved === batches.length) {
+                resolve();
+              } else {
+                launch();
+              }
+            })
+            .catch(reject);
+        }
+      };
+      launch();
+    });
   }
 
-  await Promise.all(workers);
-
-  // финальный прогресс
+  await runBatches();
   onOverall?.(100);
 }

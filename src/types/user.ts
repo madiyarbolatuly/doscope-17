@@ -18,6 +18,8 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   lastLogin: string;
+  tenantId?: number;
+  departmentId?: number;
 }
 
 export interface RolePermissions {
@@ -36,7 +38,7 @@ export const ROLE_PERMISSIONS: RolePermissions[] = [
   {
     role: 'editor',
     permissions: ['documents.read', 'documents.write', 'documents.approve', 'users.read'],
-    pageAccess: ['/', '/documents', '/approvals', '/dashboard', '/favorites']
+    pageAccess: ['/', '/documents', '/shared', '/approvals', '/dashboard', '/favorites']
   },
   {
     role: 'viewer',

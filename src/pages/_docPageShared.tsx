@@ -1,6 +1,7 @@
 import React from "react";
 import { toast } from "@/hooks/use-toast";
 import { Document } from "@/types/document";
+import { apiUrl } from "@/config/api";
 
 export type DocumentMeta = {
     id: string | number;
@@ -80,7 +81,7 @@ export function usePagedMetaFetcher(
       const controller = new AbortController();
       abortRef.current = controller;
   
-      const res = await fetch(apiUrl(`/v2/metadata?${qs.toString()}`), {
+      const res = await fetch(apiUrl(`/v2/metadata?${qs.toString()}`),{
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         signal: controller.signal,
       });

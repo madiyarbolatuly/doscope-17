@@ -16,6 +16,9 @@ export const UserButton: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const username = (user?.username || "").trim();
+  const initial = username ? username[0]!.toUpperCase() : null;
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -28,9 +31,7 @@ export const UserButton: React.FC = () => {
           <Avatar>
             <AvatarImage src={undefined} alt={user?.username ?? "User"} />
             <AvatarFallback>
-              {user
-                ? user.username[0].toUpperCase()
-                : <User className="w-5 h-5" />}
+              {initial ? initial : <User className="w-5 h-5" />}
             </AvatarFallback>
           </Avatar>
         </span>
@@ -42,7 +43,7 @@ export const UserButton: React.FC = () => {
               <div className="flex flex-col gap-0.5">
                 <span className="font-medium truncate flex items-center gap-2">
                   <User className="h-4 w-4 mr-1 text-muted-foreground inline-block" />
-                  {user.username}
+                  {username || "Пользователь"}
                 </span>
                 <span className="text-xs text-muted-foreground truncate">ID: {user.id}</span>
               </div>

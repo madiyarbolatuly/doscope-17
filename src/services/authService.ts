@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { AUTH_ENDPOINTS } from '@/config/api';
+import { api } from '@/services/apiclient';
 import type { User } from '@/types/auth';
 
 // Types to match our backend
@@ -20,21 +21,14 @@ interface AuthTokens {
   token_type: string;
 }
 
-// Create axios instance with auth header handling
-const apiClient = axios.create();
-
-// Add auth token to all requests if available
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// NOTE:
+// Use the shared axios instance (`api`) which is configured with baseURL=API_ROOT ("/api")
+// and adds Authorization automatically. This prevents calls like "http://localhost:8080/v2/u/login"
+// (which would hit the frontend dev server and 404).
 
 // Register a new user
 export const registerUser = async (userData: SignupData): Promise<User> => {
-  const response = await apiClient.post<User>(AUTH_ENDPOINTS.SIGNUP, userData);
+  const response = await api.post<User>(AUTH_ENDPOINTS.SIGNUP, userData);
   return response.data;
 };
 
@@ -46,9 +40,7 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthToke
   formData.append('password', credentials.password);
   formData.append('grant_type', 'password');
 
-  console.log("Login API URL:", AUTH_ENDPOINTS.LOGIN);
-
-  const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
+  const response = await api.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
@@ -59,8 +51,6 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthToke
   if (response.data.refresh_token) {
     localStorage.setItem('refreshToken', response.data.refresh_token);
   }
-  
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
   
   return response.data;
 };
@@ -75,7 +65,7 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
     formData.append('refresh_token', refreshToken);
     formData.append('grant_type', 'refresh_token');
     
-    const response = await axios.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
+    const response = await api.post<AuthTokens>(AUTH_ENDPOINTS.LOGIN, formData.toString(), {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       }
@@ -87,14 +77,11 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
       localStorage.setItem('refreshToken', response.data.refresh_token);
     }
     
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
-    
     return response.data;
   } catch (error) {
     // If refresh fails, clear tokens
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
-    delete apiClient.defaults.headers.common['Authorization'];
     return null;
   }
 };
@@ -103,17 +90,9 @@ export const refreshAccessToken = async (): Promise<AuthTokens | null> => {
 export const logoutUser = () => {
   localStorage.removeItem('authToken');
   localStorage.removeItem('refreshToken');
-  delete apiClient.defaults.headers.common['Authorization'];
 };
 export const getCurrentUser = async (): Promise<User> => {
-  const response = await apiClient.get<User>(AUTH_ENDPOINTS.ME);
+  const response = await api.get<User>(AUTH_ENDPOINTS.ME);
   return response.data;
 };
-// Initialize auth header if token exists or set mock token
-const initialToken = localStorage.getItem('authToken');
-if (initialToken) {
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${initialToken}`;
 
-}
-
-export { apiClient };

@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import {
   FileText, Users, Star, Trash2, Settings, PlusCircle, Archive,
-  ClipboardList, Send, AlertCircle
+  ClipboardList, Send, AlertCircle, ShieldCheck
 } from 'lucide-react';
 import { CategoryType } from '@/types/document';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +47,10 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
   ];
 
   const visibleTools: SidebarItem[] = role === 'viewer' ? [] : toolItems;
+  const adminItems: SidebarItem[] =
+    role === 'admin'
+      ? [{ id: 'usersmanagement' as CategoryType, label: 'Пользователи', icon: <ShieldCheck size={18} />, path: '/usersmanagement' }]
+      : [];
 
   const handleItemClick = (item: SidebarItem) => {
     if (role === 'viewer' && item.id !== 'shared') {
@@ -129,6 +133,31 @@ export function Sidebar({ activeCategory = 'all', onCategoryChange }: SidebarPro
             ))}
           </nav>
         </div>
+
+        {adminItems.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-xs uppercase tracking-wider text-blue-400 font-semibold px-3 mb-2">
+              Администрирование
+            </h2>
+            <nav className="space-y-1">
+              {adminItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className={cn(
+                    'sidebar-item w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all',
+                    isActive(item)
+                      ? 'bg-blue-100 text-blue-700 font-semibold'
+                      : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                  )}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
 
       {/* bottom settings — hidden for viewer */}

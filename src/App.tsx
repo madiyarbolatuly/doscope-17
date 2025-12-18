@@ -1,6 +1,7 @@
 // App.tsx
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { MessageCircleQuestion } from 'lucide-react';
 
 import Index from './pages/Index';
 import TrashBin from './pages/TrashBin';
@@ -26,16 +27,16 @@ import ViewerRedirect from './components/ViewerRedirect';
 import { useAuth } from '@/context/AuthContext';
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const pathname = useLocation().pathname;
 
   // Optional: you can remove this useEffect if you rely purely on <ViewerRedirect />
   useEffect(() => {
-    if (!loading && user?.role === 'viewer' && pathname !== '/shared') {
+    if (!isLoading && user?.role === 'viewer' && pathname !== '/shared') {
       navigate('/shared', { replace: true });
     }
-  }, [user, loading, pathname, navigate]);
+  }, [user, isLoading, pathname, navigate]);
 
   return (
     <>
@@ -74,6 +75,18 @@ function App() {
       </Routes>
 
       <Toaster />
+
+      {/* Help Button - WhatsApp Support */}
+      <a
+        href="https://wa.me/87477087007?text=По%20всем%20техническим%20вопросам"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-blue-400 hover:bg-blue-500 text-white px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+        title="По всем техническим вопросам писать"
+      >
+        <MessageCircleQuestion className="h-5 w-5" />
+        <span className="text-sm font-medium">Помощь</span>
+      </a>
     </>
   );
 }

@@ -1,6 +1,18 @@
 // services/downloadService.ts
 import axios, { AxiosError } from 'axios';
 import { API_BASE } from '@/config/api';
+
+export type DownloadProgress = {
+  loaded: number;
+  total?: number;
+  percent?: number;
+  done?: boolean;
+};
+
+export type DownloadOptions = {
+  onProgress?: (progress: DownloadProgress) => void;
+  signal?: AbortSignal;
+};
 /** Parse filename from Content-Disposition header (RFC 5987 and plain). */
 function filenameFromContentDisposition(cd?: string): string | undefined {
   if (!cd) return;
@@ -32,13 +44,38 @@ function triggerBlobDownload(blob: Blob, filename: string) {
  *  - direct binary response
  *  - JSON body containing a signed URL (string or { url: string })
  */
-async function tryDownloadUrl(url: string, token: string, fallbackName: string) {
+async function tryDownloadUrl(
+  url: string,
+  token: string,
+  fallbackName: string,
+  options?: DownloadOptions
+) {
+  let lastLoaded = 0;
+  let lastTotal: number | undefined;
+
   const resp = await axios.get(url, {
     responseType: 'blob', // we’ll still detect JSON via content-type
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: '*/*',
     },
+    onDownloadProgress: options?.onProgress
+      ? (event) => {
+          const loaded = typeof event.loaded === 'number' ? event.loaded : 0;
+          const total = typeof event.total === 'number' ? event.total : undefined;
+          lastLoaded = loaded;
+          if (typeof total === 'number') {
+            lastTotal = total;
+          }
+          const percent = total && total > 0 ? (loaded / total) * 100 : undefined;
+          options.onProgress?.({
+            loaded,
+            total,
+            percent,
+          });
+        }
+      : undefined,
+    signal: options?.signal,
     // You can add withCredentials if your API needs cookies:
     // withCredentials: true,
   });
@@ -59,6 +96,12 @@ async function tryDownloadUrl(url: string, token: string, fallbackName: string) 
         document.body.appendChild(a);
         a.click();
         a.remove();
+        options?.onProgress?.({
+          loaded: lastTotal ?? lastLoaded,
+          total: lastTotal,
+          percent: 100,
+          done: true,
+        });
         return;
       }
     } catch {
@@ -73,6 +116,13 @@ async function tryDownloadUrl(url: string, token: string, fallbackName: string) 
     ) || fallbackName;
 
   triggerBlobDownload(resp.data, suggested);
+
+  options?.onProgress?.({
+    loaded: lastTotal ?? lastLoaded,
+    total: lastTotal,
+    percent: 100,
+    done: true,
+  });
 }
 
 /**
@@ -87,8 +137,8 @@ export async function downloadDocument(params: {
   name?: string;        // exact file name incl. extension
   path?: string;        // full backend file_path if you have it
   defaultName: string;  // used if server doesn’t provide Content-Disposition
-}) {
-  const { token, id, name, path, defaultName } = params;
+} & DownloadOptions) {
+  const { token, id, name, path, defaultName, ...options } = params;
 
   const candidates: string[] = [
     id != null ? `${API_BASE}/file/${encodeURIComponent(String(id))}/download` : '',
@@ -100,7 +150,7 @@ export async function downloadDocument(params: {
 
   for (const url of candidates) {
     try {
-      await tryDownloadUrl(url, token, defaultName);
+  await tryDownloadUrl(url, token, defaultName, options);
       return; // success
     } catch (e) {
       lastErr = e;
@@ -124,22 +174,25 @@ export async function downloadDocument(params: {
 export function downloadByFileId(
   fileId: number | string,
   token: string,
-  fallbackName = 'download'
+  fallbackName = 'download',
+  options?: DownloadOptions
 ) {
-  return downloadDocument({ token, id: fileId, defaultName: fallbackName });
+  return downloadDocument({ token, id: fileId, defaultName: fallbackName, ...options });
 }
 
 export function downloadByFileName(
   fileName: string,
-  token: string
+  token: string,
+  options?: DownloadOptions
 ) {
-  return downloadDocument({ token, name: fileName, defaultName: fileName });
+  return downloadDocument({ token, name: fileName, defaultName: fileName, ...options });
 }
 
 export function downloadByFilePath(
   filePath: string,
   token: string,
-  fallbackName = 'download'
+  fallbackName = 'download',
+  options?: DownloadOptions
 ) {
-  return downloadDocument({ token, path: filePath, defaultName: fallbackName });
+  return downloadDocument({ token, path: filePath, defaultName: fallbackName, ...options });
 }

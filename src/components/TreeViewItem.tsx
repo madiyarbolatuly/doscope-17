@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import {
   ChevronDown, ChevronRight, Folder, FolderPlus, Edit3,
   Share as ShareIcon, Move, Trash2, Download, MoreVertical, Star, Archive
@@ -8,20 +8,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from './ui/select';
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
-} from './ui/dialog';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
 import { DOCUMENT_ENDPOINTS } from "@/config/api";
 
 import { TreeNode } from '@/utils/buildTree';
 import { toast } from '@/hooks/use-toast';
 import axios from "axios";
+const LazyTreeViewDialogs = lazy(() => import('./TreeViewItemDialogs'));
 
 interface TreeViewItemProps {
   node: TreeNode;
@@ -38,7 +30,7 @@ interface TreeViewItemProps {
 
 }
 
-export const TreeViewItem: React.FC<TreeViewItemProps> = ({
+const TreeViewItemComponent: React.FC<TreeViewItemProps> = ({
   node,
   level,
   isExpanded,
@@ -48,6 +40,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   allNodes,
   onAction,
   expandedNodes,
+  onRefresh,
 }) => {
   const [showMoveDialog, setShowMoveDialog] = useState(false);
   const [showRenameDialog, setShowRenameDialog] = useState(false);
@@ -64,19 +57,19 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
   const hasChildren = !!(node.children && node.children.length > 0);
 
   // Numbers-first, case-insensitive, natural ordering
-  const collator = React.useMemo(
+  const collator = useMemo(
     () => new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }),
     []
   );
   const startsWithDigit = (s: string) => /^\s*\d/.test(s || '');
-  const compareNodes = React.useCallback((a: TreeNode, b: TreeNode) => {
+  const compareNodes = useCallback((a: TreeNode, b: TreeNode) => {
     const aNum = startsWithDigit(a.name);
     const bNum = startsWithDigit(b.name);
     if (aNum !== bNum) return aNum ? -1 : 1;
     return collator.compare(a.name || '', b.name || '');
   }, [collator]);
 
-  const sortedChildren = React.useMemo(
+  const sortedChildren = useMemo(
     () => (node.children || []).slice().sort(compareNodes),
     [node.children, compareNodes]
   );
@@ -215,8 +208,8 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
       );
       
   
-      toast({ title: "Готово", description: `«${node.name}» перемещён` });
-      if (typeof fetchDocuments === "function") await fetchDocuments();
+  toast({ title: "Готово", description: `«${node.name}» перемещён` });
+  if (typeof onRefresh === "function") await onRefresh();
     } catch (e: any) {
       console.error(e);
       toast({
@@ -241,24 +234,7 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
     setNewFolderName('');
   };
 
-  // Build sorted folder tree for "Move" picker
-  const getFolderOptions = (excludeId: string): TreeNode[] => {
-    const sortLevel = (nodes: TreeNode[] = []): TreeNode[] =>
-      nodes
-        .filter((n) => n.type === 'folder' && n.id !== excludeId)
-        .slice()
-        .sort(compareNodes)
-        .map((n) => ({ ...n, children: sortLevel(n.children || []) }));
-    return sortLevel(allNodes);
-  };
-
-  const renderFolderOptions = (folders: TreeNode[], prefix = ''): React.ReactNode[] =>
-    folders.flatMap((folder) => [
-      <SelectItem key={folder.id} value={folder.id}>
-        {prefix}{folder.name}
-      </SelectItem>,
-      ...renderFolderOptions(folder.children || [], prefix + '  '),
-    ]);
+  const shouldRenderDialogs = showRenameDialog || showCreateFolderDialog || showMoveDialog;
 
   return (
     <>
@@ -364,87 +340,52 @@ export const TreeViewItem: React.FC<TreeViewItemProps> = ({
               allNodes={allNodes}
               onAction={onAction}
               expandedNodes={expandedNodes}
+              onRefresh={onRefresh}
             />
           ))}
         </div>
       )}
 
-      {/* Rename */}
-      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Переименовать {isFolder ? 'папку' : 'файл'}</DialogTitle>
-            <DialogDescription>Введите новое имя для “{node.name}”.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">Имя</Label>
-              <Input id="name" value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleRename(); }}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>Отмена</Button>
-            <Button onClick={handleRename}>Переименовать</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create subfolder */}
-      <Dialog open={showCreateFolderDialog} onOpenChange={setShowCreateFolderDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Создать новую папку</DialogTitle>
-            <DialogDescription>Введите имя для новой подпапки в “{node.name}”.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="folderName" className="text-right">Имя папки</Label>
-              <Input
-                id="folderName" value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && newFolderName.trim()) handleCreateFolder(); }}
-                className="col-span-3" placeholder="Имя новой папки"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>Отмена</Button>
-            <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>Создать</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Move */}
-      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Переместить {isFolder ? 'папку' : 'файл'}</DialogTitle>
-            <DialogDescription>Выберите папку назначения для “{node.name}”.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="target" className="text-right">Папка назначения</Label>
-              <Select value={selectedTargetFolder} onValueChange={setSelectedTargetFolder}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Выберите папку назначения" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="root">Корневая папка</SelectItem>
-                  {renderFolderOptions(getFolderOptions(node.id))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>Отмена</Button>
-            <Button onClick={handleMove} disabled={!selectedTargetFolder}>Переместить</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {shouldRenderDialogs && (
+        <Suspense fallback={null}>
+          <LazyTreeViewDialogs
+            node={node}
+            isFolder={isFolder}
+            showRenameDialog={showRenameDialog}
+            setShowRenameDialog={setShowRenameDialog}
+            showCreateFolderDialog={showCreateFolderDialog}
+            setShowCreateFolderDialog={setShowCreateFolderDialog}
+            showMoveDialog={showMoveDialog}
+            setShowMoveDialog={setShowMoveDialog}
+            newName={newName}
+            setNewName={setNewName}
+            newFolderName={newFolderName}
+            setNewFolderName={setNewFolderName}
+            selectedTargetFolder={selectedTargetFolder}
+            setSelectedTargetFolder={setSelectedTargetFolder}
+            handleRename={handleRename}
+            handleCreateFolder={handleCreateFolder}
+            handleMove={handleMove}
+            allNodes={allNodes}
+            compareNodes={compareNodes}
+          />
+        </Suspense>
+      )}
     </>
   );
 };
+
+const areEqual = (prev: TreeViewItemProps, next: TreeViewItemProps) => {
+  if (prev.node.id !== next.node.id) return false;
+  if (prev.node.name !== next.node.name) return false;
+  if (prev.node.type !== next.node.type) return false;
+  if ((prev.node.children?.length || 0) !== (next.node.children?.length || 0)) return false;
+  if (prev.level !== next.level) return false;
+  if (prev.isExpanded !== next.isExpanded) return false;
+  if (prev.selectedId !== next.selectedId) return false;
+  if (prev.expandedNodes !== next.expandedNodes) return false;
+  if (prev.allNodes !== next.allNodes) return false;
+  return true;
+};
+
+export const TreeViewItem = React.memo(TreeViewItemComponent, areEqual);

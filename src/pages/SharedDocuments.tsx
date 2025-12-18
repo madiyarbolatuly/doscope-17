@@ -1,7 +1,11 @@
-// SharedDocuments.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/services/apiclient";
+import { SHARING_ENDPOINTS, DOCUMENT_ENDPOINTS } from "@/config/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SearchBar } from "@/components/SearchBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,10 +13,54 @@ import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
-  Share2, Download, File, FileImage, FileText, Folder, Timer, ChevronDown, ChevronRight, Eye
+  Share2,
+  Download,
+  File,
+  FileImage,
+  FileText,
+  Folder,
+  Timer,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
+import { UserButton } from "@/components/UserButton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { downloadByFileId } from "@/services/downloadService";
+import { downloadByFileId, DownloadProgress } from "@/services/downloadService";
+import { durableUploadFolder } from "@/services/durableUpload";
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Minimal DOM types for directory drag-drop (Chromium/Safari)
+// ──────────────────────────────────────────────────────────────────────────────
+type FileSystemEntry = {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+  fullPath?: string;
+};
+type FileSystemFileEntry = FileSystemEntry & {
+  file: (cb: (file: File) => void) => void;
+};
+type FileSystemDirectoryEntry = FileSystemEntry & {
+  createReader: () => { readEntries: (cb: (entries: FileSystemEntry[]) => void) => void };
+};
+
+type WebkitFileSystemEntry = {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+  fullPath?: string;
+};
+type WebkitFileSystemFileEntry = WebkitFileSystemEntry & {
+  file: (cb: (file: File) => void) => void;
+};
+type WebkitFileSystemDirectoryEntry = WebkitFileSystemEntry & {
+  createReader: () => { readEntries: (cb: (entries: WebkitFileSystemEntry[]) => void) => void };
+};
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -21,20 +69,31 @@ type SharedWithMeItem = {
   id: number;
   token: string;
   shared_with: string;
+  shared_with_name?: string;
   filename: string;
+  file_path?: string;
   expires_at: string;
   document_id: number;
   shared_by: string;
+  shared_by_name?: string;
   created_at: string;
   file_type?: string; // "folder" | file ext inferred server-side
+};
+
+type SharedListResponse = {
+  items: SharedWithMeItem[];
 };
 
 interface SharedDocCard {
   id: string;               // share id (stringified)
   name: string;
+  path?: string;
   type: "folder" | "file";
-  documentId: number;       // numeric id (for /children and downloads)
+  documentId: number;       // numeric id (for /children and uploads)
   sharedBy: string;
+  sharedByName?: string;
+  sharedWith?: string;
+  sharedWithName?: string;
   createdAt: string;
   expiresAt: string;        // ISO
   token: string;
@@ -58,22 +117,29 @@ type RoDoc = {
   parent_id: number | null;
 };
 
+type DownloadTask = {
+  id: string;
+  label: string;
+  startedAt: number;
+  completedAt?: number;
+  loaded: number;
+  total?: number;
+  percent: number;
+  speedBps: number;
+  etaSec: number;
+  status: "in-progress" | "completed" | "failed";
+  message?: string;
+};
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Utils
 // ──────────────────────────────────────────────────────────────────────────────
+const clamp = (v: number, min = 0, max = 100) => Math.min(max, Math.max(min, v));
+
 const fileTypeFromName = (name: string, forceFolder = false): "folder" | "file" => {
   if (forceFolder) return "folder";
   const lower = name.toLowerCase();
-  return /\.(pdf|pptx?|xlsx?|docx?|png|jpe?g|gif|webp|bmp|tiff|zip|7z|rar|dwg)$/.test(lower) ? "file" : "folder";
-};
-
-const getFileIcon = (kind: "pdf" | "image" | "folder" | "default") => {
-  switch (kind) {
-    case "pdf": return <FileText className="h-8 w-8" />;
-    case "image": return <FileImage className="h-8 w-8" />;
-    case "folder": return <Folder className="h-8 w-8" />;
-    default: return <File className="h-8 w-8" />;
-  }
+  return /\.(pdf|pptx?|xlsx?|docx?|png|jpe?g|gif|webp|bmp|tiff|zip|7z|rar|dwg)$/i.test(lower) ? "file" : "folder";
 };
 
 const renderIcon = (type: "folder" | "file", name?: string) => {
@@ -91,8 +157,26 @@ const fmtBytes = (n?: number | null) => {
   return `${(n/Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${u[i]}`;
 };
 
+// Progress helpers
+const formatBytes = (n: number) => {
+  if (!n) return "0 B";
+  const u = ["B","KB","MB","GB","TB"];
+  const i = Math.floor(Math.log(n)/Math.log(1024));
+  return `${(n/Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${u[i]}`;
+};
+const formatDuration = (s: number) => {
+  if (!isFinite(s) || s <= 0) return "—";
+  const m = Math.floor(s/60), sec = Math.floor(s%60);
+  return m ? `${m}м ${sec}с` : `${sec}с`;
+};
+
+const createDownloadId = () =>
+  (typeof globalThis !== "undefined" && globalThis.crypto?.randomUUID
+    ? globalThis.crypto.randomUUID()
+    : `dl-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+
 // ──────────────────────────────────────────────────────────────────────────────
-// Countdown
+/** Countdown */
 // ──────────────────────────────────────────────────────────────────────────────
 function useCountdown(targetIso: string) {
   const [now, setNow] = useState<number>(Date.now());
@@ -114,6 +198,7 @@ function useCountdown(targetIso: string) {
   const hh = Math.floor((s % 86400) / 3600);
   const mm = Math.floor((s % 3600) / 60);
   const ss = s % 60;
+
   return { expired, dd, hh, mm, ss };
 }
 
@@ -134,16 +219,18 @@ const CountdownBadge: React.FC<{ iso: string }> = ({ iso }) => {
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Folder tree (для компактного предпросмотра из карточки — оставляем как было)
+/** Read-only folder tree for quick preview */
 // ──────────────────────────────────────────────────────────────────────────────
 const FolderTree = React.memo(function FolderTree({
   node,
   expired,
   fetchChildrenCached,
+  onDownloadFile,
 }: {
   node: TreeNode;
   expired: boolean;
   fetchChildrenCached: (parentId: number) => Promise<TreeNode[]>;
+  onDownloadFile?: (node: TreeNode) => Promise<void> | void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [children, setChildren] = useState<TreeNode[]>([]);
@@ -157,10 +244,9 @@ const FolderTree = React.memo(function FolderTree({
   }, [expanded, node.type, children.length, fetchChildrenCached, node._nid]);
 
   const onDownload = useCallback(async () => {
-    if (expired) return;
-    const token = localStorage.getItem("authToken") || "";
-    await downloadByFileId(node._nid, token, node.name);
-  }, [expired, node._nid, node.name]);
+    if (expired || node.type === "folder" || !onDownloadFile) return;
+    await onDownloadFile(node);
+  }, [expired, node, onDownloadFile]);
 
   return (
     <div className="ml-2">
@@ -203,14 +289,15 @@ const FolderTree = React.memo(function FolderTree({
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Read-only Folder Browser (НОВЫЙ режим, как в Index, но только preview + download)
+/** Read-only Folder Browser + drag&drop upload */
 // ──────────────────────────────────────────────────────────────────────────────
 const ReadOnlyFolderView: React.FC<{
   rootId: number;
   rootName: string;
   expired: boolean;
   onExit: () => void;
-}> = ({ rootId, rootName, expired, onExit }) => {
+  requestDownload: (payload: { id: number; name: string; type: "folder" | "file" }) => Promise<void>;
+}> = ({ rootId, rootName, expired, onExit, requestDownload }) => {
   const token = localStorage.getItem("authToken") || "";
   const { toast } = useToast();
 
@@ -222,12 +309,19 @@ const ReadOnlyFolderView: React.FC<{
   const [sortBy, setSortBy] = useState<"name" | "size" | "modified">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+
+  const [isUploading, setIsUploading] = useState(false);
+  const [overallPct, setOverallPct] = useState(0);
+  const [uploadStats, setUploadStats] = useState({ totalBytes: 0, uploadedBytes: 0, startedAt: 0, speedBps: 0, etaSec: 0 });
+
   const mapDoc = (d: any): RoDoc => {
     const type: "folder" | "file" = d.file_type === "folder" ? "folder" : "file";
     const sizeText = type === "folder" ? "—" : fmtBytes(typeof d.size === "number" ? d.size : null);
     return {
       id: Number(d.id),
-      name: d.name || d.title || "Без имени",
+      name: d.name || d.title || "Без названия",
       type,
       sizeText,
       modified: d.created_at || d.modified_at || null,
@@ -239,7 +333,6 @@ const ReadOnlyFolderView: React.FC<{
   const fetchFolderItems = useCallback(async (parentId: number) => {
     setLoading(true);
     try {
-      // можно также использовать /children/{id}, но тут берём metadata для размера/дат
       const qs = new URLSearchParams({
         limit: "1000",
         offset: "0",
@@ -253,12 +346,11 @@ const ReadOnlyFolderView: React.FC<{
       const data = await res.json();
       const docs = Array.isArray(data?.documents) ? data.documents : [];
       const mapped = docs.map(mapDoc);
-      // Папки первыми
       mapped.sort((a: RoDoc, b: RoDoc) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "folder" ? -1 : 1));
       setItems(mapped);
     } catch (e: any) {
       console.error(e);
-      toast({ title: "Ошибка", description: "Не удалось получить содержимое папки", variant: "destructive" });
+      toast({ title: "Ошибка", description: "Не удалось загрузить папку", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -272,12 +364,131 @@ const ReadOnlyFolderView: React.FC<{
     setCurrentId(id);
     setPath((p) => [...p, { id, name }]);
   };
-
   const onCrumb = (id: number, index: number) => {
     setCurrentId(id);
     setPath((p) => p.slice(0, index + 1));
   };
 
+  // ── DnD upload helpers
+  const traverseFileTree = async (
+    item: WebkitFileSystemEntry,
+    path = "",
+    fileList: File[] = []
+  ): Promise<void> =>
+    new Promise((resolve) => {
+      if ((item as WebkitFileSystemFileEntry).file) {
+        (item as WebkitFileSystemFileEntry).file((file) => {
+          (file as any).relativePath = path + item.name;
+          fileList.push(file);
+          resolve();
+        });
+      } else if ((item as WebkitFileSystemDirectoryEntry).createReader) {
+        const dirReader = (item as WebkitFileSystemDirectoryEntry).createReader();
+        dirReader.readEntries(async (entries: WebkitFileSystemEntry[]) => {
+          for (const entry of entries) {
+            await traverseFileTree(entry, path + item.name + "/", fileList);
+          }
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+
+  const gatherDroppedFiles = async (e: React.DragEvent): Promise<File[]> => {
+    const files: File[] = [];
+    const items = e.dataTransfer?.items;
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const dtItem = items[i];
+        theLoop: {
+          const entry = typeof dtItem.webkitGetAsEntry === "function" ? dtItem.webkitGetAsEntry() : null;
+          if (entry) {
+            await traverseFileTree(entry, "", files);
+            break theLoop;
+          }
+          const file = dtItem.getAsFile?.();
+          if (file) {
+            (file as any).relativePath = (file as any).webkitRelativePath || file.name;
+            files.push(file);
+          }
+        }
+      }
+    }
+    if (files.length === 0) {
+      const fallback = Array.from(e.dataTransfer.files || []);
+      fallback.forEach((f) => ((f as any).relativePath = (f as any).webkitRelativePath || f.name));
+      files.push(...fallback);
+    }
+    return files;
+  };
+
+  const uploadFiles = async (files: File[], destFolderId?: number) => {
+    if (!files?.length) return;
+    const totalBytes = files.reduce((a, f) => a + (f.size || 0), 0);
+    setIsUploading(true);
+    setUploadStats({ totalBytes, uploadedBytes: 0, startedAt: Date.now(), speedBps: 0, etaSec: 0 });
+    try {
+      await durableUploadFolder(
+        files,
+        token!,
+        { base: "/api/v2", folderId: destFolderId ?? currentId ?? undefined },
+        {
+          targetBatchMB: 100,
+          maxFilesPerBatch: 250,
+          concurrency: 3,
+          timeoutMs: 10 * 60 * 1000,
+          onProgress: (pct) => {
+            const safe = clamp(Number.isFinite(pct) ? pct : 0, 0, 100);
+            setOverallPct(safe);
+            setUploadStats((prev) => {
+              const uploadedBytes = Math.round(totalBytes * (safe / 100));
+              const elapsedSec = (Date.now() - (prev.startedAt || Date.now())) / 1000;
+              const speedBps = elapsedSec > 0 ? uploadedBytes / elapsedSec : 0;
+              const remaining = Math.max(totalBytes - uploadedBytes, 0);
+              const etaSec = speedBps > 0 ? Math.ceil(remaining / speedBps) : 0;
+              return { ...prev, uploadedBytes, speedBps, etaSec };
+            });
+          }
+        }
+      );
+      toast({ title: "Готово", description: `Загружено ${files.length} объект(ов)`, variant: "default" });
+      await fetchFolderItems(currentId);
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Ошибка загрузки", description: err?.message || "Не удалось загрузить", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      setOverallPct(0);
+    }
+  };
+
+  const onDragEnterArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragCounter((c) => c + 1);
+    setIsDragging(true);
+  };
+  const onDragLeaveArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragCounter((c) => {
+      const next = c - 1;
+      if (next <= 0) { setIsDragging(false); return 0; }
+      return next;
+    });
+  };
+  const onDragOverArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+  };
+  const onDropArea = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragCounter(0);
+    setIsDragging(false);
+    if (expired) return;
+    const files = await gatherDroppedFiles(e);
+    await uploadFiles(files, currentId);
+  };
+
+  // Preview/download in list
   const onPreview = useCallback(async (doc: RoDoc) => {
     if (expired || doc.type !== "file") return;
     try {
@@ -285,7 +496,6 @@ const ReadOnlyFolderView: React.FC<{
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        // fallback: иногда приходит JSON с подписанным URL
         const ct = (res.headers.get("content-type") || "").toLowerCase();
         if (!ct.includes("application/json")) throw new Error(String(res.status));
         const data = await res.json();
@@ -306,7 +516,6 @@ const ReadOnlyFolderView: React.FC<{
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener");
-      // URL.revokeObjectURL позднее — вкладка теперь владеет
     } catch (e: any) {
       console.error(e);
       toast({ title: "Ошибка предпросмотра", description: e?.message || "Не удалось открыть предпросмотр", variant: "destructive" });
@@ -315,8 +524,8 @@ const ReadOnlyFolderView: React.FC<{
 
   const onDownload = useCallback(async (doc: RoDoc) => {
     if (expired) return;
-    await downloadByFileId(doc.id, token, doc.type === "folder" ? `${doc.name}.zip` : doc.name);
-  }, [expired, token]);
+    await requestDownload({ id: doc.id, name: doc.name, type: doc.type });
+  }, [expired, requestDownload]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -336,7 +545,6 @@ const ReadOnlyFolderView: React.FC<{
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
-    // Папки выше файлов
     arr.sort((a, b) => (a.type === b.type ? 0 : a.type === "folder" ? -1 : 1));
     arr.sort((a, b) => {
       let A: any, B: any;
@@ -367,14 +575,33 @@ const ReadOnlyFolderView: React.FC<{
   );
 
   return (
-    <div className="w-full">
+    <div
+      className="w-full relative"
+      onDragEnter={onDragEnterArea}
+      onDragOver={onDragOverArea}
+      onDragLeave={onDragLeaveArea}
+      onDrop={onDropArea}
+    >
+      {/* Overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center">
+          <p className="text-lg font-semibold text-blue-600">Перетащите файлы или папки для загрузки</p>
+        </div>
+      )}
+
       {/* Header & controls */}
       <div className="mb-6">
         <Breadcrumb className="mb-4">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="#" onClick={(e) => { e.preventDefault(); onExit(); }}>
-                Поделенные
+              <BreadcrumbLink
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onExit();
+                }}
+              >
+                Общие
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -383,7 +610,13 @@ const ReadOnlyFolderView: React.FC<{
                 {idx < path.length - 1 ? (
                   <>
                     <BreadcrumbItem>
-                      <BreadcrumbLink href="#" onClick={(e) => { e.preventDefault(); onCrumb(p.id, idx); }}>
+                      <BreadcrumbLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onCrumb(p.id, idx);
+                        }}
+                      >
                         {p.name}
                       </BreadcrumbLink>
                     </BreadcrumbItem>
@@ -396,34 +629,34 @@ const ReadOnlyFolderView: React.FC<{
                 )}
               </React.Fragment>
             ))}
-             </BreadcrumbList>
-          </Breadcrumb>
+          </BreadcrumbList>
+        </Breadcrumb>
 
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-bold text-gray-900">Содержимое: {path[path.length - 1]?.name}</h2>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onExit}>Назад к ссылкам</Button>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <SearchBar
-              query={search}
-              setQuery={setSearch}
-              placeholder="Поиск внутри папки…"
-              showFilterButton={false}
-            />
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-gray-900">Содержимое: {path[path.length - 1]?.name}</h2>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onExit}>Назад к ссылкам</Button>
           </div>
         </div>
 
-      {/* List (read-only) */}
+        <div className="mt-4">
+          <SearchBar
+            query={search}
+            setQuery={setSearch}
+            placeholder="Поиск в папке…"
+            showFilterButton={false}
+          />
+        </div>
+      </div>
+
+      {/* List */}
       <div className="rounded-xl border bg-white shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
-              <SortHead id="name">Название</SortHead>
+              <SortHead id="name">Имя</SortHead>
               <SortHead id="size">Размер</SortHead>
-              <SortHead id="modified">Обновлён</SortHead>
+              <SortHead id="modified">Обновлено</SortHead>
               <TableHead className="w-56 text-right pr-6">Действия</TableHead>
             </TableRow>
           </TableHeader>
@@ -451,11 +684,11 @@ const ReadOnlyFolderView: React.FC<{
                 <TableCell className="text-right pr-6">
                   <div className="flex justify-end gap-2">
                     {it.type !== "folder" && (
-                      <Button size="sm" variant="outline" disabled={expired} onClick={() => onPreview(it)}>
-                        <Eye className="h-4 w-4 mr-1" /> Просмотр
+                      <Button size="sm" variant="outline" onClick={() => onPreview(it)}>
+                        <Eye className="h-4 w-4 mr-1" /> Предпросмотр
                       </Button>
                     )}
-                    <Button size="sm" disabled={expired} onClick={() => onDownload(it)}>
+                    <Button size="sm" onClick={() => onDownload(it)}>
                       <Download className="h-4 w-4 mr-1" /> Скачать
                     </Button>
                   </div>
@@ -465,12 +698,214 @@ const ReadOnlyFolderView: React.FC<{
           </TableBody>
         </Table>
       </div>
+
+      {/* Upload progress */}
+      {isUploading && (
+        <div className="fixed right-4 bottom-4 z-[70] w-96 rounded-xl border bg-white/95 shadow-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium">Загрузка… {Math.round(clamp(overallPct))}%</div>
+            <div className="text-xs text-muted-foreground">
+              Осталось {formatDuration(uploadStats.etaSec)}
+            </div>
+          </div>
+          <div className="h-2 w-full rounded bg-gray-200 overflow-hidden mb-2">
+            <div
+              className="h-2 bg-blue-600 transition-all"
+              style={{ width: `${clamp(overallPct || 0, 0, 100)}%` }}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {formatBytes(uploadStats.uploadedBytes)} / {formatBytes(uploadStats.totalBytes)}
+            {" • "}
+            {formatBytes(uploadStats.speedBps)}/с
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Компактное содержимое папки из карточки (оставляем для «быстрого взгляда»)
+/** Card item with external file drop to upload into that folder */
+// ──────────────────────────────────────────────────────────────────────────────
+const CardItem = React.memo(function CardItem({
+  card,
+  fetchChildrenCached,
+  onDownload,
+  onManageShare,
+  onUnshare,
+  open,
+  onToggleOpen,
+  onOpenAsList,
+  onDropExternalToFolder,
+  dragOverActive,
+  setDragOverActive,
+  onDownloadFile,
+}: {
+  card: SharedDocCard;
+  fetchChildrenCached: (parentId: number) => Promise<TreeNode[]>;
+  onDownload: (card: SharedDocCard, expired: boolean) => Promise<void>;
+  onManageShare?: (card: SharedDocCard) => void;
+  onUnshare?: (card: SharedDocCard) => void;
+  open: boolean;
+  onToggleOpen: () => void;
+  onOpenAsList: () => void;
+  onDropExternalToFolder: (folderId: number, e: React.DragEvent<HTMLDivElement>) => void;
+  dragOverActive: boolean;
+  setDragOverActive: (v: boolean) => void;
+  onDownloadFile?: (node: TreeNode) => Promise<void> | void;
+}) {
+  const { expired } = useCountdown(card.expiresAt);
+  const isFolder = card.type === "folder";
+
+  const displayPath = useMemo(() => {
+    const raw = ((card.path || "") as string).trim();
+    if (!raw) return "";
+
+    // Normalize separators and trim.
+    const normalized = raw
+      .replace(/\\/g, "/")
+      .replace(/^\/+/, "")
+      // normalize occasional naming variations
+      .replace(/^Projects\s+2025\b/i, "Projects-2025")
+      .replace(/^Projects\s+2024\b/i, "Projects-2024")
+      .trim();
+
+    // Backend sometimes stores `tenant_id/department_id/...` prefix.
+    const parts = normalized.split("/").filter(Boolean);
+    const withoutTenantDept =
+      parts.length >= 3 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])
+        ? parts.slice(2).join("/")
+        : normalized;
+
+    // We want to show the folder path, not duplicate the filename at the end.
+    // Example: file_path=Projects-2025/.../письмо  -> show: Projects-2025/... (without /письмо)
+    const base = withoutTenantDept.replace(/^\/+/, "");
+    const last = base.split("/").filter(Boolean).pop() || "";
+    if (last && last === (card.name || "").trim()) {
+      return base.split("/").slice(0, -1).join("/");
+    }
+    return base;
+  }, [card.path]);
+
+  return (
+    <div
+      className={`group bg-white border-0 shadow-lg hover:shadow-2xl transition-all overflow-hidden select-none ${
+        dragOverActive ? "ring-2 ring-blue-500 ring-offset-2" : ""
+      }`}
+      draggable={false}
+      onDragEnter={(e) => {
+        if (!isFolder) return;
+        e.preventDefault(); e.stopPropagation();
+        setDragOverActive(true);
+      }}
+      onDragOver={(e) => {
+        if (!isFolder) return;
+        e.preventDefault(); e.stopPropagation();
+      }}
+      onDragLeave={(e) => {
+        if (!isFolder) return;
+        e.preventDefault(); e.stopPropagation();
+        const related = e.relatedTarget as Node | null;
+        if (related && (e.currentTarget as Element).contains(related)) return;
+        setDragOverActive(false);
+      }}
+      onDrop={(e) => {
+        if (!isFolder) return;
+        setDragOverActive(false);
+        onDropExternalToFolder(card.documentId, e);
+      }}
+    >
+      <Card>
+        <CardContent className="p-0">
+          {/* Preview */}
+          <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+            {isFolder ? <Folder className="h-12 w-12 text-yellow-500" /> : <File className="h-12 w-12 text-gray-500" />}
+            <div className="absolute top-3 left-3">
+              <CountdownBadge iso={card.expiresAt} />
+            </div>
+            {expired && (
+              <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center text-red-700 font-semibold">
+                Доступ истёк
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div>
+              <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2" title={card.name}>
+                {card.name}
+              </h3>
+              {displayPath && (
+                <div className="text-xs text-gray-500 truncate" title={displayPath}>
+                  {displayPath}
+                </div>
+              )}
+              <div className="text-sm text-gray-500">
+                Поделился:{" "}
+                <span className="font-medium">{card.sharedByName || card.sharedBy || "админ"}</span>
+              </div>
+              {card.sharedWith || card.sharedWithName ? (
+                <div className="text-sm text-gray-500">
+                  Получатель:{" "}
+                  <span className="font-medium">{card.sharedWithName || card.sharedWith}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
+                disabled={expired}
+                aria-disabled={expired}
+                onClick={() => onDownload(card, expired)}
+              >
+                <Download className="h-5 w-5 mr-2" />
+                {isFolder ? "Скачать всё (.zip)" : "Скачать файл"}
+              </Button>
+
+              {(onManageShare || onUnshare) && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => onManageShare?.(card)}
+                  >
+                    Настроить
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => onUnshare?.(card)}
+                  >
+                    Убрать доступ
+                  </Button>
+                </div>
+              )}
+
+              {isFolder && (
+                <FolderContents
+                  rootId={card.documentId}
+                  expired={expired}
+                  fetchChildrenCached={fetchChildrenCached}
+                  open={open}
+                  onToggleOpen={onToggleOpen}
+                  onOpenAsList={onOpenAsList}
+                  onDownloadFile={onDownloadFile}
+                />
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+/** Compact folder contents under a card */
 // ──────────────────────────────────────────────────────────────────────────────
 const FolderContents = React.memo(function FolderContents({
   rootId,
@@ -478,7 +913,8 @@ const FolderContents = React.memo(function FolderContents({
   fetchChildrenCached,
   open,
   onToggleOpen,
-  onOpenAsList, // ← НОВОЕ: переключиться в режим списка
+  onOpenAsList,
+  onDownloadFile,
 }: {
   rootId: number;
   expired: boolean;
@@ -486,7 +922,8 @@ const FolderContents = React.memo(function FolderContents({
   open: boolean;
   onToggleOpen: () => void;
   onOpenAsList: () => void;
-}) {
+  onDownloadFile?: (node: TreeNode) => Promise<void> | void;
+})  {
   const [rootChildren, setRootChildren] = useState<TreeNode[] | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -518,7 +955,7 @@ const FolderContents = React.memo(function FolderContents({
           className="w-full font-semibold py-3 rounded-xl border border-gray-200"
           onClick={onOpenAsList}
         >
-          Открыть как список
+          Открыть списком
         </Button>
       </div>
 
@@ -528,10 +965,16 @@ const FolderContents = React.memo(function FolderContents({
             <div className="text-sm text-gray-500">Загрузка…</div>
           ) : rootChildren && rootChildren.length > 0 ? (
             rootChildren.map((child) => (
-              <FolderTree key={child.id} node={child} expired={expired} fetchChildrenCached={fetchChildrenCached} />
+              <FolderTree
+                key={child.id}
+                node={child}
+                expired={expired}
+                fetchChildrenCached={fetchChildrenCached}
+                onDownloadFile={onDownloadFile}
+              />
             ))
           ) : (
-            <div className="text-sm text-gray-500">Папка пуста</div>
+            <div className="text-sm text-gray-500">Пусто</div>
           )}
         </div>
       )}
@@ -540,85 +983,11 @@ const FolderContents = React.memo(function FolderContents({
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Карточка
-// ──────────────────────────────────────────────────────────────────────────────
-const CardItem = React.memo(function CardItem({
-  card,
-  fetchChildrenCached,
-  onDownload,
-  open,
-  onToggleOpen,
-  onOpenAsList,
-}: {
-  card: SharedDocCard;
-  fetchChildrenCached: (parentId: number) => Promise<TreeNode[]>;
-  onDownload: (card: SharedDocCard, expired: boolean) => Promise<void>;
-  open: boolean;
-  onToggleOpen: () => void;
-  onOpenAsList: () => void;
-}) {
-  const { expired } = useCountdown(card.expiresAt);
-  const isFolder = card.type === "folder";
-
-  return (
-    <Card className="group bg-white border-0 shadow-lg hover:shadow-2xl transition-all overflow-hidden">
-      <CardContent className="p-0">
-        {/* Preview */}
-        <div className="relative aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-          {isFolder ? <Folder className="h-12 w-12 text-yellow-500" /> : <File className="h-12 w-12 text-gray-500" />}
-          <div className="absolute top-3 left-3">
-            <CountdownBadge iso={card.expiresAt} />
-          </div>
-          {expired && (
-            <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center text-red-700 font-semibold">
-              Срок доступа истёк
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 space-y-4">
-          <div>
-            <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-2" title={card.name}>
-              {card.name}
-            </h3>
-            <div className="text-sm text-gray-500">
-              Поделился: <span className="font-medium">{card.sharedBy || "admin"}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Button
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-60"
-              disabled={expired}
-              aria-disabled={expired}
-              onClick={() => onDownload(card, expired)}
-            >
-              <Download className="h-5 w-5 mr-2" />
-              {isFolder ? "Скачать всё (.zip)" : "Скачать файл"}
-            </Button>
-
-            {isFolder && (
-              <FolderContents
-                rootId={card.documentId}
-                expired={expired}
-                fetchChildrenCached={fetchChildrenCached}
-                open={open}
-                onToggleOpen={onToggleOpen}
-                onOpenAsList={onOpenAsList}
-              />
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-});
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Страница
+/** Page */
 // ──────────────────────────────────────────────────────────────────────────────
 const SharedDocuments: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const token = localStorage.getItem("authToken") || "";
 
   const [isLoading, setIsLoading] = useState(false);
@@ -626,49 +995,299 @@ const SharedDocuments: React.FC = () => {
   const [cards, setCards] = useState<SharedDocCard[]>([]);
   const [browseRoot, setBrowseRoot] = useState<{ id: number; name: string; expiresAt: string } | null>(null);
 
-  // keep open/closed state per documentId to avoid collapsing on re-render
-  const [openByCard, setOpenByCard] = useState<Record<number, boolean>>({});
+  const [viewMode, setViewMode] = useState<"with-me" | "by-me">("with-me");
 
-  // children cache per folder id
-  const [childrenCache, setChildrenCache] = useState<Record<number, TreeNode[]>>({});
+  const isViewer = (user?.role || "").toLowerCase() === "viewer";
+
+  // Viewers can only browse items shared with them.
+  useEffect(() => {
+    if (isViewer && viewMode !== "with-me") setViewMode("with-me");
+  }, [isViewer, viewMode]);
+
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<SharedDocCard | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+  const [isSavingShare, setIsSavingShare] = useState(false);
+
+  // open/close per documentId
+  const [openByCard, setOpenByCard] = useState<Record<number, boolean>>({});
+  // drag-over highlight per card
+  const [dragOverMap, setDragOverMap] = useState<Record<number, boolean>>({});
+
+  // global drop overlay
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+
+  // upload progress
+  const [isUploading, setIsUploading] = useState(false);
+  const [overallPct, setOverallPct] = useState(0);
+  const [uploadStats, setUploadStats] = useState({ totalBytes: 0, uploadedBytes: 0, startedAt: 0, speedBps: 0, etaSec: 0 });
+
+  // download progress
+  const [downloadTasks, setDownloadTasks] = useState<DownloadTask[]>([]);
+
+  const startDownloadTask = useCallback((label: string) => {
+    const id = createDownloadId();
+    const task: DownloadTask = {
+      id,
+      label,
+      startedAt: Date.now(),
+      loaded: 0,
+      total: undefined,
+      percent: 0,
+      speedBps: 0,
+      etaSec: 0,
+      status: "in-progress",
+    };
+    setDownloadTasks((prev) => [...prev, task]);
+    return id;
+  }, []);
+
+  const updateDownloadTask = useCallback((taskId: string, progress: DownloadProgress) => {
+    setDownloadTasks((prev) =>
+      prev.map((task) => {
+        if (task.id !== taskId) return task;
+        const total = typeof progress.total === "number" && progress.total > 0 ? progress.total : task.total;
+        const loaded = typeof progress.loaded === "number" ? progress.loaded : task.loaded;
+        const fallbackPercent = total && total > 0 ? (loaded / total) * 100 : task.percent;
+        const percent = typeof progress.percent === "number" && Number.isFinite(progress.percent)
+          ? progress.percent
+          : fallbackPercent;
+        const elapsedSec = Math.max((Date.now() - task.startedAt) / 1000, 0.1);
+        const speedBps = loaded / elapsedSec;
+        const remainingBytes = total ? Math.max(total - loaded, 0) : 0;
+        const etaSec = total && speedBps > 0 ? remainingBytes / speedBps : 0;
+        return {
+          ...task,
+          loaded,
+          total,
+          percent: clamp(percent),
+          speedBps,
+          etaSec,
+        };
+      })
+    );
+  }, []);
+
+  const finalizeDownloadTask = useCallback((taskId: string, status: "completed" | "failed", message?: string) => {
+    setDownloadTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status,
+              message,
+              completedAt: Date.now(),
+              percent: status === "completed" ? 100 : task.percent,
+              etaSec: 0,
+              speedBps: 0,
+            }
+          : task
+      )
+    );
+  }, []);
+
+  const dismissDownloadTask = useCallback((taskId: string) => {
+    setDownloadTasks((prev) => prev.filter((task) => task.id !== taskId));
+  }, []);
+
+  const clearFinishedDownloads = useCallback(() => {
+    setDownloadTasks((prev) => prev.filter((task) => task.status === "in-progress"));
+  }, []);
 
   const fetchSharedWithMe = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { data } = await api.get<SharedWithMeItem[]>(`/sharing/shared-with-me`);
-      const mapped: SharedDocCard[] = data.map((x) => ({
+      const { data } = await api.get<SharedListResponse>(SHARING_ENDPOINTS.SHARED_WITH_ME);
+      const items = Array.isArray((data as any)) ? (data as any as SharedWithMeItem[]) : data.items;
+      const mapped: SharedDocCard[] = items.map((x) => ({
         id: String(x.id),
         name: x.filename,
+        path: x.file_path,
         type: (x.file_type === "folder") ? "folder" : fileTypeFromName(x.filename),
         documentId: x.document_id,
         sharedBy: x.shared_by,
+        sharedByName: x.shared_by_name,
+        sharedWith: x.shared_with,
+        sharedWithName: x.shared_with_name,
         createdAt: x.created_at,
         expiresAt: x.expires_at,
         token: x.token,
       }));
-      setCards(mapped.sort((a,b) => (a.type===b.type ? a.name.localeCompare(b.name) : a.type==="folder" ? -1 : 1)));
+
+      // If the underlying document was deleted from filesystem (or DB got out of sync), the metadata detail
+      // endpoint will return 404. In that case we auto-clean: remove the share and delete metadata.
+      // NOTE: This is best-effort and runs in the background.
+      const missing = await Promise.all(
+        mapped.map(async (c) => {
+          try {
+            await api.get(DOCUMENT_ENDPOINTS.METADATA_DETAIL(c.documentId));
+            return null;
+          } catch (e: any) {
+            const status = e?.response?.status;
+            if (status === 404) return c;
+            return null;
+          }
+        })
+      );
+
+      const missingCards = missing.filter(Boolean) as SharedDocCard[];
+      if (missingCards.length > 0) {
+        await Promise.all(
+          missingCards.map(async (c) => {
+            try {
+              await api.delete(SHARING_ENDPOINTS.DELETE_SHARE(c.id));
+            } catch {
+              // ignore
+            }
+            try {
+              await api.delete(DOCUMENT_ENDPOINTS.DELETE_BY_ID(c.documentId));
+            } catch {
+              // ignore
+            }
+          })
+        );
+      }
+
+      const cleaned = missingCards.length ? mapped.filter((c) => !missingCards.some((m) => m.id === c.id)) : mapped;
+
+  // Sort by expiresAt (latest expiration first)
+  setCards(cleaned.sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime()));
     } catch (e) {
       console.error(e);
-      toast({ title: "Ошибка", description: "Не удалось загрузить поделенные элементы", variant: "destructive" });
+      toast({ title: "Ошибка", description: "Не удалось загрузить список общих элементов", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  const fetchSharedByMe = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await api.get<SharedListResponse>(SHARING_ENDPOINTS.SHARED_BY_ME);
+      const items = Array.isArray((data as any)) ? (data as any as SharedWithMeItem[]) : data.items;
+      const mapped: SharedDocCard[] = items.map((x) => ({
+        id: String(x.id),
+        name: x.filename,
+        path: x.file_path,
+        type: (x.file_type === "folder") ? "folder" : fileTypeFromName(x.filename),
+        documentId: x.document_id,
+        sharedBy: x.shared_by,
+        sharedByName: x.shared_by_name,
+        sharedWith: x.shared_with,
+        sharedWithName: x.shared_with_name,
+        createdAt: x.created_at,
+        expiresAt: x.expires_at,
+        token: x.token,
+      }));
+
+      const missing = await Promise.all(
+        mapped.map(async (c) => {
+          try {
+            await api.get(DOCUMENT_ENDPOINTS.METADATA_DETAIL(c.documentId));
+            return null;
+          } catch (e: any) {
+            const status = e?.response?.status;
+            if (status === 404) return c;
+            return null;
+          }
+        })
+      );
+      const missingCards = missing.filter(Boolean) as SharedDocCard[];
+
+      if (missingCards.length > 0) {
+        await Promise.all(
+          missingCards.map(async (c) => {
+            try {
+              await api.delete(SHARING_ENDPOINTS.DELETE_SHARE(c.id));
+            } catch {
+              // ignore
+            }
+            try {
+              await api.delete(DOCUMENT_ENDPOINTS.DELETE_BY_ID(c.documentId));
+            } catch {
+              // ignore
+            }
+          })
+        );
+      }
+
+  const cleaned = missingCards.length ? mapped.filter((c) => !missingCards.some((m) => m.id === c.id)) : mapped;
+  setCards(cleaned.sort((a, b) => new Date(b.expiresAt).getTime() - new Date(a.expiresAt).getTime()));
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Ошибка", description: "Не удалось загрузить список ваших общих элементов", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }, [toast]);
 
   useEffect(() => {
-    fetchSharedWithMe();
-  }, [fetchSharedWithMe]);
+    if (viewMode === "with-me") fetchSharedWithMe();
+    else fetchSharedByMe();
+  }, [fetchSharedWithMe, fetchSharedByMe, viewMode]);
+
+  const refreshCurrentList = useCallback(async () => {
+    if (viewMode === "with-me") return fetchSharedWithMe();
+    return fetchSharedByMe();
+  }, [fetchSharedWithMe, fetchSharedByMe, viewMode]);
+
+  const openShareEditor = useCallback((card: SharedDocCard) => {
+    setEditingCard(card);
+    setEditName(card.name || "");
+    setEditExpiresAt((card.expiresAt || "").slice(0, 10));
+    setShareDialogOpen(true);
+  }, []);
+
+  const saveShareChanges = useCallback(async () => {
+    if (!editingCard) return;
+    setIsSavingShare(true);
+    try {
+      const payload: any = {
+        filename: (editName || "").trim(),
+        expires_at: editExpiresAt ? new Date(`${editExpiresAt}T00:00:00`).toISOString() : null,
+      };
+  await api.patch(SHARING_ENDPOINTS.UPDATE_SHARE(editingCard.id), payload);
+      toast({ title: "Сохранено", description: "Настройки доступа обновлены" });
+      setShareDialogOpen(false);
+      setEditingCard(null);
+      await refreshCurrentList();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Ошибка", description: e?.response?.data?.detail || "Не удалось обновить общий доступ", variant: "destructive" });
+    } finally {
+      setIsSavingShare(false);
+    }
+  }, [editingCard, editName, editExpiresAt, refreshCurrentList, toast]);
+
+  const unshareItem = useCallback(async (card: SharedDocCard) => {
+    const ok = window.confirm(`Убрать общий доступ для «${card.name}»?`);
+    if (!ok) return;
+    try {
+      await api.delete(SHARING_ENDPOINTS.DELETE_SHARE(card.id));
+
+      // As requested: when admin unshares, also delete the metadata of the underlying folder/file in DB.
+      // Backend route: DELETE /metadata/{document}
+      await api.delete(DOCUMENT_ENDPOINTS.DELETE_BY_ID(card.documentId));
+
+      toast({ title: "Готово", description: "Общий доступ убран" });
+      await refreshCurrentList();
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Ошибка", description: e?.response?.data?.detail || "Не удалось убрать общий доступ", variant: "destructive" });
+    }
+  }, [refreshCurrentList, toast]);
 
   const filtered = useMemo(
     () => cards.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())),
     [cards, searchQuery]
   );
 
-  // children loader
   const mapDocsToTree = (arr: any[]): TreeNode[] =>
     (arr || []).map((d: any) => ({
       id: String(d.id),
-      name: d.name || d.title || "Без имени",
+      name: d.name || d.title || "Без названия",
       type: (d.file_type === "folder") ? "folder" : "file",
       _nid: Number(d.id),
       _parentId: d.parent_id == null ? null : Number(d.parent_id),
@@ -680,38 +1299,262 @@ const SharedDocuments: React.FC = () => {
     return mapDocsToTree(data);
   }, []);
 
-  const browseIso = browseRoot?.expiresAt ?? "1970-01-01T00:00:00Z"; 
-  const { expired: browseExpired } = useCountdown(browseIso);
+  // ── DnD upload building blocks
+  const traverseFileTree = async (item: FileSystemEntry, path = "", fileList: File[] = []): Promise<void> =>
+    new Promise((resolve) => {
+      if ((item as FileSystemFileEntry).file) {
+        (item as FileSystemFileEntry).file((file) => {
+          (file as any).relativePath = path + item.name;
+          fileList.push(file);
+          resolve();
+        });
+      } else if ((item as FileSystemDirectoryEntry).createReader) {
+        const dirReader = (item as FileSystemDirectoryEntry).createReader();
+        dirReader.readEntries(async (entries) => {
+          for (const entry of entries) {
+            await traverseFileTree(entry, path + item.name + "/", fileList);
+          }
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
 
-  const fetchChildrenCached = useCallback(async (parentId: number) => {
-    if (childrenCache[parentId]) return childrenCache[parentId];
-    const nodes = await fetchChildren(parentId);
-    setChildrenCache(prev => ({ ...prev, [parentId]: nodes }));
-    return nodes;
-  }, [childrenCache, fetchChildren]);
+  const gatherDroppedFiles = async (e: React.DragEvent): Promise<File[]> => {
+    const files: File[] = [];
+    const items = e.dataTransfer?.items;
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const dtItem = items[i];
+        const entry = typeof dtItem.webkitGetAsEntry === "function" ? dtItem.webkitGetAsEntry() : null;
+        if (entry) {
+          await traverseFileTree(entry, "", files);
+        } else {
+          const file = dtItem.getAsFile?.();
+          if (file) {
+            (file as any).relativePath = (file as any).webkitRelativePath || file.name;
+            files.push(file);
+          }
+        }
+      }
+    }
+    if (files.length === 0) {
+      const fallback = Array.from(e.dataTransfer.files || []);
+      fallback.forEach((f) => ((f as any).relativePath = (f as any).webkitRelativePath || f.name));
+      files.push(...fallback);
+    }
+    return files;
+  };
 
-  // downloads
-  const handleDownloadCard = useCallback(async (card: SharedDocCard, expired: boolean) => {
-    if (expired) return;
-    const suggested = card.type === "folder" ? `${card.name}.zip` : card.name;
-    await downloadByFileId(card.documentId, token, suggested);
-  }, [token]);
+  const uploadFiles = async (files: File[], destFolderId?: number) => {
+    if (!files?.length) return;
+    const totalBytes = files.reduce((a, f) => a + (f.size || 0), 0);
+    setIsUploading(true);
+    setUploadStats({ totalBytes, uploadedBytes: 0, startedAt: Date.now(), speedBps: 0, etaSec: 0 });
+    try {
+      await durableUploadFolder(
+        files,
+        token!,
+        { base: "/api/v2", folderId: destFolderId ?? undefined },
+        {
+          targetBatchMB: 100,
+          maxFilesPerBatch: 250,
+          concurrency: 3,
+          timeoutMs: 10 * 60 * 1000,
+          onProgress: (pct) => {
+            const safe = clamp(Number.isFinite(pct) ? pct : 0, 0, 100);
+            setOverallPct(safe);
+            setUploadStats((prev) => {
+              const uploadedBytes = Math.round(totalBytes * (safe / 100));
+              const elapsedSec = (Date.now() - (prev.startedAt || Date.now())) / 1000;
+              const speedBps = elapsedSec > 0 ? uploadedBytes / elapsedSec : 0;
+              const remaining = Math.max(totalBytes - uploadedBytes, 0);
+              const etaSec = speedBps > 0 ? Math.ceil(remaining / speedBps) : 0;
+              return { ...prev, uploadedBytes, speedBps, etaSec };
+            });
+          }
+        }
+      );
+      // список "Общие" не нужно рефрешить — это список ссылок, не содержимое папок
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Ошибка загрузки", description: err?.message || "Не удалось загрузить", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      setOverallPct(0);
+    }
+  };
 
-  // controlled open state handlers
+  const triggerDownload = useCallback(async ({ id, name, type }: { id: number; name: string; type: "folder" | "file" }) => {
+    if (!token) {
+      toast({ title: "Нет токена", description: "Повторно войдите в систему", variant: "destructive" });
+      return;
+    }
+    const safeName = name?.trim() || (type === "folder" ? "Папка" : "Файл");
+    const suggested = type === "folder" ? `${safeName}.zip` : safeName;
+    const taskId = startDownloadTask(suggested);
+    try {
+      await downloadByFileId(id, token, suggested, {
+        onProgress: (progress: DownloadProgress) => updateDownloadTask(taskId, progress),
+      });
+      finalizeDownloadTask(taskId, "completed");
+    } catch (error: any) {
+      finalizeDownloadTask(taskId, "failed", error?.message || "Ошибка скачивания");
+      toast({
+        title: "Ошибка скачивания",
+        description: error?.message || "Не удалось скачать файл",
+        variant: "destructive",
+      });
+    }
+  }, [token, toast, startDownloadTask, updateDownloadTask, finalizeDownloadTask]);
+
+  // global overlay handlers
+  const onDragEnterArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragCounter((c) => c + 1);
+    setIsDragging(true);
+  };
+  const onDragLeaveArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragCounter((c) => {
+      const next = c - 1;
+      if (next <= 0) { setIsDragging(false); return 0; }
+      return next;
+    });
+  };
+  const onDragOverArea = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+  };
+  const onDropArea = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragCounter(0);
+    setIsDragging(false);
+    const files = await gatherDroppedFiles(e);
+    await uploadFiles(files); // сервер сам определит назначение (корень или текущая)
+  };
+
+  // per-folder external drop
+  const onDropExternalToFolder = async (folderId: number, e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    const files = await gatherDroppedFiles(e);
+    setDragOverMap((m) => ({ ...m, [folderId]: false }));
+    await uploadFiles(files, folderId);
+  };
+
+  // open/close handlers
   const isOpen = useCallback((docId: number) => !!openByCard[docId], [openByCard]);
   const toggleOpen = useCallback((docId: number) => {
     setOpenByCard(prev => ({ ...prev, [docId]: !prev[docId] }));
   }, []);
 
-  // переключение на режим «как Index.tsx»
+  // switch to list view
   const openAsList = useCallback((card: SharedDocCard) => {
     setBrowseRoot({ id: card.documentId, name: card.name, expiresAt: card.expiresAt });
   }, []);
 
-  const exitBrowse = useCallback(() => setBrowseRoot(null), []);
+  // keep hooks order stable
+  const listExpired = useCountdown(browseRoot?.expiresAt || "").expired;
 
-  // ── UI
-  const inBrowse = !!browseRoot;
+  const handleTreeDownload = useCallback((node: TreeNode) => {
+    return triggerDownload({ id: node._nid, name: node.name, type: node.type });
+  }, [triggerDownload]);
+
+  const handleCardDownload = useCallback((card: SharedDocCard, expired: boolean) => {
+    if (expired) return Promise.resolve();
+    return triggerDownload({ id: card.documentId, name: card.name, type: card.type });
+  }, [triggerDownload]);
+
+  const activeDownloads = downloadTasks.filter((task) => task.status === "in-progress").length;
+  const hasClearableDownloads = downloadTasks.some((task) => task.status !== "in-progress");
+
+  const downloadOverlay = downloadTasks.length > 0 && (
+    <div
+      className={`fixed right-4 ${isUploading ? "bottom-40" : "bottom-4"} z-[80] w-96 rounded-xl border border-gray-200 bg-white/95 shadow-lg p-4`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Скачивание</p>
+          <p className="text-xs text-muted-foreground">
+            {activeDownloads ? `${activeDownloads} активн.` : "нет активных"}
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs"
+          onClick={clearFinishedDownloads}
+          disabled={!hasClearableDownloads}
+        >
+          Очистить
+        </Button>
+      </div>
+      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+        {downloadTasks.map((task) => {
+          const barColor = task.status === "failed" ? "bg-red-500" : task.status === "completed" ? "bg-emerald-500" : "bg-blue-600";
+          const percent = clamp(task.status === "completed" ? 100 : task.percent || 0);
+          const durationSec = task.completedAt ? Math.max((task.completedAt - task.startedAt) / 1000, 0) : 0;
+          const statusLabel = task.status === "completed"
+            ? "Завершено"
+            : task.status === "failed"
+              ? "Ошибка"
+              : `${Math.round(percent)}%`;
+          const etaText = task.status === "in-progress"
+            ? (task.etaSec
+                ? `~${formatDuration(task.etaSec)}`
+                : "Идёт расчёт размера… Пожалуйста, подождите")
+            : task.status === "completed"
+              ? `Время: ${formatDuration(durationSec)}`
+              : "";
+          return (
+            <div key={task.id} className="rounded-xl border border-gray-100 bg-white/90 p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 line-clamp-2" title={task.label}>{task.label}</p>
+                  <p className={`text-xs ${task.status === "failed" ? "text-red-600" : "text-muted-foreground"}`}>
+                    {task.status === "failed" ? (task.message || "Не удалось скачать") : etaText || ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600"
+                  onClick={() => dismissDownloadTask(task.id)}
+                  aria-label="Скрыть загрузку"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-xs font-medium text-gray-600">
+                {task.status === "failed" ? (
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                ) : task.status === "completed" ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Download className="h-4 w-4 text-blue-500" />
+                )}
+                <span>{statusLabel}</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-gray-200">
+                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${percent}%` }} />
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {formatBytes(task.loaded)}
+                  {typeof task.total === "number" && task.total > 0 ? ` / ${formatBytes(task.total)}` : ""}
+                </span>
+                <span>
+                  {task.status === "in-progress" ? `${formatBytes(task.speedBps || 0)}/с` : etaText}
+                </span>
+              </div>
+              {task.status === "failed" && task.message && (
+                <p className="mt-1 text-xs text-red-600">{task.message}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   if (browseRoot) {
     return (
@@ -720,44 +1563,81 @@ const SharedDocuments: React.FC = () => {
           <ReadOnlyFolderView
             rootId={browseRoot.id}
             rootName={browseRoot.name}
-            expired={browseExpired}
+            expired={listExpired}
             onExit={() => setBrowseRoot(null)}
+            requestDownload={triggerDownload}
           />
         </div>
+        {downloadOverlay}
       </div>
     );
   }
 
-  // обычный режим карточек
+  // Card grid with global drop
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div
+      className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative"
+      onDragEnter={onDragEnterArea}
+      onDragOver={onDragOverArea}
+      onDragLeave={onDragLeaveArea}
+      onDrop={onDropArea}
+    >
+      {/* Global overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 bg-blue-100/50 border-4 border-dashed border-blue-400 flex items-center justify-center">
+          <p className="text-lg font-semibold text-blue-600">Перетащите файлы или папки для загрузки</p>
+        </div>
+      )}
+
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Breadcrumb className="mb-6">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/" className="text-blue-600 hover:text-blue-800">Документы</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="text-gray-700">Поделенные (только скачивание / предпросмотр)</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <div className="flex items-center justify-between mb-6">
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/" className="text-blue-600 hover:text-blue-800">Документы</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-gray-700">Общие</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            {token && <UserButton />}
+          </div>
 
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">Поделенные файлы</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-3">Общие файлы</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Здесь отображается содержимое, которым с вами поделились. Доступ только для чтения: предпросмотр и скачивание.
+              Просматривайте и скачивайте. Перетащите файлы или папки на карточку папки, чтобы загрузить их внутрь.
             </p>
           </div>
+
+          {!isViewer && (
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Button
+                type="button"
+                variant={viewMode === "with-me" ? "default" : "outline"}
+                onClick={() => setViewMode("with-me")}
+              >
+                Мне поделились
+              </Button>
+              <Button
+                type="button"
+                variant={viewMode === "by-me" ? "default" : "outline"}
+                onClick={() => setViewMode("by-me")}
+              >
+                Я поделился
+              </Button>
+            </div>
+          )}
 
           <div className="w-full">
             <SearchBar
               query={searchQuery}
               setQuery={setSearchQuery}
-              placeholder="Поиск по названию…"
+              placeholder="Поиск по имени…"
               showFilterButton={false}
             />
           </div>
@@ -770,7 +1650,7 @@ const SharedDocuments: React.FC = () => {
               <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
                 <Share2 className="h-10 w-10 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Загружаем…</h3>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Загрузка…</h3>
               <p className="text-gray-600">Пожалуйста, подождите</p>
             </div>
           </div>
@@ -780,26 +1660,105 @@ const SharedDocuments: React.FC = () => {
               <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Share2 className="h-10 w-10 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Нет доступных ссылок</h3>
-              <p className="text-gray-600">Активные поделенные папки и файлы появятся здесь</p>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Нет ссылок</h3>
+              <p className="text-gray-600">Активные общие папки и файлы появятся здесь</p>
             </div>
           </div>
         ) : (
           <div className="grid w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filtered.map((card) => (
               <CardItem
-                key={card.documentId}
+                key={card.id}
                 card={card}
-                fetchChildrenCached={fetchChildrenCached}
-                onDownload={handleDownloadCard}
-                open={isOpen(card.documentId)}
+                fetchChildrenCached={async (pid) => {
+                  const res = await fetch(`/api/v2/metadata?${new URLSearchParams({
+                    limit: "1000", offset: "0", recursive: "false", parent_id: String(pid)
+                  })}`, { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }});
+                  const data = await res.json();
+                  return (data?.documents || []).map((d: any) => ({
+                    id: String(d.id),
+                    name: d.name || d.title || "Без названия",
+                    type: d.file_type === "folder" ? "folder" : "file",
+                    _nid: Number(d.id),
+                    _parentId: d.parent_id == null ? null : Number(d.parent_id),
+                  }));
+                }}
+                onDownload={handleCardDownload}
+                onManageShare={viewMode === "by-me" ? openShareEditor : undefined}
+                onUnshare={viewMode === "by-me" ? unshareItem : undefined}
+                open={!!openByCard[card.documentId]}
                 onToggleOpen={() => toggleOpen(card.documentId)}
-                onOpenAsList={() => openAsList(card)}   // ← НОВОЕ
+                onOpenAsList={() => openAsList(card)}
+                onDropExternalToFolder={onDropExternalToFolder}
+                dragOverActive={!!dragOverMap[card.documentId]}
+                setDragOverActive={(v) => setDragOverMap((m) => ({ ...m, [card.documentId]: v }))}
+                onDownloadFile={handleTreeDownload}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Share management dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={(open) => {
+        setShareDialogOpen(open);
+        if (!open) setEditingCard(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Настройки общего доступа</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Название (метка в общем доступе)</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Введите название" />
+              <p className="text-xs text-muted-foreground">
+                Это меняет только подпись в общем доступе (не переименовывает файл на диске).
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Дата окончания доступа</Label>
+              <Input type="date" value={editExpiresAt} onChange={(e) => setEditExpiresAt(e.target.value)} />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShareDialogOpen(false)} disabled={isSavingShare}>
+              Отмена
+            </Button>
+            <Button onClick={saveShareChanges} disabled={isSavingShare || !editingCard}>
+              {isSavingShare ? "Сохранение…" : "Сохранить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {downloadOverlay}
+
+      {/* Upload progress */}
+      {isUploading && (
+        <div className="fixed right-4 bottom-4 z-[70] w-96 rounded-xl border bg-white/95 shadow-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-medium">Загрузка… {Math.round(clamp(overallPct))}%</div>
+            <div className="text-xs text-muted-foreground">
+              Осталось {formatDuration(uploadStats.etaSec)}
+            </div>
+          </div>
+          <div className="h-2 w-full rounded bg-gray-200 overflow-hidden mb-2">
+            <div
+              className="h-2 bg-blue-600 transition-all"
+              style={{ width: `${clamp(overallPct || 0, 0, 100)}%` }}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {formatBytes(uploadStats.uploadedBytes)} / {formatBytes(uploadStats.totalBytes)}
+            {" • "}
+            {formatBytes(uploadStats.speedBps)}/с
+          </div>
+        </div>
+      )}
     </div>
   );
 };

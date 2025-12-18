@@ -7,18 +7,18 @@ import { MetadataSidebar } from '@/components/MetadataSidebar';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ShareModal } from '@/components/ShareModal';
-import { buildTree, TreeNode } from '@/utils/buildTree';
 import { Button } from '@/components/ui/button';
 import { Share } from "lucide-react";
 import { archiveDocument, unarchiveDocument, getArchivedDocuments, toggleStar, renameDocument, deleteDocument } from '@/services/archiveService';
 import { durableUploadFolder } from "@/services/durableUpload";
-import { API_BASE, FOLDERS_ENDPOINTS } from '@/config/api';
+import { apiUrl, API_BASE, FOLDERS_ENDPOINTS } from '@/config/api';
+import { api } from '@/services/apiclient';
 
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, File, FileSpreadsheet, FileImage, Folder, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
-import { DocumentMeta } from "@/hooks/useDocuments";
+import { DocumentMeta } from "@/hooks/useDocuments"; 
 import { DOCUMENT_ENDPOINTS } from '@/config/api';
 import { buildDwgOpenUrl } from "@/utils/openInAcad";
 
@@ -30,8 +30,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EnhancedFolderTree } from '@/components/EnhancedFolderTree';
+import { BreadcrumbNavigation } from '@/components/BreadcrumbNavigation';
 import { useLocation } from 'react-router-dom';
 import { API_ROOT } from '@/config/api';
+import { useFolderTree } from '@/hooks/useFolderTree';
 
 
 interface BackendDocument {
@@ -76,12 +78,21 @@ const Index = () => {
   const [shareDoc, setShareDoc] = useState<Document | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
-  const treeData: TreeNode[] = React.useMemo(() => buildTree(documents), [documents]);
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [folderId, setFolderId] = useState<string | null>(null);
   const location = useLocation();
-  const [folders, setFolders] = useState<Document[]>([]); // holds folders for the tree
+  const token = localStorage.getItem('authToken');
+  const [projectRootId, setProjectRootId] = useState<string | null>(() =>
+    localStorage.getItem("projectRootId")
+  );
+  const [isInitializingProject, setIsInitializingProject] = useState(false);
+  const { tree: folderTreeData, folders, refetch: refetchFolders, isLoading: isFolderTreeLoading } = useFolderTree({
+    projectRootId,
+    token,
+    enabled: Boolean(projectRootId),
+    limit: 500,
+  });
   const PAGE_SIZE = 100;
   const [offset, setOffset] = useState(0);
   const [totalCount, setTotalCount] = useState<number | null>(null);
@@ -97,7 +108,6 @@ const Index = () => {
     recursive: "false",
     ...(folderId ? { parent_id: String(folderId) } : {}),
   });
-  const isAtRoot = location.pathname === '/';
   const handleSort = (field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -106,11 +116,7 @@ const Index = () => {
       setSortOrder('asc');
     }
   };
-  const token = localStorage.getItem('authToken')
-// current selected project (top-level folder)
-const [projectRootId, setProjectRootId] = useState<string | null>(() =>
-  localStorage.getItem("projectRootId")
-);
+  // current selected project (top-level folder)
 useEffect(() => {
   const q = new URLSearchParams(location.search);
   const fid = q.get("folderId");       // string | null
@@ -213,15 +219,75 @@ const setCurrentProject = (id: string | null) => {
   else localStorage.removeItem("projectRootId");
 };
 
+useEffect(() => {
+  if (projectRootId || !token || isInitializingProject) return;
+  let cancelled = false;
+  const controller = new AbortController();
+
+  const pickFirstProject = async () => {
+    setIsInitializingProject(true);
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      };
+
+      const rootsRes = await fetch(apiUrl(`${DOCUMENT_ENDPOINTS.METADATA}?only_folders=true&recursive=false&limit=50`), {
+        headers,
+        signal: controller.signal,
+      });
+      if (!rootsRes.ok) return;
+      const rootsData = await rootsRes.json();
+      const roots = (Array.isArray(rootsData?.documents) ? rootsData.documents : []) as DocumentMeta[];
+      if (!roots.length) return;
+      const primaryRoot = roots.find((r) => (r as any)?.file_type === "folder") || roots[0];
+      if (!primaryRoot) return;
+
+      const childrenRes = await fetch(apiUrl(`${DOCUMENT_ENDPOINTS.METADATA}?only_folders=true&recursive=false&limit=50&parent_id=${encodeURIComponent(String(primaryRoot.id))}`), {
+        headers,
+        signal: controller.signal,
+      }).catch(() => null);
+
+      let candidateId: string | null = null;
+      if (childrenRes && childrenRes.ok) {
+        const childData = await childrenRes.json();
+        const children = (Array.isArray(childData?.documents) ? childData.documents : []) as DocumentMeta[];
+        candidateId = children[0] ? String(children[0].id) : String(primaryRoot.id);
+      } else {
+        candidateId = String(primaryRoot.id);
+      }
+
+      if (!cancelled && candidateId) {
+        setCurrentProject(candidateId);
+        setFolderId(candidateId);
+        navigate(`/?folderId=${candidateId}`, { replace: true });
+      }
+    } catch (err) {
+      // Aborts are expected on unmount / token changes.
+      if ((err as any)?.name === 'AbortError') return;
+      console.warn('Не удалось выбрать проект по умолчанию', err);
+    } finally {
+      if (!cancelled) setIsInitializingProject(false);
+    }
+  };
+
+  void pickFirstProject();
+  return () => {
+    cancelled = true;
+    controller.abort();
+  };
+}, [projectRootId, token, navigate, isInitializingProject]);
+
   
 // projects = top-level folders (parent_id === null)
 const projects = useMemo(
-  () =>
-    documents
-      .filter(d => d.type === "folder" && d.parent_id === null)
-      .map(d => ({ id: d.id, name: d.name, userEmail: "" })), // fill email if you have it
-  [documents]
-);
+    () =>
+      folders
+        .filter(f => f.parent_id === null)
+        .map(f => ({ id: f.id, name: f.name, userEmail: "" })),
+    [folders]
+  );
+  
 useEffect(() => {
   if (isLoading) return;
   if (!projectRootId) return;
@@ -249,7 +315,7 @@ const tryFetch = useCallback(async () => {
   const controller = new AbortController();
   abortRef.current = controller;
 
-  const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
+  const res = await fetch(apiUrl(`${DOCUMENT_ENDPOINTS.METADATA}?${qs.toString()}`) , {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     signal: controller.signal,
   });
@@ -298,8 +364,6 @@ const tryFetch = useCallback(async () => {
     }
   }, [hasMore, isLoading, offset, totalCount, tryFetch, toast]);
   
-
-
 // 1) Синхронизируем folderId с projectRootId
 useEffect(() => {
   if (!folderId && projectRootId) {
@@ -336,7 +400,7 @@ useEffect(() => {
   (async () => {
     try {
       const res = await fetch(
-       DOCUMENT_ENDPOINTS.METADATA_DETAIL(String(folderId)),
+       apiUrl(DOCUMENT_ENDPOINTS.METADATA_DETAIL(String(folderId))),
        {
          headers: {
            Authorization: `Bearer ${token}`,
@@ -381,32 +445,7 @@ useEffect(() => {
     ['docx', 'xlsx', 'pptx', 'ppt'].includes(doc.type);
   
  // stays as a global fetch; re-run if project scope changes
-const fetchFolderTree = useCallback(async () => {
-  const qs = new URLSearchParams({
-    limit: "100000",
-    offset: "0",
-    recursive: "true",
-    only_folders: "true",
-    // if your backend supports scoping by project:
-    ...(projectRootId ? { root_id: String(projectRootId) } : {}),
-  });
-
-  const res = await fetch(`/api/v2/metadata?${qs.toString()}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(String(res.status));
-  const data = await res.json();
-
-  const mapped: Document[] = (data.documents || [])
-    .map(mapBackendDoc)
-    .filter(d => d.type === "folder");
-
-  setFolders(mapped);
-}, [token, projectRootId]);
-
-useEffect(() => { fetchFolderTree(); }, [fetchFolderTree]);
-
-
+const fetchFolderTree = refetchFolders;
   
   
 // guess the ext for the OnlyOffice config
@@ -783,7 +822,7 @@ const handleEdit = (doc: Document) => {
   // Rename/update document metadata
   const handleUpdateMetadata = async (documentId: string, newName: string, tags?: string[], categories?: string[]) => {
     try {
-      const response = await axios.put(`/api/v2/metadata/${documentId}`, {
+      const response = await api.put(`${DOCUMENT_ENDPOINTS.METADATA}/${encodeURIComponent(String(documentId))}`, {
         name: newName,
         tags: tags,
         categories: categories
@@ -933,7 +972,6 @@ const handleRenameDocument = async (document: Document, newName: string) => {
         title: "Success",
         description: `Archived ${successCount} document(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
       });
-      
       // Clear selection and refresh
       setSelectedDocumentIds([]);
       fetchDocuments();
@@ -972,11 +1010,226 @@ const handleRenameDocument = async (document: Document, newName: string) => {
   );
   
   const [expandedIds, setExpandedIds] = React.useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(expandedKey) || '[]'); } catch { return []; }
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(expandedKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   });
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(expandedKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setExpandedIds((prev) => {
+        const next = Array.isArray(parsed) ? parsed : [];
+        if (next.length === prev.length && next.every((val, idx) => val === prev[idx])) {
+          return prev;
+        }
+        return next;
+      });
+    } catch {
+      setExpandedIds([]);
+    }
+  }, [expandedKey]);
   React.useEffect(() => {
     localStorage.setItem(expandedKey, JSON.stringify(expandedIds));
   }, [expandedIds, expandedKey]);
+
+  // Breadcrumb history: track folders the user opened (per projectRootId)
+  const breadcrumbsKey = React.useMemo(() => `breadcrumbs:${projectRootId ?? 'global'}`, [projectRootId]);
+
+  const [breadcrumbIds, setBreadcrumbIds] = React.useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = sessionStorage.getItem(`breadcrumbs:${projectRootId ?? 'global'}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [breadcrumbNameCache, setBreadcrumbNameCache] = React.useState<Record<string, string>>({});
+
+  // keep cache in sync with known folders from the tree
+  React.useEffect(() => {
+    if (!folders.length) return;
+    setBreadcrumbNameCache(prev => {
+      const next = { ...prev };
+      let changed = false;
+      folders.forEach(folder => {
+        const key = String(folder.id);
+        const value = folder.name || 'Без названия';
+        if (next[key] !== value) {
+          next[key] = value;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [folders]);
+
+  // also cache names for folder items visible in the current listing
+  React.useEffect(() => {
+    if (!documents.length) return;
+    setBreadcrumbNameCache(prev => {
+      const next = { ...prev };
+      let changed = false;
+      documents.forEach(doc => {
+        if (doc.type !== 'folder') return;
+        const key = String(doc.id);
+        const value = doc.name || 'Без названия';
+        if (next[key] !== value) {
+          next[key] = value;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [documents]);
+
+  // persist per project in session storage
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem(breadcrumbsKey, JSON.stringify(breadcrumbIds));
+    } catch {}
+  }, [breadcrumbIds, breadcrumbsKey]);
+
+  // update history when folderId changes (or project root changes)
+  React.useEffect(() => {
+    const fid = folderId ?? projectRootId ?? null;
+    if (!fid) {
+      setBreadcrumbIds([]);
+      return;
+    }
+    setBreadcrumbIds(prev => {
+      const s = String(fid);
+      if (prev[prev.length - 1] === s) return prev;
+      // remove existing occurrence to keep history linear, then append
+      const next = [...prev.filter(id => id !== s), s];
+      return next.slice(-20); // keep last 20 entries
+    });
+  }, [folderId, projectRootId]);
+
+  const breadcrumbs = React.useMemo(() => {
+    return breadcrumbIds
+      .map(id => {
+        const key = String(id);
+        const cachedName = breadcrumbNameCache[key];
+        if (!cachedName) return null;
+        return { id: key, name: cachedName, path: `/?folderId=${key}` };
+      })
+      .filter((item): item is { id: string; name: string; path: string } => Boolean(item))
+      .map((item, idx, arr) => ({
+        ...item,
+        isActive: idx === arr.length - 1,
+      }));
+  }, [breadcrumbIds, breadcrumbNameCache]);
+
+  // Если в истории хлебных крошек есть id, для которых нет записей в `folders`,
+  // попытаться подтянуть метаданные папок (рефетч). Это гарантирует, что
+  // хлебные крошки смогут показать человекочитаемые имена, а не id.
+  React.useEffect(() => {
+    if (!breadcrumbIds || breadcrumbIds.length === 0) return;
+    // есть ли хотя бы один id без соответствующей папки с именем?
+    const missing = breadcrumbIds.some(bid => !folders.find(f => String(f.id) === String(bid)));
+    if (!missing) return;
+    // вызов refetchFolders; оборачиваем в void чтобы избежать предупреждений об ignored promise
+    void (async () => {
+      try {
+        await refetchFolders();
+      } catch (e) {
+        // не критично — оставляем текущее состояние
+        console.debug('Breadcrumbs: failed to refetch folders', e);
+      }
+    })();
+  }, [breadcrumbIds, folders, refetchFolders]);
+
+  // Финальный фолбэк: если даже после refetch в дереве нет нужных id (например, папка вне текущего
+  // scope), запрашиваем метаданные точечно и кэшируем названия.
+  React.useEffect(() => {
+    if (!breadcrumbIds.length || !token) return;
+
+    const knownIds = new Set<string>();
+    folders.forEach(f => knownIds.add(String(f.id)));
+    documents.filter(d => d.type === 'folder').forEach(d => knownIds.add(String(d.id)));
+
+    const missingIds = breadcrumbIds.filter(id => !knownIds.has(String(id)) && !breadcrumbNameCache[String(id)]);
+    if (!missingIds.length) return;
+
+    console.log('[Breadcrumbs] Fetching names for missing IDs:', missingIds);
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    (async () => {
+      const updates: Record<string, string> = {};
+      for (const id of missingIds) {
+        try {
+          const url = apiUrl(DOCUMENT_ENDPOINTS.METADATA_DETAIL(id));
+          console.log('[Breadcrumbs] Fetching:', url);
+          const res = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+            },
+            signal: controller.signal,
+          });
+          if (!res.ok) {
+            console.warn('[Breadcrumbs] Failed to fetch', id, res.status);
+            continue;
+          }
+          const data = await res.json();
+          console.log('[Breadcrumbs] Response for', id, ':', data);
+          const metaName =
+            data?.name ||
+            data?.document?.name ||
+            data?.metadata?.name ||
+            data?.data?.name;
+          if (metaName) {
+            console.log('[Breadcrumbs] Found name:', metaName, 'for ID:', id);
+            updates[String(id)] = metaName;
+          } else {
+            console.warn('[Breadcrumbs] No name found in response for', id);
+          }
+        } catch (err: any) {
+          if (err?.name === 'AbortError') return;
+          console.error('[Breadcrumbs] Error fetching', id, err);
+        }
+      }
+      if (!cancelled && Object.keys(updates).length) {
+        console.log('[Breadcrumbs] Updating cache with:', updates);
+        setBreadcrumbNameCache(prev => ({ ...prev, ...updates }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [breadcrumbIds, folders, documents, breadcrumbNameCache, token]);
+
+  const handleBreadcrumbNavigate = (item: { id?: string; name: string; path: string }) => {
+    if (!item || item.path === '/') {
+      setFolderId(null);
+      setBreadcrumbIds([]);
+      navigate('/');
+      return;
+    }
+    const fid = item.id ? String(item.id) : new URLSearchParams(item.path.split('?')[1] || '').get('folderId') || null;
+    if (fid) {
+      // trim history to this item
+      setBreadcrumbIds(prev => {
+        const idx = prev.findIndex(id => id === fid);
+        if (idx === -1) return [...prev, fid].slice(-20);
+        return prev.slice(0, idx + 1);
+      });
+    }
+    setFolderId(fid);
+    navigate(item.path);
+  };
   
   
   const handleDocumentSelect = (document: Document) => {
@@ -1034,7 +1287,7 @@ const handleToggleFavorite = async (doc: Document) => {
   // Server expects NAME, not ID. Try both base paths in case you have a proxy.
   const candidates = [
     
-    `/api/v2/metadata/${doc.id}/star`,
+  apiUrl(DOCUMENT_ENDPOINTS.STAR(doc.id)),
   ];
 
   try {
@@ -1149,7 +1402,8 @@ const handleToggleFavorite = async (doc: Document) => {
   
 
     fileList.forEach(file => {
-      formData.append('files', file, (file as File).relativePath || file.name);
+      const uploadName = (file as File).webkitRelativePath || (file as any).relativePath || file.name;
+      formData.append('files', file, uploadName);
     });
 
     try {
@@ -1249,9 +1503,11 @@ const visibleDocuments = useMemo(() => {
   const inScope = documents.filter(d => !d.archived);
 
   if (!folderId) {
-    // root → показываем документы без родителя
-    return inScope.filter(d => !d.parent_id || d.parent_id === "null");
-  }
+       // Если выбран проект, но мы на его «корне» — показываем ТОЛЬКО прямых детей этого корня
+       if (projectRootId) return inScope.filter(d => d.parent_id === String(projectRootId));
+       // Иначе самый верхний уровень (без родителя)
+       return inScope.filter(d => !d.parent_id || d.parent_id === "null");
+     }
 
   return inScope.filter(d => d.parent_id === String(folderId));
 }, [documents, folderId]);
@@ -1286,7 +1542,7 @@ const visibleDocuments = useMemo(() => {
     setDocuments(updatedDocs);
 
     try {
-      const url = `/v2/metadata/${documentId}/star`;
+  const url = apiUrl(DOCUMENT_ENDPOINTS.STAR(documentId));
       const response = await fetch(url, { method: 'PUT' });
       if (!response.ok) throw new Error('Toggle favorite failed');
       await response.json();
@@ -1377,12 +1633,26 @@ const toBytes = (size: string): number => {
     return 0;
   });
 }, [filteredDocuments, sortBy, sortOrder]);
-const folderTreeData = useMemo(() => buildTree(folders), [folders]);
 const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' as const };
 
 const byId = useMemo(() => {
   const m = new Map<string, Document>();
-  folders.forEach(f => m.set(f.id, f));
+  folders.forEach(f => {
+    m.set(String(f.id), {
+      id: String(f.id),
+      name: f.name || "Folder",
+      type: "folder",
+      size: "--",
+      modified: f.modified || "",
+      owner: f.owner || "",
+      category: f.category || "",
+      path: f.path || null,
+      tags: f.tags || [],
+      parent_id: f.parent_id ? String(f.parent_id) : null,
+      archived: f.archived || false,
+      starred: f.starred || false,
+    } as Document);
+  });
   documents.forEach(d => m.set(d.id, d)); // files in current folder
   return m;
 }, [folders, documents]);
@@ -1399,7 +1669,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       case 'rename': {
         const newName = data?.newName?.trim();
         if (!newName) return { ok: false, message: 'Нет нового имени' };
-        await axios.put(`/api/v2/metadata/${nodeId}`, { name: newName }, { headers });
+  await api.put(`${DOCUMENT_ENDPOINTS.METADATA}/${encodeURIComponent(String(nodeId))}`, { name: newName }, { headers });
         await fetchFolderTree();   // refresh tree
         if (folderId === node?.parent_id) await hardReloadDocuments(); // optional: refresh list if visible
         return { ok: true, message: 'Переименовано' };
@@ -1407,7 +1677,11 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
 
       case 'move': {
         const targetFolderId = data?.targetFolderId ?? null;
-        await axios.put(`/api/v2/metadata/${nodeId}`, { parent_id: targetFolderId }, { headers });
+        await api.put(
+          `${DOCUMENT_ENDPOINTS.METADATA}/${encodeURIComponent(String(nodeId))}`,
+          { parent_id: targetFolderId },
+          { headers }
+        );
         await fetchFolderTree();
         if (folderId === node?.parent_id || folderId === targetFolderId) await hardReloadDocuments();
         return { ok: true, message: 'Перемещено' };
@@ -1437,7 +1711,7 @@ const handleTreeAction = async (action: string, nodeId: string, data?: any) => {
       }
 
       case 'favorite': {
-        const res = await fetch(`/api/v2/metadata/${nodeId}/star`, { method: 'PUT', headers });
+  const res = await fetch(apiUrl(DOCUMENT_ENDPOINTS.STAR(nodeId)), { method: 'PUT', headers });
         if (!res.ok) throw new Error('Toggle failed');
         if (folderId === node?.parent_id) await hardReloadDocuments();
         return { ok: true, message: 'Избранное обновлено' };
@@ -1503,51 +1777,34 @@ case 'create-subfolder': {
   viewMode={viewMode}
   setViewMode={setViewMode}
 
-  // ✅ NEW
-  projects={projects}
+  // выбранная подпапка
   selectedProjectId={projectRootId}
-  onProjectChange={(id) => {
-    setCurrentProject(id);         // фиксируем выбранный проект (localStorage)
-    setFolderId(id);               // открываем корневую папку проекта
-    navigate(`/?folderId=${id}`);  // обновляем URL
-  }}
-  onProjectCreate={(p) => {
-    // сразу перейти в новый проект
-    setCurrentProject(p.id);
-    setFolderId(p.id);
-    navigate(`/?folderId=${p.id}`);
-    // по желанию: жестко перезагрузить текущий список
-    // await hardReloadDocuments();
+
+  // Новый обработчик: childId – выбранная подпапка; parentId можно игнорировать
+  onProjectChange={(childId, childName, parentId, parentName) => {
+    // считаем выбранную папку одновременно корнем и текущей папкой
+    setCurrentProject(childId); // сохраняем как root, если используется для запроса
+    setFolderId(childId);       // открываем эту папку
+    navigate(`/?folderId=${childId}`);
   }}
 />
+
 
       </div>
-  {/* left pane: folder tree  <nav className="w-64 overflow-auto h-screen p-2">*/}
-  
-  
+
+  {/* left pane: folder tree removed */}
 
  <div className="flex flex-1 overflow-hidden bg-dots">
-  <nav className="w-64 overflow-y-auto border-r bg-white p-2 shadow-inner">
-  <EnhancedFolderTree
-  data={folderTreeData}
-  selectedId={folderId}
-  expandedIds={expandedIds}                     // ⬅️ контролируем раскрытие
-  onSelect={(id) => {
-    setFolderId(id);
-    navigate(`/?folderId=${id}`);
-  }}
-  onFileUpload={handleFileUpload}
-  onAction={handleTreeAction}
-/>
+  <div className="flex-1 p-4 overflow-y-auto relative bg-gray-50 bg-dots">
+    {(breadcrumbs.length > 0 || folderId) && (
+      <div className="mb-4 flex flex-col gap-2">
+        <BreadcrumbNavigation
+          items={breadcrumbs}
+          onNavigate={handleBreadcrumbNavigate}
+        />
+      </div>
+    )}
 
-
-
-
-  </nav>
-      <div className="flex-1 p-4 overflow-y-auto relative bg-gray-50 bg-dots">
-      {/* Header with Upload Button */}
-      
-    
       {/* Drag-and-drop overlay */}
       <div
         className={`fixed inset-0 z-50${isDragging ? '' : ' hidden'}`}
@@ -1581,7 +1838,7 @@ case 'create-subfolder': {
     {selectedDocumentIds.length > 0
       ? `${selectedDocumentIds.length} selected`
       : `Showing ${filteredDocuments.length} items`}
-  
+
                 </span>
               </div>
                {selectedDocumentIds.length > 0 && (
@@ -1786,7 +2043,7 @@ case 'create-subfolder': {
                 onShareSelected: handleShareSelected,
                 onArchiveSelected: handleArchiveSelected
               }}
-              toggleFavorite={toggleFavorite}
+              toggleFavorite={(doc) => toggleFavorite(doc.id)}
             />
 
           </div>

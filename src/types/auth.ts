@@ -6,6 +6,8 @@ export interface User {
   username: string;
   email?: string;
   role: UserRole;
+  tenantId?: number;
+  departmentId?: number;
   permissions?: string[];
   departments?: string[];
   isActive?: boolean;

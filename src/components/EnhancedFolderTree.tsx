@@ -25,6 +25,8 @@ interface EnhancedFolderTreeProps {
 
   /** 🔹 Ключ для localStorage (например, `expanded:${projectRootId}`) */
   persistKey?: string;
+  onRefresh?: () => void | Promise<void>;
+  isLoading?: boolean;
 }
 
 /** Найти путь от корня до узла (список id) */
@@ -47,6 +49,8 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
   expandedIds,
   onToggleExpanded,
   persistKey,
+  onRefresh,
+  isLoading = false,
 }) => {
   /** ====== сортировка корня по «числа сначала» ====== */
   const collator = useMemo(
@@ -61,6 +65,19 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
     return collator.compare(a.name || '', b.name || '');
   }, [collator]);
   const sortedRoot = useMemo(() => data.slice().sort(compareNodes), [data, compareNodes]);
+  const flatNodes = useMemo(() => {
+    const acc: TreeNode[] = [];
+    const walk = (nodes: TreeNode[]) => {
+      nodes.forEach((node) => {
+        acc.push(node);
+        if (node.children?.length) {
+          walk(node.children);
+        }
+      });
+    };
+    walk(data);
+    return acc;
+  }, [data]);
 
   /** ====== раскрытие: controlled / uncontrolled ====== */
   const isControlled = Array.isArray(expandedIds) && typeof onToggleExpanded === 'function';
@@ -216,8 +233,10 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
 
       <div className="space-y-1">
         <div className="font-medium text-sm text-muted-foreground px-2 py-1">Папки</div>
-        {sortedRoot.length === 0 ? (
+        {isLoading ? (
           <div className="text-center py-8 text-muted-foreground">Загрузка папок...</div>
+        ) : sortedRoot.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">Папки не найдены</div>
         ) : (
           <div className="group">
             {sortedRoot.map((node) => {
@@ -239,9 +258,10 @@ export const EnhancedFolderTree: React.FC<EnhancedFolderTreeProps> = ({
                   onToggle={toggleNode}
                   onSelect={handleSelect}
                   selectedId={selectedId}
-                  allNodes={sortedRoot}
+                  allNodes={flatNodes}
                   onAction={handleItemAction}
                   expandedNodes={expandedSet}  // для вложенных элементов
+                  onRefresh={onRefresh}
                 />
               );
             })}

@@ -63,6 +63,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const roleFromApi = normalizeRole((userData as any).role);
         const role = roleFromApi || getRoleFromToken(token) || 'viewer';
 
+        const tenantId = (userData as any).tenant_id ?? (userData as any).tenantId ?? null;
+        const departmentId = (userData as any).department_id ?? (userData as any).departmentId ?? null;
+
         const fullUser: User = {
           id: userData.id,
           username: userData.username,
@@ -73,6 +76,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           isActive: true,
           createdAt: new Date().toISOString(),
           lastLogin: new Date().toISOString(),
+          tenantId: tenantId ?? undefined,
+          departmentId: departmentId ?? undefined,
         };
 
         setUser(fullUser);
@@ -104,6 +109,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const roleFromApi = normalizeRole((userData as any).role);
       const role = roleFromApi || getRoleFromToken(data.access_token) || 'viewer';
 
+      const tenantId = (userData as any).tenant_id ?? (userData as any).tenantId ?? null;
+      const departmentId = (userData as any).department_id ?? (userData as any).departmentId ?? null;
+
       const fullUser: User = {
         id: userData.id,
         username: userData.username,
@@ -114,6 +122,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isActive: true,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
+        tenantId: tenantId ?? undefined,
+        departmentId: departmentId ?? undefined,
       };
 
       setUser(fullUser);
