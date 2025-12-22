@@ -150,6 +150,23 @@ const renderIcon = (type: "folder" | "file", name?: string) => {
   return <File className="h-5 w-5 text-gray-500" />;
 };
 
+const displayUser = (name?: string | null, fallbackIdOrEmail?: string | null) => {
+  const n = (name || "").trim();
+  if (n) return n;
+  const raw = (fallbackIdOrEmail || "").trim();
+  if (!raw) return "";
+
+  // If backend sends email, show left part.
+  if (raw.includes("@")) return raw.split("@")[0];
+
+  // If backend sends "id|username" or "id:username" style, show username.
+  const m = raw.match(/[|:]\s*([^|:]+)$/);
+  if (m?.[1]) return m[1].trim();
+
+  // If it's a UUID/opaque id, keep it (better than blank).
+  return raw;
+};
+
 const fmtBytes = (n?: number | null) => {
   if (!n || n <= 0) return "—";
   const u = ["B","KB","MB","GB","TB"];
@@ -848,7 +865,7 @@ const CardItem = React.memo(function CardItem({
               {card.sharedWith || card.sharedWithName ? (
                 <div className="text-sm text-gray-500">
                   Получатель:{" "}
-                  <span className="font-medium">{card.sharedWithName || card.sharedWith}</span>
+                  <span className="font-medium">{displayUser(card.sharedWithName, card.sharedWith)}</span>
                 </div>
               ) : null}
             </div>
